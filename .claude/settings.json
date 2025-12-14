@@ -7,18 +7,18 @@
     }
   },
   "enabledPlugins": {
-    "agent-sdk-dev@anthropics": false,
-    "claude-opus-4-5-migration@anthropics": false,
+    "agent-sdk-dev@anthropics": true,
+    "claude-opus-4-5-migration@anthropics": true,
     "code-review@anthropics": true,
     "commit-commands@anthropics": true,
-    "explanatory-output-style@anthropics": false,
+    "explanatory-output-style@anthropics": true,
     "feature-dev@anthropics": true,
     "frontend-design@anthropics": true,
-    "hookify@anthropics": false,
-    "learning-output-style@anthropics": false,
-    "plugin-dev@anthropics": false,
+    "hookify@anthropics": true,
+    "learning-output-style@anthropics": true,
+    "plugin-dev@anthropics": true,
     "pr-review-toolkit@anthropics": true,
-    "ralph-wiggum@anthropics": false,
+    "ralph-wiggum@anthropics": true,
     "security-guidance@anthropics": true
   }
 }
