@@ -4,6 +4,10 @@
     "anthropics": {
       "source": "github",
       "repo": "anthropics/claude-code"
+    },
+    "every": {
+      "source": "github",
+      "repo": "EveryInc/every-marketplace"
     }
   },
   "enabledPlugins": {
