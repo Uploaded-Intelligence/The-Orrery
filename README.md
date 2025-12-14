@@ -1,16 +1,19 @@
-# React + Vite
+# The Orrery
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repository houses **The Orrery**, a two-tier spatio-visual operating system that blends macro quest planning with micro-level task execution. The project is built with React + Vite and includes a comprehensive technical specification to guide implementation phases.
 
-Currently, two official plugins are available:
+## Key documents
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Implementation specification:** `doc/orrery-implementation-spec.md` — full data model, component architecture, reducer actions, visual system, and phased roadmap.
+- **Additional context:** see accompanying soul and architecture artifacts referenced inside the implementation spec.
 
-## React Compiler
+## Getting started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+This project currently uses the standard Vite React setup with ESLint. To install dependencies and start the dev server:
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+React Compiler is not enabled by default. For details on enabling it, refer to [the React documentation](https://react.dev/learn/react-compiler/installation).
