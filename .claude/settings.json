@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "anthropics": {
+      "source": "github",
+      "repo": "anthropics/claude-code"
+    }
+  },
+  "enabledPlugins": {
+    "agent-sdk-dev@anthropics": false,
+    "claude-opus-4-5-migration@anthropics": false,
+    "code-review@anthropics": true,
+    "commit-commands@anthropics": true,
+    "explanatory-output-style@anthropics": false,
+    "feature-dev@anthropics": true,
+    "frontend-design@anthropics": true,
+    "hookify@anthropics": false,
+    "learning-output-style@anthropics": false,
+    "plugin-dev@anthropics": false,
+    "pr-review-toolkit@anthropics": true,
+    "ralph-wiggum@anthropics": false,
+    "security-guidance@anthropics": true
+  }
+}
