@@ -5,7 +5,7 @@ This repository houses **The Orrery**, a two-tier spatio-visual operating system
 ## Key documents
 
 - **Implementation specification:** `doc/orrery-implementation-spec.md` — full data model, component architecture, reducer actions, visual system, and phased roadmap.
-- **Additional context:** see accompanying soul and architecture artifacts referenced inside the implementation spec.
+- **Additional context:** see `doc/soul-transmission.md` and `doc/keystone-master-artifact-v2.md`  
 
 ## Getting started
 
