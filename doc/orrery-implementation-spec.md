@@ -908,64 +908,274 @@ Specifically:
 
 ---
 
-# §10 FILE STRUCTURE (Single Artifact)
+# §10 FILE STRUCTURE (Multi-File GitHub Project)
 
-Since this is a single `.jsx` file, structure internally:
+This project uses a modular multi-file structure optimized for iterative development via GitHub. The structure aligns with the phased implementation plan (§6), making it easy to develop features incrementally and review changes in isolation.
+
+## 10.1 Directory Overview
+
+```
+The-Orrery/
+├── doc/                           # Documentation
+│   ├── orrery-implementation-spec.md
+│   ├── keystone-master-artifact-v2.md
+│   └── soul-transmission.md
+│
+├── src/
+│   ├── main.jsx                   # Application entry point
+│   ├── App.jsx                    # Root layout & routing
+│   │
+│   ├── types/                     # Type definitions
+│   │   └── index.js               # JSDoc typedefs for Quest, Task, Edge, etc.
+│   │
+│   ├── constants/                 # Static configuration
+│   │   ├── index.js               # Re-exports
+│   │   ├── colors.js              # COLORS palette, QUEST_COLORS
+│   │   └── initialState.js        # INITIAL_STATE, STORAGE_KEY
+│   │
+│   ├── utils/                     # Pure utility functions
+│   │   ├── index.js               # Re-exports
+│   │   ├── ids.js                 # generateId()
+│   │   ├── tasks.js               # isTaskLocked, getComputedTaskStatus, getAvailableTasks
+│   │   ├── quests.js              # getQuestProgress
+│   │   └── layout.js              # autoLayoutDAG (Phase 1-2)
+│   │
+│   ├── store/                     # State management
+│   │   ├── index.js               # Re-exports
+│   │   ├── reducer.js             # orreryReducer with all actions
+│   │   ├── context.js             # OrreryContext, OrreryProvider, useOrrery hook
+│   │   └── actions.js             # Action type constants (optional)
+│   │
+│   ├── hooks/                     # Custom React hooks
+│   │   ├── index.js               # Re-exports
+│   │   ├── usePersistence.js      # window.storage sync (Phase 0)
+│   │   ├── useTimer.js            # Session countdown timer (Phase 4)
+│   │   └── useAI.js               # AI integration calls (Phase 5)
+│   │
+│   ├── components/                # React components
+│   │   ├── index.js               # Re-exports
+│   │   │
+│   │   ├── common/                # Shared/reusable components
+│   │   │   ├── StatusBadge.jsx    # Task status indicator
+│   │   │   ├── ProgressRing.jsx   # Circular progress indicator
+│   │   │   └── Modal.jsx          # Dialog/modal wrapper
+│   │   │
+│   │   ├── layout/                # Layout components
+│   │   │   ├── Header.jsx         # App header with controls
+│   │   │   ├── Footer.jsx         # Sync status footer
+│   │   │   └── StatsSummary.jsx   # Quest/task statistics grid
+│   │   │
+│   │   ├── quests/                # Quest-related components
+│   │   │   ├── QuestCard.jsx      # Quest display card
+│   │   │   ├── QuestList.jsx      # Quest list container
+│   │   │   ├── AddQuestForm.jsx   # Create new quest form
+│   │   │   └── EditQuestForm.jsx  # Edit quest form
+│   │   │
+│   │   ├── tasks/                 # Task-related components
+│   │   │   ├── TaskRow.jsx        # Task list item
+│   │   │   ├── TaskList.jsx       # Task list container
+│   │   │   ├── AddTaskForm.jsx    # Create new task form
+│   │   │   ├── EditTaskForm.jsx   # Edit task form
+│   │   │   └── TaskDetailPanel.jsx # Slide-out task inspector (Phase 2)
+│   │   │
+│   │   ├── edges/                 # Dependency edge components (Phase 1)
+│   │   │   ├── DependencyEdge.jsx # Arrow between tasks
+│   │   │   └── EdgeManager.jsx    # Edge creation/deletion UI
+│   │   │
+│   │   ├── views/                 # Main view components
+│   │   │   ├── MacroView/         # Phase 3: The Constellation
+│   │   │   │   ├── index.jsx      # Constellation container
+│   │   │   │   ├── QuestNode.jsx  # Orbital quest node
+│   │   │   │   ├── QuestConnections.jsx  # Inter-quest links
+│   │   │   │   └── ConstellationCanvas.jsx
+│   │   │   │
+│   │   │   └── MicroView/         # Phase 1-2: The Task Engine
+│   │   │       ├── index.jsx      # DAG view container
+│   │   │       ├── Canvas.jsx     # Pan/zoom canvas
+│   │   │       ├── TaskNode.jsx   # DAG task node
+│   │   │       └── MiniMap.jsx    # Navigation overview
+│   │   │
+│   │   ├── gps/                   # Phase 4: Time-Space GPS
+│   │   │   ├── TimeSpaceGPS.jsx   # Main floating HUD
+│   │   │   ├── SessionTimer.jsx   # Countdown display
+│   │   │   ├── ContextBreadcrumb.jsx  # Quest/task context
+│   │   │   └── VastnessReminder.jsx   # Possibility space visual
+│   │   │
+│   │   ├── ai/                    # Phase 5: AI Integration
+│   │   │   ├── AIInputPanel.jsx   # Brain dump interface
+│   │   │   ├── SynthesizeButton.jsx
+│   │   │   ├── MagicWandButton.jsx
+│   │   │   └── OracleButton.jsx
+│   │   │
+│   │   └── controls/              # Control components
+│   │       ├── ViewToggle.jsx     # Macro ↔ Micro switch
+│   │       ├── ActualFilter.jsx   # Panic button toggle
+│   │       ├── ImportExportControls.jsx
+│   │       └── SessionControls.jsx # Start/stop session
+│   │
+│   ├── styles/                    # CSS styles
+│   │   ├── index.css              # Global styles & resets
+│   │   ├── variables.css          # CSS custom properties
+│   │   └── animations.css         # Keyframe animations
+│   │
+│   └── assets/                    # Static assets
+│       └── (icons, images if any)
+│
+├── public/                        # Static public files
+│   └── vite.svg
+│
+├── index.html                     # HTML entry point
+├── package.json                   # Dependencies & scripts
+├── vite.config.js                 # Vite configuration
+├── eslint.config.js               # ESLint configuration
+└── README.md                      # Project overview
+```
+
+## 10.2 Phase-to-File Mapping
+
+Each implementation phase (§6) maps to specific files:
+
+| Phase | Focus | Primary Files to Create/Modify |
+|-------|-------|-------------------------------|
+| **Phase 0** | Foundation | `types/`, `constants/`, `store/`, `hooks/usePersistence.js`, `components/controls/ImportExportControls.jsx` |
+| **Phase 1** | Micro View Core | `utils/layout.js`, `components/views/MicroView/`, `components/edges/`, `components/tasks/TaskNode.jsx` |
+| **Phase 2** | Micro View Enhanced | `components/views/MicroView/Canvas.jsx`, `components/tasks/TaskDetailPanel.jsx`, `components/controls/ActualFilter.jsx` |
+| **Phase 3** | Macro View | `components/views/MacroView/`, `components/controls/ViewToggle.jsx` |
+| **Phase 4** | Time-Space GPS | `components/gps/`, `hooks/useTimer.js` |
+| **Phase 5** | AI Integration | `components/ai/`, `hooks/useAI.js` |
+| **Phase 6** | Polish | `styles/animations.css`, refinements across all components |
+
+## 10.3 Import Conventions
+
+Use barrel exports (`index.js`) for clean imports:
+
+```jsx
+// ─── From types ──────────────────────────────────────────────────
+// Types are documented via JSDoc, import for reference:
+// See types/index.js for Quest, Task, Edge, etc.
+
+// ─── From constants ──────────────────────────────────────────────
+import { COLORS, QUEST_COLORS, INITIAL_STATE } from '@/constants';
+
+// ─── From utils ──────────────────────────────────────────────────
+import { generateId, isTaskLocked, getQuestProgress } from '@/utils';
+
+// ─── From store ──────────────────────────────────────────────────
+import { useOrrery, OrreryProvider } from '@/store';
+
+// ─── From hooks ──────────────────────────────────────────────────
+import { usePersistence, useTimer } from '@/hooks';
+
+// ─── From components ─────────────────────────────────────────────
+import { QuestCard, TaskRow, TimeSpaceGPS } from '@/components';
+```
+
+**Note:** Configure path alias `@/` → `src/` in `vite.config.js`:
+
+```js
+// vite.config.js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+});
+```
+
+## 10.4 Component File Template
+
+Each component file should follow this structure:
 
 ```jsx
 // ═══════════════════════════════════════════════════════════════
-// THE ORRERY - Two-Tier Visual Operating System
+// ComponentName.jsx
+// Brief description of what this component does
 // ═══════════════════════════════════════════════════════════════
 
-// ─── IMPORTS ─────────────────────────────────────────────────────
-import React, { useState, useReducer, useEffect, useCallback, useContext, createContext } from 'react';
-import { /* icons */ } from 'lucide-react';
+import React from 'react';
+import { SomeIcon } from 'lucide-react';
+import { COLORS } from '@/constants';
+import { useOrrery } from '@/store';
 
-// ─── TYPES & INTERFACES ──────────────────────────────────────────
-// (TypeScript as JSDoc comments for .jsx compatibility)
+/**
+ * @param {Object} props
+ * @param {string} props.someRequired - Description
+ * @param {boolean} [props.someOptional] - Description
+ */
+export function ComponentName({ someRequired, someOptional = false }) {
+  const { state, dispatch } = useOrrery();
 
-// ─── CONSTANTS ───────────────────────────────────────────────────
-const INITIAL_STATE = { /* ... */ };
-const COLORS = { /* ... */ };
+  // ─── Handlers ────────────────────────────────────────────────
+  const handleSomething = () => {
+    dispatch({ type: 'SOME_ACTION', payload: someRequired });
+  };
 
-// ─── UTILITIES ───────────────────────────────────────────────────
-const generateId = () => { /* ... */ };
-const isTaskLocked = (taskId, state) => { /* ... */ };
-const getQuestProgress = (questId, state) => { /* ... */ };
-const autoLayoutDAG = (tasks, edges) => { /* ... */ };
-
-// ─── REDUCER ─────────────────────────────────────────────────────
-function orreryReducer(state, action) { /* ... */ }
-
-// ─── CONTEXT ─────────────────────────────────────────────────────
-const OrreryContext = createContext(null);
-
-// ─── HOOKS ───────────────────────────────────────────────────────
-function usePersistence(state, dispatch) { /* ... */ }
-function useTimer(session) { /* ... */ }
-
-// ─── COMPONENTS ──────────────────────────────────────────────────
-// (In order of dependency)
-
-function TimeSpaceGPS({ session, currentTask, currentQuest }) { /* ... */ }
-function TaskNode({ task, isSelected, isLocked, isFocused, onClick }) { /* ... */ }
-function DependencyEdge({ source, target, positions }) { /* ... */ }
-function MicroView({ state, dispatch, positions }) { /* ... */ }
-function QuestNode({ quest, progress, onClick }) { /* ... */ }
-function MacroView({ state, dispatch }) { /* ... */ }
-function TaskDetailPanel({ task, onClose, dispatch }) { /* ... */ }
-function AIInputPanel({ onSynthesize }) { /* ... */ }
-function ImportExportControls({ state, dispatch }) { /* ... */ }
-
-// ─── ROOT COMPONENT ──────────────────────────────────────────────
-export default function Orrery() {
-  const [state, dispatch] = useReducer(orreryReducer, INITIAL_STATE);
-  
-  usePersistence(state, dispatch);
-  
-  // ... render based on state.preferences.currentView
+  // ─── Render ──────────────────────────────────────────────────
+  return (
+    <div style={{ /* inline styles for now, extract to CSS later */ }}>
+      {/* Component content */}
+    </div>
+  );
 }
+
+export default ComponentName;
 ```
+
+## 10.5 Development Workflow
+
+### Creating a New Feature
+
+1. **Create feature branch:** `git checkout -b feature/phase-X-feature-name`
+2. **Add/modify files** according to phase mapping (§10.2)
+3. **Export from barrel files** (`index.js`) as needed
+4. **Import and integrate** in parent components
+5. **Test locally:** `npm run dev`
+6. **Commit with descriptive message** referencing the phase
+7. **Create PR** for review
+
+### File Naming Conventions
+
+- **Components:** `PascalCase.jsx` (e.g., `QuestCard.jsx`)
+- **Hooks:** `camelCase.js` with `use` prefix (e.g., `usePersistence.js`)
+- **Utils:** `camelCase.js` (e.g., `tasks.js`)
+- **Constants:** `camelCase.js` (e.g., `colors.js`)
+- **Directories:** `kebab-case` or `camelCase` (e.g., `views/MacroView/`)
+
+### Commit Message Format
+
+```
+Phase X: Brief description
+
+- Detail 1
+- Detail 2
+
+Refs: #issue-number (if applicable)
+```
+
+Example:
+```
+Phase 1: Add DAG canvas with task nodes
+
+- Implement Canvas component with pan/zoom
+- Create TaskNode with visual states
+- Add auto-layout algorithm for DAG positioning
+```
+
+## 10.6 Current State Note
+
+As of Phase 0 completion, the application may still have a monolithic `App.jsx`. The refactoring into this multi-file structure should happen incrementally:
+
+1. **Immediate:** Extract `types/`, `constants/`, `store/` (pure logic, no UI)
+2. **Phase 1:** Extract view components as they're built
+3. **Ongoing:** Refactor existing components into the structure as needed
+
+**Priority:** Working software over perfect structure. Refactor when it aids development, not as busywork.
 
 ---
 
