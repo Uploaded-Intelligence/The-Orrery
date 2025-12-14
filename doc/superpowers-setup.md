@@ -15,3 +15,10 @@ Use the Superpowers bootstrap tool to display the available skills and follow an
 ```
 
 The bootstrap tool is model-agnostic, so any agent (including Claude) can run the same command against this installation to review or load skills.
+
+## Verification
+
+**Last verified**: 2025-12-14
+**Status**: ✅ Superpowers access confirmed
+**Available skills**: 20 skills loaded and accessible
+**Bootstrap command**: Working correctly
