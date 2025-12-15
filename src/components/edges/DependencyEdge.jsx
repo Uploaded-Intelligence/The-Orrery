@@ -13,6 +13,7 @@ import { getEdgePath } from '@/utils';
  * @param {{ x: number, y: number }} props.targetPos
  * @param {boolean} props.isSelected
  * @param {Function} props.onClick
+ * @param {boolean} props.isGhosted - Dimmed for quest focus overlay
  */
 export function DependencyEdge({
   edge,
@@ -20,14 +21,19 @@ export function DependencyEdge({
   targetPos,
   isSelected,
   onClick,
+  isGhosted = false,
 }) {
   const { start, end, midX } = getEdgePath(sourcePos, targetPos);
 
   // Bezier curve control points for smooth S-curve
   const pathD = `M ${start.x} ${start.y} C ${midX} ${start.y}, ${midX} ${end.y}, ${end.x} ${end.y}`;
 
+  // Apply ghosting
+  const baseOpacity = isSelected ? 1 : 0.5;
+  const effectiveOpacity = isGhosted ? baseOpacity * 0.25 : baseOpacity;
+
   return (
-    <g onClick={onClick} style={{ cursor: 'pointer' }}>
+    <g onClick={onClick} style={{ cursor: isGhosted ? 'default' : 'pointer' }}>
       {/* Wider invisible hit area */}
       <path
         d={pathD}
@@ -42,8 +48,8 @@ export function DependencyEdge({
         fill="none"
         stroke={isSelected ? COLORS.accentDanger : COLORS.textMuted}
         strokeWidth={isSelected ? 3 : 2}
-        strokeOpacity={isSelected ? 1 : 0.5}
-        markerEnd={`url(#arrow${isSelected ? '-selected' : ''})`}
+        strokeOpacity={effectiveOpacity}
+        markerEnd={`url(#arrow${isSelected ? '-selected' : (isGhosted ? '-ghosted' : '')})`}
       />
     </g>
   );
@@ -98,6 +104,17 @@ export function EdgeDefs() {
         orient="auto-start-reverse"
       >
         <path d="M 0 0 L 10 5 L 0 10 z" fill={COLORS.accentDanger} />
+      </marker>
+      <marker
+        id="arrow-ghosted"
+        viewBox="0 0 10 10"
+        refX="9"
+        refY="5"
+        markerWidth="6"
+        markerHeight="6"
+        orient="auto-start-reverse"
+      >
+        <path d="M 0 0 L 10 5 L 0 10 z" fill={COLORS.textMuted} fillOpacity="0.15" />
       </marker>
     </defs>
   );

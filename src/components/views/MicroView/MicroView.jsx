@@ -3,13 +3,14 @@
 // Micro View - DAG of tasks with dependencies
 // ═══════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff, Info } from 'lucide-react';
 import { useOrrery } from '@/store';
 import { COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
 import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
+import { TaskDetailPanel } from '@/components/panels';
 
 /**
  * MicroView - Task DAG visualization
@@ -31,15 +32,45 @@ export function MicroView() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
-  // Filter tasks by focused quest
+  // Local UI state for showing all tasks vs focused only
+  const [showAllTasks, setShowAllTasks] = useState(false);
+
+  // Filter tasks - when focused, optionally show all with ghosting
   const visibleTasks = useMemo(() => {
-    if (state.preferences.focusQuestId) {
-      return state.tasks.filter(t =>
+    let tasks = state.tasks;
+
+    // When focused AND not showing all, filter to focused quest only
+    if (state.preferences.focusQuestId && !showAllTasks) {
+      tasks = tasks.filter(t =>
         t.questIds.includes(state.preferences.focusQuestId)
       );
     }
-    return state.tasks;
-  }, [state.tasks, state.preferences.focusQuestId]);
+
+    // Apply "Actual" filter (hide locked tasks)
+    if (state.preferences.showActualOnly) {
+      tasks = tasks.filter(t => {
+        const status = getComputedTaskStatus(t, state);
+        return status === 'available' || status === 'in_progress' || status === 'completed';
+      });
+    }
+
+    return tasks;
+  }, [state.tasks, state.preferences.focusQuestId, state.preferences.showActualOnly, showAllTasks, state]);
+
+  // Determine if a task should be ghosted (not in focused quest when showing all)
+  const isTaskGhosted = useCallback((task) => {
+    if (!state.preferences.focusQuestId || !showAllTasks) return false;
+    return !task.questIds.includes(state.preferences.focusQuestId);
+  }, [state.preferences.focusQuestId, showAllTasks]);
+
+  // Determine if an edge should be ghosted (either endpoint is ghosted)
+  const isEdgeGhosted = useCallback((edge) => {
+    if (!state.preferences.focusQuestId || !showAllTasks) return false;
+    const sourceTask = state.tasks.find(t => t.id === edge.source);
+    const targetTask = state.tasks.find(t => t.id === edge.target);
+    if (!sourceTask || !targetTask) return false;
+    return isTaskGhosted(sourceTask) || isTaskGhosted(targetTask);
+  }, [state.preferences.focusQuestId, showAllTasks, state.tasks, isTaskGhosted]);
 
   // Filter edges to only show those between visible tasks
   const visibleEdges = useMemo(() => {
@@ -197,6 +228,40 @@ export function MicroView() {
     dispatch({ type: 'SET_MICRO_ZOOM', payload: 1 });
   }, [dispatch]);
 
+  // Scroll wheel zoom (zoom toward cursor position)
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.min(Math.max(zoom * delta, 0.3), 3);
+
+    // Zoom toward cursor position
+    if (svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+
+      // Adjust pan to zoom toward cursor
+      const newPan = {
+        x: cursorX - (cursorX - pan.x) * (newZoom / zoom),
+        y: cursorY - (cursorY - pan.y) * (newZoom / zoom),
+      };
+
+      setPan(newPan);
+      setZoom(newZoom);
+      dispatch({ type: 'SET_MICRO_POSITION', payload: newPan });
+      dispatch({ type: 'SET_MICRO_ZOOM', payload: newZoom });
+    }
+  }, [zoom, pan, dispatch]);
+
+  // Attach wheel listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (svg) {
+      svg.addEventListener('wheel', handleWheel, { passive: false });
+      return () => svg.removeEventListener('wheel', handleWheel);
+    }
+  }, [handleWheel]);
+
   // Get edge preview start position
   const edgePreviewStart = edgeSourceId ? positions.get(edgeSourceId) : null;
   const previewStartPos = edgePreviewStart ? {
@@ -206,6 +271,7 @@ export function MicroView() {
 
   return (
     <div style={{
+      position: 'relative',
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
@@ -258,6 +324,29 @@ export function MicroView() {
               Cancel
             </button>
           </span>
+        )}
+
+        {/* Show All toggle (when quest is focused) */}
+        {focusedQuest && (
+          <button
+            onClick={() => setShowAllTasks(!showAllTasks)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: showAllTasks ? COLORS.accentWarning + '20' : COLORS.bgElevated,
+              border: `1px solid ${showAllTasks ? COLORS.accentWarning : COLORS.textMuted}40`,
+              borderRadius: '6px',
+              color: showAllTasks ? COLORS.accentWarning : COLORS.textSecondary,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+            title={showAllTasks ? 'Show only focused quest tasks' : 'Show all tasks (ghost non-focused)'}
+          >
+            {showAllTasks ? <Eye size={16} /> : <EyeOff size={16} />}
+            {showAllTasks ? 'All Visible' : 'Focused Only'}
+          </button>
         )}
 
         {/* Action buttons */}
@@ -414,6 +503,7 @@ export function MicroView() {
                 sourcePos={sourcePos}
                 targetPos={targetPos}
                 isSelected={selectedEdgeId === edge.id}
+                isGhosted={isEdgeGhosted(edge)}
                 onClick={() => handleEdgeClick(edge.id)}
               />
             );
@@ -439,6 +529,7 @@ export function MicroView() {
                 position={pos}
                 isSelected={selectedTaskId === task.id}
                 isEdgeSource={edgeSourceId === task.id}
+                isGhosted={isTaskGhosted(task)}
                 onClick={() => handleTaskClick(task.id)}
                 onDoubleClick={() => handleTaskDoubleClick(task)}
               />
@@ -477,6 +568,18 @@ export function MicroView() {
             Add First Task
           </button>
         </div>
+      )}
+
+      {/* Task Detail Panel */}
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+          onStartEdge={() => {
+            setEdgeSourceId(selectedTaskId);
+            setSelectedTaskId(null);
+          }}
+        />
       )}
     </div>
   );

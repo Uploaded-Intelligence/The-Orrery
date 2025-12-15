@@ -65,6 +65,7 @@ function getStatusStyle(status) {
  * @param {Function} props.onClick
  * @param {Function} props.onDoubleClick
  * @param {boolean} props.isEdgeSource - Currently selected as edge source
+ * @param {boolean} props.isGhosted - Dimmed for quest focus overlay
  */
 export function TaskNode({
   task,
@@ -74,16 +75,21 @@ export function TaskNode({
   onClick,
   onDoubleClick,
   isEdgeSource = false,
+  isGhosted = false,
 }) {
   const style = getStatusStyle(computedStatus);
   const Icon = style.icon;
+
+  // Apply ghosting (for quest focus overlay)
+  const ghostMultiplier = isGhosted ? 0.35 : 1;
+  const effectiveOpacity = style.opacity * ghostMultiplier;
 
   return (
     <g
       transform={`translate(${position.x}, ${position.y})`}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      style={{ cursor: computedStatus === 'locked' ? 'not-allowed' : 'pointer' }}
+      style={{ cursor: computedStatus === 'locked' || isGhosted ? 'not-allowed' : 'pointer' }}
     >
       {/* Node background */}
       <rect
@@ -96,7 +102,7 @@ export function TaskNode({
         fill={style.bg}
         stroke={isSelected || isEdgeSource ? COLORS.accentSecondary : style.border}
         strokeWidth={isSelected || isEdgeSource ? 3 : 2}
-        opacity={style.opacity}
+        opacity={effectiveOpacity}
       />
 
       {/* Status icon */}
@@ -104,7 +110,7 @@ export function TaskNode({
         <Icon
           size={18}
           color={style.border}
-          style={{ opacity: style.opacity }}
+          style={{ opacity: effectiveOpacity }}
         />
       </foreignObject>
 
@@ -115,7 +121,7 @@ export function TaskNode({
         fill={style.text}
         fontSize="13"
         fontWeight="500"
-        opacity={style.opacity}
+        opacity={effectiveOpacity}
         style={{ pointerEvents: 'none' }}
       >
         {task.title.length > 18 ? task.title.slice(0, 16) + '...' : task.title}
@@ -128,7 +134,7 @@ export function TaskNode({
           y={LAYOUT.NODE_HEIGHT / 2 + 14}
           fill={COLORS.textMuted}
           fontSize="11"
-          opacity={style.opacity}
+          opacity={effectiveOpacity}
           style={{ pointerEvents: 'none' }}
         >
           {task.estimatedMinutes}m

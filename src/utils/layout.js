@@ -36,8 +36,32 @@ function getDepth(taskId, edges, visited = new Set()) {
 }
 
 /**
- * Auto-layout tasks in a DAG structure
- * Upstream tasks (dependencies) appear on left, downstream on right
+ * Get average Y position of connected nodes for barycentric ordering
+ * @param {string} taskId
+ * @param {import('@/types').Edge[]} edges
+ * @param {Map<string, Position>} positions
+ * @param {'incoming' | 'outgoing'} direction
+ */
+function getBarycenter(taskId, edges, positions, direction) {
+  const connectedIds = direction === 'incoming'
+    ? edges.filter(e => e.target === taskId).map(e => e.source)
+    : edges.filter(e => e.source === taskId).map(e => e.target);
+
+  if (connectedIds.length === 0) return null;
+
+  const yPositions = connectedIds
+    .map(id => positions.get(id)?.y)
+    .filter(y => y !== undefined);
+
+  if (yPositions.length === 0) return null;
+  return yPositions.reduce((a, b) => a + b, 0) / yPositions.length;
+}
+
+/**
+ * Auto-layout tasks in a DAG structure with improved algorithm
+ * - Barycentric ordering to minimize edge crossings
+ * - Adaptive spacing based on task count
+ * - Upstream tasks (dependencies) appear on left, downstream on right
  *
  * @param {import('@/types').Task[]} tasks
  * @param {import('@/types').Edge[]} edges
@@ -60,12 +84,84 @@ export function autoLayoutDAG(tasks, edges) {
     columns.get(d).push(t);
   });
 
-  // 3. Assign positions - center each column vertically
-  columns.forEach((tasksInColumn, depth) => {
+  // Get sorted column depths
+  const sortedDepths = Array.from(columns.keys()).sort((a, b) => a - b);
+
+  // 3. Initial positioning - simple top-to-bottom
+  let maxColumnHeight = 0;
+  sortedDepths.forEach(depth => {
+    const tasksInColumn = columns.get(depth);
+    maxColumnHeight = Math.max(maxColumnHeight, tasksInColumn.length);
     tasksInColumn.forEach((task, index) => {
       positions.set(task.id, {
         x: LAYOUT.PADDING + depth * LAYOUT.COLUMN_WIDTH,
-        y: LAYOUT.PADDING + index * LAYOUT.ROW_HEIGHT - (tasksInColumn.length - 1) * LAYOUT.ROW_HEIGHT / 2 + 200,
+        y: LAYOUT.PADDING + index * LAYOUT.ROW_HEIGHT,
+      });
+    });
+  });
+
+  // 4. Barycentric ordering iterations (reduces edge crossings)
+  // Sweep left-to-right, then right-to-left
+  const iterations = 4;
+  for (let iter = 0; iter < iterations; iter++) {
+    // Left to right pass
+    for (let i = 1; i < sortedDepths.length; i++) {
+      const depth = sortedDepths[i];
+      const tasksInColumn = columns.get(depth);
+
+      // Sort by barycenter of incoming edges
+      tasksInColumn.sort((a, b) => {
+        const bcA = getBarycenter(a.id, edges, positions, 'incoming');
+        const bcB = getBarycenter(b.id, edges, positions, 'incoming');
+        if (bcA === null && bcB === null) return 0;
+        if (bcA === null) return 1;
+        if (bcB === null) return -1;
+        return bcA - bcB;
+      });
+
+      // Reassign Y positions
+      tasksInColumn.forEach((task, index) => {
+        const pos = positions.get(task.id);
+        positions.set(task.id, { x: pos.x, y: LAYOUT.PADDING + index * LAYOUT.ROW_HEIGHT });
+      });
+    }
+
+    // Right to left pass
+    for (let i = sortedDepths.length - 2; i >= 0; i--) {
+      const depth = sortedDepths[i];
+      const tasksInColumn = columns.get(depth);
+
+      // Sort by barycenter of outgoing edges
+      tasksInColumn.sort((a, b) => {
+        const bcA = getBarycenter(a.id, edges, positions, 'outgoing');
+        const bcB = getBarycenter(b.id, edges, positions, 'outgoing');
+        if (bcA === null && bcB === null) return 0;
+        if (bcA === null) return 1;
+        if (bcB === null) return -1;
+        return bcA - bcB;
+      });
+
+      // Reassign Y positions
+      tasksInColumn.forEach((task, index) => {
+        const pos = positions.get(task.id);
+        positions.set(task.id, { x: pos.x, y: LAYOUT.PADDING + index * LAYOUT.ROW_HEIGHT });
+      });
+    }
+  }
+
+  // 5. Center columns vertically relative to the tallest column
+  const centerY = LAYOUT.PADDING + (maxColumnHeight - 1) * LAYOUT.ROW_HEIGHT / 2;
+
+  sortedDepths.forEach(depth => {
+    const tasksInColumn = columns.get(depth);
+    const columnHeight = (tasksInColumn.length - 1) * LAYOUT.ROW_HEIGHT;
+    const offsetY = centerY - columnHeight / 2;
+
+    tasksInColumn.forEach((task, index) => {
+      const pos = positions.get(task.id);
+      positions.set(task.id, {
+        x: pos.x,
+        y: offsetY + index * LAYOUT.ROW_HEIGHT,
       });
     });
   });
