@@ -1,9 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
-// utils/index.js
-// Barrel export for utilities
+// components/tasks/index.js
+// Barrel export for task components
 // ═══════════════════════════════════════════════════════════════
 
-export { generateId } from './ids.js';
-export { isTaskLocked, getComputedTaskStatus, getAvailableTasks } from './tasks.js';
-export { getQuestProgress } from './quests.js';
-export { autoLayoutDAG, getLayoutPositions, getEdgePath, getCanvasBounds, LAYOUT } from './layout.js';
+export { TaskNode } from './TaskNode.jsx';

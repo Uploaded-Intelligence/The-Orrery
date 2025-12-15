@@ -1,13 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // THE ORRERY - Two-Tier Visual Operating System for WorldOE
-// Phase 0: Foundation - Data Layer & Persistence
+// Phase 1: Micro View - Task DAG with Dependencies
 // ═══════════════════════════════════════════════════════════════════════════
 
 import React, { useState, useReducer } from 'react';
 import {
   Eye, EyeOff, Plus, Trash2, Lock, Play,
   Download, Upload, RotateCcw, Orbit, Target, Clock, Zap,
-  Sparkles, AlertCircle, CheckCircle2, Edit3
+  Sparkles, AlertCircle, CheckCircle2, Edit3, LayoutGrid, Network
 } from 'lucide-react';
 
 // ─── Imports from extracted modules ──────────────────────────────────────────
@@ -15,6 +15,7 @@ import { COLORS, QUEST_COLORS, INITIAL_STATE } from '@/constants';
 import { getComputedTaskStatus, getQuestProgress } from '@/utils';
 import { orreryReducer, OrreryContext, useOrrery } from '@/store';
 import { usePersistence } from '@/hooks';
+import { MicroView } from '@/components/views/MicroView';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENTS
@@ -1022,9 +1023,13 @@ export default function Orrery() {
     <OrreryContext.Provider value={{ state, dispatch }}>
       <div style={{
         minHeight: '100vh',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
         background: COLORS.bgSpace,
         color: COLORS.textPrimary,
         fontFamily: "'Inter', system-ui, sans-serif",
+        overflow: 'hidden',
       }}>
         {/* Header */}
         <header style={{
@@ -1051,7 +1056,7 @@ export default function Orrery() {
                 The Orrery
               </h1>
               <div style={{ fontSize: '0.75rem', color: COLORS.textMuted, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                Phase 0: Foundation
+                Phase 1: Micro View
                 {saveStatus === 'saving' && <span style={{ color: COLORS.accentWarning }}>• Saving...</span>}
                 {saveStatus === 'error' && <span style={{ color: COLORS.accentDanger }}>• Save failed</span>}
                 {saveStatus === 'saved' && <span style={{ color: COLORS.accentSuccess }}>• Saved</span>}
@@ -1086,12 +1091,73 @@ export default function Orrery() {
               Actual
             </button>
 
+            {/* View Toggle */}
+            <div style={{
+              display: 'flex',
+              borderRadius: '0.5rem',
+              border: `1px solid ${COLORS.textMuted}40`,
+              overflow: 'hidden',
+            }}>
+              <button
+                onClick={() => dispatch({ type: 'SET_VIEW', payload: 'macro' })}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  padding: '0.5rem 0.75rem',
+                  border: 'none',
+                  background: state.preferences.currentView === 'macro'
+                    ? COLORS.accentPrimary + '30'
+                    : COLORS.bgElevated,
+                  color: state.preferences.currentView === 'macro'
+                    ? COLORS.accentPrimary
+                    : COLORS.textSecondary,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+                title="Macro View - Constellation of Quests"
+              >
+                <LayoutGrid size={16} />
+                Macro
+              </button>
+              <button
+                onClick={() => dispatch({ type: 'SET_VIEW', payload: 'micro' })}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  padding: '0.5rem 0.75rem',
+                  border: 'none',
+                  borderLeft: `1px solid ${COLORS.textMuted}40`,
+                  background: state.preferences.currentView === 'micro'
+                    ? COLORS.accentSecondary + '30'
+                    : COLORS.bgElevated,
+                  color: state.preferences.currentView === 'micro'
+                    ? COLORS.accentSecondary
+                    : COLORS.textSecondary,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+                title="Micro View - Task DAG"
+              >
+                <Network size={16} />
+                Micro
+              </button>
+            </div>
+
             <ImportExportControls />
           </div>
         </header>
 
         {/* Main Content */}
-        <main style={{ padding: '1.5rem' }}>
+        <main style={{
+          padding: state.preferences.currentView === 'micro' ? 0 : '1.5rem',
+          flex: 1,
+          display: state.preferences.currentView === 'micro' ? 'flex' : 'block',
+          flexDirection: 'column',
+          minHeight: 0,
+          overflow: state.preferences.currentView === 'micro' ? 'hidden' : 'auto',
+        }}>
           {loadError && (
             <div style={{
               padding: '1rem',
@@ -1105,14 +1171,18 @@ export default function Orrery() {
             </div>
           )}
 
-          <StatsSummary />
+          {state.preferences.currentView === 'micro' ? (
+            <MicroView />
+          ) : (
+            <>
+              <StatsSummary />
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '1.5rem',
-            marginTop: '1.5rem',
-          }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '1.5rem',
+                marginTop: '1.5rem',
+              }}>
             {/* Quests Column */}
             <div>
               <div style={{
@@ -1326,6 +1396,8 @@ export default function Orrery() {
               </div>
             </div>
           </div>
+            </>
+          )}
         </main>
 
         {/* Footer */}
