@@ -3,501 +3,18 @@
 // Phase 0: Foundation - Data Layer & Persistence
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { useState, useReducer, useEffect, useCallback, useContext, createContext } from 'react';
-import { 
-  Compass, Eye, EyeOff, Plus, Trash2, Check, Lock, Play, Pause, 
-  Download, Upload, RotateCcw, Orbit, Target, Clock, Zap, 
-  ChevronRight, Sparkles, AlertCircle, CheckCircle2, Edit3
+import React, { useState, useReducer } from 'react';
+import {
+  Eye, EyeOff, Plus, Trash2, Lock, Play,
+  Download, Upload, RotateCcw, Orbit, Target, Clock, Zap,
+  Sparkles, AlertCircle, CheckCircle2, Edit3
 } from 'lucide-react';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES & INTERFACES (JSDoc for .jsx compatibility)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * @typedef {'active' | 'paused' | 'completed' | 'archived'} QuestStatus
- * @typedef {'locked' | 'available' | 'in_progress' | 'completed' | 'blocked'} TaskStatus
- * @typedef {'macro' | 'micro'} ViewMode
- */
-
-/**
- * @typedef {Object} Quest
- * @property {string} id - UUID
- * @property {string} title - Display name
- * @property {string} description - What this quest is about
- * @property {QuestStatus} status
- * @property {string} themeColor - Hex color for visual identity
- * @property {string} createdAt - ISO timestamp
- * @property {string} updatedAt - ISO timestamp
- */
-
-/**
- * @typedef {Object} Task
- * @property {string} id - UUID
- * @property {string} title - Display name
- * @property {string} notes - Markdown notes/details
- * @property {string[]} questIds - Many-to-many: task can serve multiple quests
- * @property {TaskStatus} status
- * @property {number|null} estimatedMinutes
- * @property {number|null} actualMinutes
- * @property {string} createdAt - ISO timestamp
- * @property {string} updatedAt - ISO timestamp
- * @property {string|null} completedAt - ISO timestamp when done
- */
-
-/**
- * @typedef {Object} Edge
- * @property {string} id - UUID
- * @property {string} source - Task ID (upstream)
- * @property {string} target - Task ID (downstream)
- */
-
-/**
- * @typedef {Object} ActiveSession
- * @property {string} taskId - Currently focused task
- * @property {string} startedAt - ISO timestamp
- * @property {number} plannedMinutes - How long planned
- * @property {string|null} hardStopAt - ISO timestamp of hard deadline
- */
-
-/**
- * @typedef {Object} ViewPreferences
- * @property {ViewMode} currentView
- * @property {string|null} focusQuestId
- * @property {boolean} showActualOnly - Panic button
- * @property {{x: number, y: number}} microViewPosition
- * @property {number} microViewZoom
- */
-
-/**
- * @typedef {Object} OrreryState
- * @property {Quest[]} quests
- * @property {Task[]} tasks
- * @property {Edge[]} edges
- * @property {ActiveSession|null} activeSession
- * @property {ViewPreferences} preferences
- * @property {string} lastSyncedAt
- */
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONSTANTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-const COLORS = {
-  // Background layers
-  bgVoid: '#0a0a0f',
-  bgSpace: '#12121a',
-  bgPanel: '#1a1a24',
-  bgElevated: '#22222e',
-  
-  // Accent colors
-  accentPrimary: '#8b5cf6',    // Violet
-  accentSecondary: '#06b6d4',  // Cyan
-  accentSuccess: '#10b981',    // Green
-  accentWarning: '#f59e0b',    // Amber
-  accentDanger: '#ef4444',     // Red
-  
-  // Text
-  textPrimary: '#f1f5f9',
-  textSecondary: '#94a3b8',
-  textMuted: '#64748b',
-  
-  // Status
-  statusLocked: '#475569',
-  statusAvailable: '#8b5cf6',
-  statusActive: '#06b6d4',
-  statusComplete: '#10b981',
-  statusBridge: '#eab308',
-};
-
-const QUEST_COLORS = [
-  '#8b5cf6', // Violet
-  '#06b6d4', // Cyan
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#ef4444', // Red
-  '#ec4899', // Pink
-  '#6366f1', // Indigo
-  '#14b8a6', // Teal
-];
-
-const STORAGE_KEY = 'orrery-state';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// UTILITIES
-// ═══════════════════════════════════════════════════════════════════════════
-
-const generateId = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-};
-
-/**
- * Check if a task is locked (any upstream dependency not completed)
- */
-const isTaskLocked = (taskId, state) => {
-  const upstreamEdges = state.edges.filter(e => e.target === taskId);
-  if (upstreamEdges.length === 0) return false;
-  
-  return upstreamEdges.some(edge => {
-    const upstreamTask = state.tasks.find(t => t.id === edge.source);
-    return upstreamTask?.status !== 'completed';
-  });
-};
-
-/**
- * Get quest progress (completed tasks / total tasks)
- */
-const getQuestProgress = (questId, state) => {
-  const questTasks = state.tasks.filter(t => t.questIds.includes(questId));
-  if (questTasks.length === 0) return 0;
-  
-  const completed = questTasks.filter(t => t.status === 'completed').length;
-  return completed / questTasks.length;
-};
-
-/**
- * Get computed task status (handles locked state)
- */
-const getComputedTaskStatus = (task, state) => {
-  if (task.status === 'completed') return 'completed';
-  if (task.status === 'blocked') return 'blocked';
-  if (isTaskLocked(task.id, state)) return 'locked';
-  if (task.status === 'in_progress') return 'in_progress';
-  return 'available';
-};
-
-/**
- * Get available tasks (not locked, not completed)
- */
-const getAvailableTasks = (questId, state) => {
-  let tasks = questId 
-    ? state.tasks.filter(t => t.questIds.includes(questId))
-    : state.tasks;
-    
-  return tasks.filter(t => {
-    const status = getComputedTaskStatus(t, state);
-    return status === 'available' || status === 'in_progress';
-  });
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// INITIAL STATE
-// ═══════════════════════════════════════════════════════════════════════════
-
-const INITIAL_STATE = {
-  quests: [],
-  tasks: [],
-  edges: [],
-  activeSession: null,
-  preferences: {
-    currentView: 'macro',
-    focusQuestId: null,
-    showActualOnly: false,
-    microViewPosition: { x: 0, y: 0 },
-    microViewZoom: 1.0,
-  },
-  lastSyncedAt: new Date().toISOString(),
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// REDUCER
-// ═══════════════════════════════════════════════════════════════════════════
-
-function orreryReducer(state, action) {
-  const now = new Date().toISOString();
-  
-  switch (action.type) {
-    // ─── State Management ───────────────────────────────────────────────────
-    case 'LOAD_STATE':
-      return {
-        ...action.payload,
-        lastSyncedAt: now,
-      };
-      
-    case 'RESET_STATE':
-      return {
-        ...INITIAL_STATE,
-        lastSyncedAt: now,
-      };
-    
-    // ─── Quest CRUD ─────────────────────────────────────────────────────────
-    case 'ADD_QUEST':
-      return {
-        ...state,
-        quests: [...state.quests, {
-          id: generateId(),
-          ...action.payload,
-          createdAt: now,
-          updatedAt: now,
-        }],
-        lastSyncedAt: now,
-      };
-      
-    case 'UPDATE_QUEST':
-      return {
-        ...state,
-        quests: state.quests.map(q =>
-          q.id === action.payload.id
-            ? { ...q, ...action.payload.updates, updatedAt: now }
-            : q
-        ),
-        lastSyncedAt: now,
-      };
-      
-    case 'DELETE_QUEST':
-      return {
-        ...state,
-        quests: state.quests.filter(q => q.id !== action.payload),
-        // Also remove quest from all tasks
-        tasks: state.tasks.map(t => ({
-          ...t,
-          questIds: t.questIds.filter(qid => qid !== action.payload),
-        })),
-        // Clear focus if this quest was focused
-        preferences: {
-          ...state.preferences,
-          focusQuestId: state.preferences.focusQuestId === action.payload 
-            ? null 
-            : state.preferences.focusQuestId,
-        },
-        lastSyncedAt: now,
-      };
-    
-    // ─── Task CRUD ──────────────────────────────────────────────────────────
-    case 'ADD_TASK':
-      return {
-        ...state,
-        tasks: [...state.tasks, {
-          id: generateId(),
-          ...action.payload,
-          createdAt: now,
-          updatedAt: now,
-          completedAt: null,
-        }],
-        lastSyncedAt: now,
-      };
-      
-    case 'UPDATE_TASK':
-      return {
-        ...state,
-        tasks: state.tasks.map(t =>
-          t.id === action.payload.id
-            ? { ...t, ...action.payload.updates, updatedAt: now }
-            : t
-        ),
-        lastSyncedAt: now,
-      };
-      
-    case 'DELETE_TASK':
-      return {
-        ...state,
-        tasks: state.tasks.filter(t => t.id !== action.payload),
-        // Also remove edges involving this task
-        edges: state.edges.filter(e => 
-          e.source !== action.payload && e.target !== action.payload
-        ),
-        lastSyncedAt: now,
-      };
-      
-    case 'COMPLETE_TASK':
-      return {
-        ...state,
-        tasks: state.tasks.map(t =>
-          t.id === action.payload
-            ? { ...t, status: 'completed', completedAt: now, updatedAt: now }
-            : t
-        ),
-        lastSyncedAt: now,
-      };
-    
-    // ─── Edge CRUD ──────────────────────────────────────────────────────────
-    case 'ADD_EDGE':
-      // Prevent duplicate edges
-      const existingEdge = state.edges.find(
-        e => e.source === action.payload.source && e.target === action.payload.target
-      );
-      if (existingEdge) return state;
-      
-      return {
-        ...state,
-        edges: [...state.edges, {
-          id: generateId(),
-          source: action.payload.source,
-          target: action.payload.target,
-        }],
-        lastSyncedAt: now,
-      };
-      
-    case 'DELETE_EDGE':
-      return {
-        ...state,
-        edges: state.edges.filter(e => e.id !== action.payload),
-        lastSyncedAt: now,
-      };
-    
-    // ─── Session ────────────────────────────────────────────────────────────
-    case 'START_SESSION':
-      return {
-        ...state,
-        activeSession: {
-          taskId: action.payload.taskId,
-          startedAt: now,
-          plannedMinutes: action.payload.plannedMinutes,
-          hardStopAt: action.payload.hardStopAt || null,
-        },
-        tasks: state.tasks.map(t =>
-          t.id === action.payload.taskId
-            ? { ...t, status: 'in_progress', updatedAt: now }
-            : t
-        ),
-        lastSyncedAt: now,
-      };
-      
-    case 'END_SESSION':
-      return {
-        ...state,
-        activeSession: null,
-        tasks: state.tasks.map(t =>
-          t.status === 'in_progress'
-            ? { ...t, status: 'available', updatedAt: now }
-            : t
-        ),
-        lastSyncedAt: now,
-      };
-    
-    // ─── View Preferences ───────────────────────────────────────────────────
-    case 'SET_VIEW':
-      return {
-        ...state,
-        preferences: { ...state.preferences, currentView: action.payload },
-      };
-      
-    case 'SET_FOCUS_QUEST':
-      return {
-        ...state,
-        preferences: { ...state.preferences, focusQuestId: action.payload },
-      };
-      
-    case 'TOGGLE_ACTUAL_FILTER':
-      return {
-        ...state,
-        preferences: { 
-          ...state.preferences, 
-          showActualOnly: !state.preferences.showActualOnly 
-        },
-      };
-      
-    case 'SET_MICRO_POSITION':
-      return {
-        ...state,
-        preferences: { ...state.preferences, microViewPosition: action.payload },
-      };
-      
-    case 'SET_MICRO_ZOOM':
-      return {
-        ...state,
-        preferences: { ...state.preferences, microViewZoom: action.payload },
-      };
-    
-    // ─── Bulk Operations ────────────────────────────────────────────────────
-    case 'MERGE_AI_RESULT':
-      // Merge AI-generated quests, tasks, edges with existing state
-      return {
-        ...state,
-        quests: [
-          ...state.quests,
-          ...action.payload.quests.map(q => ({
-            ...q,
-            id: generateId(),
-            createdAt: now,
-            updatedAt: now,
-          })),
-        ],
-        tasks: [
-          ...state.tasks,
-          ...action.payload.tasks.map(t => ({
-            ...t,
-            id: generateId(),
-            createdAt: now,
-            updatedAt: now,
-            completedAt: null,
-          })),
-        ],
-        edges: [
-          ...state.edges,
-          ...action.payload.edges.map(e => ({
-            ...e,
-            id: generateId(),
-          })),
-        ],
-        lastSyncedAt: now,
-      };
-      
-    default:
-      return state;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONTEXT
-// ═══════════════════════════════════════════════════════════════════════════
-
-const OrreryContext = createContext(null);
-
-const useOrrery = () => {
-  const context = useContext(OrreryContext);
-  if (!context) {
-    throw new Error('useOrrery must be used within OrreryProvider');
-  }
-  return context;
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HOOKS
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Handle persistence to window.storage
- */
-const usePersistence = (state, dispatch, setLoadError, setSaveStatus) => {
-  // Load on mount
-  useEffect(() => {
-    const loadState = async () => {
-      try {
-        const result = await window.storage.get(STORAGE_KEY);
-        if (result?.value) {
-          const parsed = JSON.parse(result.value);
-          dispatch({ type: 'LOAD_STATE', payload: parsed });
-        }
-      } catch (e) {
-        console.error('Failed to load state:', e);
-        setLoadError(e.message);
-      }
-    };
-    loadState();
-  }, []);
-  
-  // Save on change (debounced)
-  useEffect(() => {
-    const saveState = async () => {
-      try {
-        setSaveStatus('saving');
-        await window.storage.set(STORAGE_KEY, JSON.stringify(state));
-        setSaveStatus('saved');
-      } catch (e) {
-        console.error('Failed to save state:', e);
-        setSaveStatus('error');
-      }
-    };
-    
-    const timeout = setTimeout(saveState, 500);
-    return () => clearTimeout(timeout);
-  }, [state]);
-};
+// ─── Imports from extracted modules ──────────────────────────────────────────
+import { COLORS, QUEST_COLORS, INITIAL_STATE } from '@/constants';
+import { getComputedTaskStatus, getQuestProgress } from '@/utils';
+import { orreryReducer, OrreryContext, useOrrery } from '@/store';
+import { usePersistence } from '@/hooks';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENTS
@@ -512,9 +29,9 @@ const StatusBadge = ({ status }) => {
     completed: { icon: CheckCircle2, color: COLORS.statusComplete, label: 'Done' },
     blocked: { icon: AlertCircle, color: COLORS.accentWarning, label: 'Blocked' },
   };
-  
+
   const { icon: Icon, color, label } = config[status] || config.available;
-  
+
   return (
     <span style={{
       display: 'inline-flex',
@@ -538,7 +55,7 @@ const StatusBadge = ({ status }) => {
 // ─── Stats Summary ─────────────────────────────────────────────────────────
 const StatsSummary = () => {
   const { state } = useOrrery();
-  
+
   const totalQuests = state.quests.length;
   const totalTasks = state.tasks.length;
   const completedTasks = state.tasks.filter(t => t.status === 'completed').length;
@@ -546,7 +63,7 @@ const StatsSummary = () => {
     const status = getComputedTaskStatus(t, state);
     return status === 'available' || status === 'in_progress';
   }).length;
-  
+
   return (
     <div style={{
       display: 'grid',
@@ -585,7 +102,7 @@ const StatsSummary = () => {
 const ImportExportControls = () => {
   const { state, dispatch } = useOrrery();
   const [showConfirmReset, setShowConfirmReset] = useState(false);
-  
+
   const handleExport = () => {
     const dataStr = JSON.stringify(state, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
@@ -596,7 +113,7 @@ const ImportExportControls = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
-  
+
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -604,7 +121,7 @@ const ImportExportControls = () => {
     input.onchange = async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      
+
       try {
         const text = await file.text();
         const data = JSON.parse(text);
@@ -615,12 +132,12 @@ const ImportExportControls = () => {
     };
     input.click();
   };
-  
+
   const handleReset = () => {
     dispatch({ type: 'RESET_STATE' });
     setShowConfirmReset(false);
   };
-  
+
   return (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
       <button
@@ -661,7 +178,7 @@ const ImportExportControls = () => {
         <Upload size={12} />
         Import
       </button>
-      
+
       {showConfirmReset ? (
         <div style={{ display: 'flex', gap: '0.25rem' }}>
           <button
@@ -723,7 +240,7 @@ const QuestCard = ({ quest, onSelect, onDelete, onEdit }) => {
   const { state } = useOrrery();
   const progress = getQuestProgress(quest.id, state);
   const taskCount = state.tasks.filter(t => t.questIds.includes(quest.id)).length;
-  
+
   return (
     <div
       onClick={() => onSelect(quest.id)}
@@ -748,10 +265,10 @@ const QuestCard = ({ quest, onSelect, onDelete, onEdit }) => {
         <div style={{ display: 'flex', gap: '0.25rem' }}>
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(quest); }}
-            style={{ 
-              background: 'transparent', 
-              border: 'none', 
-              color: COLORS.textMuted, 
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: COLORS.textMuted,
               cursor: 'pointer',
               padding: '0.25rem',
             }}
@@ -761,10 +278,10 @@ const QuestCard = ({ quest, onSelect, onDelete, onEdit }) => {
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(quest.id); }}
-            style={{ 
-              background: 'transparent', 
-              border: 'none', 
-              color: COLORS.textMuted, 
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: COLORS.textMuted,
               cursor: 'pointer',
               padding: '0.25rem',
             }}
@@ -774,9 +291,9 @@ const QuestCard = ({ quest, onSelect, onDelete, onEdit }) => {
           </button>
         </div>
       </div>
-      
+
       {/* Progress bar */}
-      <div style={{ 
+      <div style={{
         marginTop: '0.75rem',
         height: '4px',
         background: COLORS.bgVoid,
@@ -798,9 +315,8 @@ const QuestCard = ({ quest, onSelect, onDelete, onEdit }) => {
 const TaskRow = ({ task, onComplete, onDelete, onEdit }) => {
   const { state } = useOrrery();
   const status = getComputedTaskStatus(task, state);
-  // Get ALL quests this task belongs to
   const quests = state.quests.filter(q => task.questIds.includes(q.id));
-  
+
   const statusConfig = {
     locked: { opacity: 0.5, borderColor: COLORS.statusLocked },
     available: { opacity: 1, borderColor: COLORS.statusAvailable },
@@ -808,9 +324,9 @@ const TaskRow = ({ task, onComplete, onDelete, onEdit }) => {
     completed: { opacity: 0.7, borderColor: COLORS.statusComplete },
     blocked: { opacity: 0.8, borderColor: COLORS.accentWarning },
   };
-  
+
   const config = statusConfig[status] || statusConfig.available;
-  
+
   return (
     <div
       style={{
@@ -826,10 +342,10 @@ const TaskRow = ({ task, onComplete, onDelete, onEdit }) => {
       }}
     >
       <StatusBadge status={status} />
-      
+
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ 
-          color: COLORS.textPrimary, 
+        <div style={{
+          color: COLORS.textPrimary,
           fontSize: '0.875rem',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -858,10 +374,10 @@ const TaskRow = ({ task, onComplete, onDelete, onEdit }) => {
           </div>
         )}
       </div>
-      
+
       {task.estimatedMinutes && (
-        <span style={{ 
-          color: COLORS.textMuted, 
+        <span style={{
+          color: COLORS.textMuted,
           fontSize: '0.75rem',
           display: 'flex',
           alignItems: 'center',
@@ -871,7 +387,7 @@ const TaskRow = ({ task, onComplete, onDelete, onEdit }) => {
           {task.estimatedMinutes}m
         </span>
       )}
-      
+
       {status === 'available' && (
         <button
           onClick={() => onComplete(task.id)}
@@ -888,7 +404,7 @@ const TaskRow = ({ task, onComplete, onDelete, onEdit }) => {
           Done
         </button>
       )}
-      
+
       <button
         onClick={() => onEdit(task)}
         style={{
@@ -902,7 +418,7 @@ const TaskRow = ({ task, onComplete, onDelete, onEdit }) => {
       >
         <Edit3 size={14} />
       </button>
-      
+
       <button
         onClick={() => onDelete(task.id)}
         style={{
@@ -926,10 +442,10 @@ const AddQuestForm = ({ onClose }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState(QUEST_COLORS[Math.floor(Math.random() * QUEST_COLORS.length)]);
-  
+
   const handleAdd = () => {
     if (!title.trim()) return;
-    
+
     dispatch({
       type: 'ADD_QUEST',
       payload: {
@@ -941,7 +457,7 @@ const AddQuestForm = ({ onClose }) => {
     });
     onClose();
   };
-  
+
   const inputStyle = {
     width: '100%',
     padding: '0.75rem',
@@ -951,7 +467,7 @@ const AddQuestForm = ({ onClose }) => {
     color: COLORS.textPrimary,
     fontSize: '0.875rem',
   };
-  
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <input
@@ -1027,10 +543,10 @@ const EditQuestForm = ({ quest, onClose }) => {
   const [description, setDescription] = useState(quest.description || '');
   const [color, setColor] = useState(quest.themeColor);
   const [status, setStatus] = useState(quest.status);
-  
+
   const handleSave = () => {
     if (!title.trim()) return;
-    
+
     dispatch({
       type: 'UPDATE_QUEST',
       payload: {
@@ -1045,7 +561,7 @@ const EditQuestForm = ({ quest, onClose }) => {
     });
     onClose();
   };
-  
+
   const inputStyle = {
     width: '100%',
     padding: '0.75rem',
@@ -1055,7 +571,7 @@ const EditQuestForm = ({ quest, onClose }) => {
     color: COLORS.textPrimary,
     fontSize: '0.875rem',
   };
-  
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div>
@@ -1172,10 +688,10 @@ const AddTaskForm = ({ onClose, defaultQuestId }) => {
   const [notes, setNotes] = useState('');
   const [questIds, setQuestIds] = useState(defaultQuestId ? [defaultQuestId] : []);
   const [estimatedMinutes, setEstimatedMinutes] = useState('');
-  
+
   const handleAdd = () => {
     if (!title.trim()) return;
-    
+
     dispatch({
       type: 'ADD_TASK',
       payload: {
@@ -1189,15 +705,15 @@ const AddTaskForm = ({ onClose, defaultQuestId }) => {
     });
     onClose();
   };
-  
+
   const toggleQuest = (qid) => {
-    setQuestIds(prev => 
-      prev.includes(qid) 
+    setQuestIds(prev =>
+      prev.includes(qid)
         ? prev.filter(id => id !== qid)
         : [...prev, qid]
     );
   };
-  
+
   const inputStyle = {
     width: '100%',
     padding: '0.75rem',
@@ -1207,7 +723,7 @@ const AddTaskForm = ({ onClose, defaultQuestId }) => {
     color: COLORS.textPrimary,
     fontSize: '0.875rem',
   };
-  
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <input
@@ -1233,7 +749,7 @@ const AddTaskForm = ({ onClose, defaultQuestId }) => {
         style={inputStyle}
         min="1"
       />
-      
+
       {state.quests.length > 0 && (
         <div>
           <label style={{ color: COLORS.textSecondary, fontSize: '0.75rem', display: 'block', marginBottom: '0.5rem' }}>
@@ -1261,7 +777,7 @@ const AddTaskForm = ({ onClose, defaultQuestId }) => {
           </div>
         </div>
       )}
-      
+
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
         <button
           type="button"
@@ -1304,10 +820,10 @@ const EditTaskForm = ({ task, onClose }) => {
   const [questIds, setQuestIds] = useState(task.questIds || []);
   const [estimatedMinutes, setEstimatedMinutes] = useState(task.estimatedMinutes?.toString() || '');
   const [taskStatus, setTaskStatus] = useState(task.status);
-  
+
   const handleSave = () => {
     if (!title.trim()) return;
-    
+
     dispatch({
       type: 'UPDATE_TASK',
       payload: {
@@ -1323,15 +839,15 @@ const EditTaskForm = ({ task, onClose }) => {
     });
     onClose();
   };
-  
+
   const toggleQuest = (qid) => {
-    setQuestIds(prev => 
-      prev.includes(qid) 
+    setQuestIds(prev =>
+      prev.includes(qid)
         ? prev.filter(id => id !== qid)
         : [...prev, qid]
     );
   };
-  
+
   const inputStyle = {
     width: '100%',
     padding: '0.75rem',
@@ -1341,7 +857,7 @@ const EditTaskForm = ({ task, onClose }) => {
     color: COLORS.textPrimary,
     fontSize: '0.875rem',
   };
-  
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div>
@@ -1408,7 +924,7 @@ const EditTaskForm = ({ task, onClose }) => {
           ))}
         </div>
       </div>
-      
+
       {state.quests.length > 0 && (
         <div>
           <label style={{ color: COLORS.textSecondary, fontSize: '0.75rem', display: 'block', marginBottom: '0.5rem' }}>
@@ -1436,7 +952,7 @@ const EditTaskForm = ({ task, onClose }) => {
           </div>
         </div>
       )}
-      
+
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
         <button
           type="button"
@@ -1478,17 +994,17 @@ const EditTaskForm = ({ task, onClose }) => {
 export default function Orrery() {
   const [state, dispatch] = useReducer(orreryReducer, INITIAL_STATE);
   const [loadError, setLoadError] = useState(null);
-  const [saveStatus, setSaveStatus] = useState('saved'); // 'saving' | 'saved' | 'error'
-  
+  const [saveStatus, setSaveStatus] = useState('saved');
+
   // UI State
   const [showAddQuest, setShowAddQuest] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [editingQuest, setEditingQuest] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
-  
+
   // Persistence
   usePersistence(state, dispatch, setLoadError, setSaveStatus);
-  
+
   // Filter tasks based on preferences
   const visibleTasks = state.preferences.showActualOnly
     ? state.tasks.filter(t => {
@@ -1496,12 +1012,12 @@ export default function Orrery() {
         return status === 'available' || status === 'in_progress';
       })
     : state.tasks;
-  
+
   // Further filter by focused quest if set
   const filteredTasks = state.preferences.focusQuestId
     ? visibleTasks.filter(t => t.questIds.includes(state.preferences.focusQuestId))
     : visibleTasks;
-  
+
   return (
     <OrreryContext.Provider value={{ state, dispatch }}>
       <div style={{
@@ -1510,7 +1026,7 @@ export default function Orrery() {
         color: COLORS.textPrimary,
         fontFamily: "'Inter', system-ui, sans-serif",
       }}>
-        {/* ─── Header ───────────────────────────────────────────────────────── */}
+        {/* Header */}
         <header style={{
           padding: '1rem 1.5rem',
           borderBottom: `1px solid ${COLORS.textMuted}20`,
@@ -1536,21 +1052,14 @@ export default function Orrery() {
               </h1>
               <div style={{ fontSize: '0.75rem', color: COLORS.textMuted, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 Phase 0: Foundation
-                {saveStatus === 'saving' && (
-                  <span style={{ color: COLORS.accentWarning }}>• Saving...</span>
-                )}
-                {saveStatus === 'error' && (
-                  <span style={{ color: COLORS.accentDanger }}>• Save failed</span>
-                )}
-                {saveStatus === 'saved' && (
-                  <span style={{ color: COLORS.accentSuccess }}>• Saved</span>
-                )}
+                {saveStatus === 'saving' && <span style={{ color: COLORS.accentWarning }}>• Saving...</span>}
+                {saveStatus === 'error' && <span style={{ color: COLORS.accentDanger }}>• Save failed</span>}
+                {saveStatus === 'saved' && <span style={{ color: COLORS.accentSuccess }}>• Saved</span>}
               </div>
             </div>
           </div>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            {/* Actual Filter (Panic Button) */}
             <button
               onClick={() => dispatch({ type: 'TOGGLE_ACTUAL_FILTER' })}
               style={{
@@ -1559,13 +1068,13 @@ export default function Orrery() {
                 gap: '0.375rem',
                 padding: '0.5rem 0.75rem',
                 borderRadius: '0.5rem',
-                border: state.preferences.showActualOnly 
+                border: state.preferences.showActualOnly
                   ? `2px solid ${COLORS.accentSuccess}`
                   : `1px solid ${COLORS.textMuted}40`,
-                background: state.preferences.showActualOnly 
+                background: state.preferences.showActualOnly
                   ? COLORS.accentSuccess + '20'
                   : COLORS.bgElevated,
-                color: state.preferences.showActualOnly 
+                color: state.preferences.showActualOnly
                   ? COLORS.accentSuccess
                   : COLORS.textSecondary,
                 cursor: 'pointer',
@@ -1576,14 +1085,13 @@ export default function Orrery() {
               {state.preferences.showActualOnly ? <Eye size={16} /> : <EyeOff size={16} />}
               Actual
             </button>
-            
+
             <ImportExportControls />
           </div>
         </header>
-        
-        {/* ─── Main Content ───────────────────────────────────────────────── */}
+
+        {/* Main Content */}
         <main style={{ padding: '1.5rem' }}>
-          {/* Load Error */}
           {loadError && (
             <div style={{
               padding: '1rem',
@@ -1596,22 +1104,20 @@ export default function Orrery() {
               <strong>Load Error:</strong> {loadError}
             </div>
           )}
-          
-          {/* Stats */}
+
           <StatsSummary />
-          
-          {/* Content Grid */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1fr 1fr', 
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
             gap: '1.5rem',
             marginTop: '1.5rem',
           }}>
-            {/* ─── Quests Column ─────────────────────────────────────────── */}
+            {/* Quests Column */}
             <div>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '1rem',
               }}>
@@ -1637,8 +1143,7 @@ export default function Orrery() {
                   New Quest
                 </button>
               </div>
-              
-              {/* Add Quest Form */}
+
               {showAddQuest && (
                 <div style={{
                   padding: '1rem',
@@ -1650,8 +1155,7 @@ export default function Orrery() {
                   <AddQuestForm onClose={() => setShowAddQuest(false)} />
                 </div>
               )}
-              
-              {/* Edit Quest Form */}
+
               {editingQuest && (
                 <div style={{
                   padding: '1rem',
@@ -1660,9 +1164,9 @@ export default function Orrery() {
                   border: `1px solid ${COLORS.accentWarning}40`,
                   marginBottom: '1rem',
                 }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: '0.75rem',
                   }}>
@@ -1670,13 +1174,10 @@ export default function Orrery() {
                       ✎ Editing Quest
                     </span>
                   </div>
-                  <EditQuestForm 
-                    quest={editingQuest} 
-                    onClose={() => setEditingQuest(null)} 
-                  />
+                  <EditQuestForm quest={editingQuest} onClose={() => setEditingQuest(null)} />
                 </div>
               )}
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {state.quests.length === 0 ? (
                   <div style={{
@@ -1703,12 +1204,12 @@ export default function Orrery() {
                 )}
               </div>
             </div>
-            
-            {/* ─── Tasks Column ──────────────────────────────────────────── */}
+
+            {/* Tasks Column */}
             <div>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '1rem',
               }}>
@@ -1756,8 +1257,7 @@ export default function Orrery() {
                   New Task
                 </button>
               </div>
-              
-              {/* Add Task Form */}
+
               {showAddTask && (
                 <div style={{
                   padding: '1rem',
@@ -1766,14 +1266,13 @@ export default function Orrery() {
                   border: `1px solid ${COLORS.accentSecondary}40`,
                   marginBottom: '1rem',
                 }}>
-                  <AddTaskForm 
+                  <AddTaskForm
                     onClose={() => setShowAddTask(false)}
                     defaultQuestId={state.preferences.focusQuestId}
                   />
                 </div>
               )}
-              
-              {/* Edit Task Form */}
+
               {editingTask && (
                 <div style={{
                   padding: '1rem',
@@ -1782,9 +1281,9 @@ export default function Orrery() {
                   border: `1px solid ${COLORS.accentWarning}40`,
                   marginBottom: '1rem',
                 }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: '0.75rem',
                   }}>
@@ -1792,13 +1291,10 @@ export default function Orrery() {
                       ✎ Editing Task
                     </span>
                   </div>
-                  <EditTaskForm 
-                    task={editingTask} 
-                    onClose={() => setEditingTask(null)} 
-                  />
+                  <EditTaskForm task={editingTask} onClose={() => setEditingTask(null)} />
                 </div>
               )}
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {filteredTasks.length === 0 ? (
                   <div style={{
@@ -1811,7 +1307,7 @@ export default function Orrery() {
                   }}>
                     <Target size={32} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
                     <p style={{ margin: 0 }}>
-                      {state.preferences.showActualOnly 
+                      {state.preferences.showActualOnly
                         ? 'No available tasks right now.'
                         : 'No tasks yet. Add tasks to your quests.'}
                     </p>
@@ -1831,8 +1327,8 @@ export default function Orrery() {
             </div>
           </div>
         </main>
-        
-        {/* ─── Footer ─────────────────────────────────────────────────────── */}
+
+        {/* Footer */}
         <footer style={{
           padding: '1rem 1.5rem',
           borderTop: `1px solid ${COLORS.textMuted}20`,
@@ -1846,35 +1342,35 @@ export default function Orrery() {
           <span>Last synced: {new Date(state.lastSyncedAt).toLocaleTimeString()}</span>
         </footer>
       </div>
-      
+
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        
+
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
-        
+
         * {
           box-sizing: border-box;
         }
-        
+
         input, textarea, button {
           font-family: inherit;
         }
-        
+
         input:focus, textarea:focus {
           outline: 2px solid ${COLORS.accentPrimary};
           outline-offset: -1px;
         }
-        
+
         button:hover {
           filter: brightness(1.1);
         }
-        
+
         button:active {
           transform: scale(0.98);
         }
