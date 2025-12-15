@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 // components/tasks/TaskNode.jsx
-// Task node for Micro View DAG
+// Task node for Micro View DAG - Enhanced with quest context
 // ═══════════════════════════════════════════════════════════════
 
 import { Circle, CheckCircle2, Lock, Play } from 'lucide-react';
@@ -66,6 +66,7 @@ function getStatusStyle(status) {
  * @param {Function} props.onDoubleClick
  * @param {boolean} props.isEdgeSource - Currently selected as edge source
  * @param {boolean} props.isGhosted - Dimmed for quest focus overlay
+ * @param {Array<{ id: string, title: string, color: string }>} props.quests - Quest info for badges
  */
 export function TaskNode({
   task,
@@ -76,6 +77,7 @@ export function TaskNode({
   onDoubleClick,
   isEdgeSource = false,
   isGhosted = false,
+  quests = [],
 }) {
   const style = getStatusStyle(computedStatus);
   const Icon = style.icon;
@@ -83,6 +85,11 @@ export function TaskNode({
   // Apply ghosting (for quest focus overlay)
   const ghostMultiplier = isGhosted ? 0.35 : 1;
   const effectiveOpacity = style.opacity * ghostMultiplier;
+
+  // Get quest badges for this task (max 3 visible)
+  const taskQuests = quests.filter(q => task.questIds.includes(q.id)).slice(0, 3);
+  const primaryQuest = taskQuests[0];
+  const hasMoreQuests = task.questIds.length > 3;
 
   return (
     <g
@@ -105,8 +112,21 @@ export function TaskNode({
         opacity={effectiveOpacity}
       />
 
+      {/* Left color stripe (primary quest) */}
+      {primaryQuest && (
+        <rect
+          x="0"
+          y="0"
+          width="4"
+          height={LAYOUT.NODE_HEIGHT}
+          rx="2"
+          fill={primaryQuest.color}
+          opacity={effectiveOpacity}
+        />
+      )}
+
       {/* Status icon */}
-      <foreignObject x="12" y={(LAYOUT.NODE_HEIGHT - 20) / 2} width="20" height="20">
+      <foreignObject x="14" y="12" width="20" height="20">
         <Icon
           size={18}
           color={style.border}
@@ -116,30 +136,90 @@ export function TaskNode({
 
       {/* Task title */}
       <text
-        x="40"
-        y={LAYOUT.NODE_HEIGHT / 2 - 4}
+        x="42"
+        y="26"
         fill={style.text}
         fontSize="13"
-        fontWeight="500"
+        fontWeight="600"
         opacity={effectiveOpacity}
         style={{ pointerEvents: 'none' }}
       >
-        {task.title.length > 18 ? task.title.slice(0, 16) + '...' : task.title}
+        {task.title.length > 22 ? task.title.slice(0, 20) + '...' : task.title}
       </text>
 
       {/* Estimated time */}
-      {task.estimatedMinutes && (
-        <text
-          x="40"
-          y={LAYOUT.NODE_HEIGHT / 2 + 14}
-          fill={COLORS.textMuted}
-          fontSize="11"
-          opacity={effectiveOpacity}
-          style={{ pointerEvents: 'none' }}
-        >
-          {task.estimatedMinutes}m
-        </text>
-      )}
+      <text
+        x="42"
+        y="44"
+        fill={COLORS.textMuted}
+        fontSize="11"
+        opacity={effectiveOpacity * 0.8}
+        style={{ pointerEvents: 'none' }}
+      >
+        {task.estimatedMinutes ? `${task.estimatedMinutes}m` : '—'}
+        {task.actualMinutes && ` (${task.actualMinutes}m actual)`}
+      </text>
+
+      {/* Quest badges row */}
+      <g transform={`translate(12, ${LAYOUT.NODE_HEIGHT - 22})`}>
+        {taskQuests.map((quest, i) => (
+          <g key={quest.id} transform={`translate(${i * 52}, 0)`}>
+            {/* Badge background */}
+            <rect
+              x="0"
+              y="0"
+              width="48"
+              height="16"
+              rx="3"
+              fill={quest.color}
+              fillOpacity={effectiveOpacity * 0.25}
+              stroke={quest.color}
+              strokeWidth="1"
+              strokeOpacity={effectiveOpacity * 0.5}
+            />
+            {/* Badge text */}
+            <text
+              x="24"
+              y="11"
+              fill={quest.color}
+              fontSize="9"
+              fontWeight="500"
+              textAnchor="middle"
+              opacity={effectiveOpacity}
+              style={{ pointerEvents: 'none' }}
+            >
+              {quest.title.length > 6 ? quest.title.slice(0, 5) + '…' : quest.title}
+            </text>
+          </g>
+        ))}
+        {/* More quests indicator */}
+        {hasMoreQuests && (
+          <text
+            x={taskQuests.length * 52 + 4}
+            y="11"
+            fill={COLORS.textMuted}
+            fontSize="9"
+            opacity={effectiveOpacity * 0.7}
+            style={{ pointerEvents: 'none' }}
+          >
+            +{task.questIds.length - 3}
+          </text>
+        )}
+        {/* No quest indicator */}
+        {taskQuests.length === 0 && (
+          <text
+            x="0"
+            y="11"
+            fill={COLORS.textMuted}
+            fontSize="9"
+            fontStyle="italic"
+            opacity={effectiveOpacity * 0.5}
+            style={{ pointerEvents: 'none' }}
+          >
+            No quest
+          </text>
+        )}
+      </g>
 
       {/* Edge source indicator */}
       {isEdgeSource && (
@@ -150,6 +230,22 @@ export function TaskNode({
           fill={COLORS.accentSecondary}
           stroke={COLORS.bgVoid}
           strokeWidth="2"
+        />
+      )}
+
+      {/* Selection glow */}
+      {isSelected && (
+        <rect
+          x="-2"
+          y="-2"
+          width={LAYOUT.NODE_WIDTH + 4}
+          height={LAYOUT.NODE_HEIGHT + 4}
+          rx="10"
+          ry="10"
+          fill="none"
+          stroke={COLORS.accentSecondary}
+          strokeWidth="2"
+          strokeOpacity="0.3"
         />
       )}
     </g>

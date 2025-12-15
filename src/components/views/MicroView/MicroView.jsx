@@ -6,7 +6,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff, Info } from 'lucide-react';
 import { useOrrery } from '@/store';
-import { COLORS } from '@/constants';
+import { COLORS, QUEST_COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
 import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
@@ -94,6 +94,16 @@ export function MicroView() {
 
   // Get quest name for header
   const focusedQuest = state.quests.find(q => q.id === state.preferences.focusQuestId);
+
+  // Prepare quests with colors for TaskNode badges
+  const questsWithColors = useMemo(() =>
+    state.quests.map((q, i) => ({
+      id: q.id,
+      title: q.title,
+      color: q.color || QUEST_COLORS[i % QUEST_COLORS.length],
+    })),
+    [state.quests]
+  );
 
   // Handle task click
   const handleTaskClick = useCallback((taskId) => {
@@ -530,6 +540,7 @@ export function MicroView() {
                 isSelected={selectedTaskId === task.id}
                 isEdgeSource={edgeSourceId === task.id}
                 isGhosted={isTaskGhosted(task)}
+                quests={questsWithColors}
                 onClick={() => handleTaskClick(task.id)}
                 onDoubleClick={() => handleTaskDoubleClick(task)}
               />

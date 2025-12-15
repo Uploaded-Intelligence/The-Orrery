@@ -11,10 +11,10 @@
 
 // Layout constants
 export const LAYOUT = {
-  COLUMN_WIDTH: 250,
-  ROW_HEIGHT: 100,
-  NODE_WIDTH: 180,
-  NODE_HEIGHT: 60,
+  COLUMN_WIDTH: 260,
+  ROW_HEIGHT: 110,
+  NODE_WIDTH: 200,
+  NODE_HEIGHT: 80,
   PADDING: 40,
 };
 
