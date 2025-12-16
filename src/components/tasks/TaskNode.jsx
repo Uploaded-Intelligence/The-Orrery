@@ -128,6 +128,56 @@ export function TaskNode({
         />
       )}
 
+      {/* Pulsing glow ring for AVAILABLE tasks - "you can do this NOW" */}
+      {computedStatus === 'available' && !isGhosted && (
+        <rect
+          x="-6"
+          y="-6"
+          width={LAYOUT.NODE_WIDTH + 12}
+          height={LAYOUT.NODE_HEIGHT + 12}
+          rx="14"
+          ry="14"
+          fill="none"
+          stroke={COLORS.statusAvailable}
+          strokeWidth="2"
+        >
+          <animate
+            attributeName="stroke-opacity"
+            values="0.1;0.5;0.1"
+            dur="2.5s"
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="stroke-width"
+            values="2;4;2"
+            dur="2.5s"
+            repeatCount="indefinite"
+          />
+        </rect>
+      )}
+
+      {/* Breathing glow for IN_PROGRESS tasks - "this is alive" */}
+      {computedStatus === 'in_progress' && !isGhosted && (
+        <rect
+          x="-4"
+          y="-4"
+          width={LAYOUT.NODE_WIDTH + 8}
+          height={LAYOUT.NODE_HEIGHT + 8}
+          rx="12"
+          ry="12"
+          fill="none"
+          stroke={COLORS.statusActive}
+          strokeWidth="3"
+        >
+          <animate
+            attributeName="stroke-opacity"
+            values="0.3;0.8;0.3"
+            dur="3s"
+            repeatCount="indefinite"
+          />
+        </rect>
+      )}
+
       {/* Node background */}
       <rect
         x="0"
@@ -140,7 +190,17 @@ export function TaskNode({
         stroke={isDragging ? COLORS.accentPrimary : (isSelected || isEdgeSource ? COLORS.accentSecondary : style.border)}
         strokeWidth={isDragging ? 3 : (isSelected || isEdgeSource ? 3 : 2)}
         opacity={effectiveOpacity}
-      />
+      >
+        {/* Subtle brightness breathing for in_progress */}
+        {computedStatus === 'in_progress' && !isGhosted && (
+          <animate
+            attributeName="fill-opacity"
+            values="1;0.85;1"
+            dur="3s"
+            repeatCount="indefinite"
+          />
+        )}
+      </rect>
 
       {/* Left color stripe (primary quest) */}
       {primaryQuest && (

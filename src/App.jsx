@@ -16,6 +16,7 @@ import { getComputedTaskStatus, getQuestProgress } from '@/utils';
 import { orreryReducer, OrreryContext, useOrrery } from '@/store';
 import { usePersistence } from '@/hooks';
 import { MicroView } from '@/components/views/MicroView';
+import { TimeSpaceGPS } from '@/components/gps';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENTS
@@ -1400,20 +1401,26 @@ export default function Orrery() {
           )}
         </main>
 
-        {/* Footer */}
-        <footer style={{
-          padding: '1rem 1.5rem',
-          borderTop: `1px solid ${COLORS.textMuted}20`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '0.75rem',
-          color: COLORS.textMuted,
-        }}>
-          <span>WorldOE • The Orrery</span>
-          <span>Last synced: {new Date(state.lastSyncedAt).toLocaleTimeString()}</span>
-        </footer>
+        {/* Footer - hidden when in micro view to make room for GPS */}
+        {state.preferences.currentView !== 'micro' && (
+          <footer style={{
+            padding: '1rem 1.5rem',
+            borderTop: `1px solid ${COLORS.textMuted}20`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '0.75rem',
+            color: COLORS.textMuted,
+          }}>
+            <span>WorldOE • The Orrery</span>
+            <span>Last synced: {new Date(state.lastSyncedAt).toLocaleTimeString()}</span>
+          </footer>
+        )}
       </div>
+
+      {/* Time-Space GPS - THE FOUNDATIONAL MICRO LOOP */}
+      {/* Always visible, makes time/arc/vastness/allies visible */}
+      <TimeSpaceGPS />
 
       <style>{`
         @keyframes spin {
