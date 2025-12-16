@@ -8,9 +8,8 @@ import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff,
 import { useOrrery } from '@/store';
 import { COLORS, QUEST_COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
-import { TaskNode } from '@/components/tasks';
+import { TaskNode, TaskActionBar } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
-import { TaskDetailPanel } from '@/components/panels';
 
 /**
  * MicroView - Task DAG visualization
@@ -31,6 +30,11 @@ export function MicroView() {
   const [zoom, setZoom] = useState(state.preferences.microViewZoom);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  // Node dragging state
+  const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [draggedPositions, setDraggedPositions] = useState(new Map()); // Temp positions during drag
 
   // Local UI state for showing all tasks vs focused only
   const [showAllTasks, setShowAllTasks] = useState(false);
@@ -80,11 +84,20 @@ export function MicroView() {
     );
   }, [state.edges, visibleTasks]);
 
-  // Calculate layout positions
-  const positions = useMemo(() =>
+  // Calculate layout positions (auto-layout for tasks without manual positions)
+  const basePositions = useMemo(() =>
     getLayoutPositions(visibleTasks, visibleEdges),
     [visibleTasks, visibleEdges]
   );
+
+  // Merge base positions with any in-progress drag positions
+  const positions = useMemo(() => {
+    const merged = new Map(basePositions);
+    draggedPositions.forEach((pos, taskId) => {
+      merged.set(taskId, pos);
+    });
+    return merged;
+  }, [basePositions, draggedPositions]);
 
   // Calculate canvas bounds
   const bounds = useMemo(() =>
@@ -136,6 +149,44 @@ export function MicroView() {
     }
   }, [state, dispatch]);
 
+  // Handle node drag start
+  const handleNodeDragStart = useCallback((taskId, e) => {
+    // Don't start drag if we're in edge creation mode
+    if (edgeSourceId) return;
+
+    e.stopPropagation();
+    const currentPos = positions.get(taskId);
+    if (!currentPos) return;
+
+    // Calculate offset from mouse to node origin
+    const rect = svgRef.current.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left - pan.x) / zoom;
+    const mouseY = (e.clientY - rect.top - pan.y) / zoom;
+
+    setDraggingTaskId(taskId);
+    setDragOffset({
+      x: mouseX - currentPos.x,
+      y: mouseY - currentPos.y,
+    });
+    setSelectedTaskId(taskId);
+    setSelectedEdgeId(null);
+  }, [edgeSourceId, positions, pan, zoom]);
+
+  // Handle connector drag start (for edge creation)
+  const handleConnectorDragStart = useCallback((taskId, e) => {
+    e.stopPropagation();
+    setEdgeSourceId(taskId);
+    setSelectedTaskId(null);
+    setSelectedEdgeId(null);
+
+    // Set initial mouse position for edge preview
+    const rect = svgRef.current.getBoundingClientRect();
+    setMousePos({
+      x: (e.clientX - rect.left - pan.x) / zoom,
+      y: (e.clientY - rect.top - pan.y) / zoom
+    });
+  }, [pan, zoom]);
+
   // Handle edge click
   const handleEdgeClick = useCallback((edgeId) => {
     setSelectedEdgeId(edgeId === selectedEdgeId ? null : edgeId);
@@ -166,11 +217,16 @@ export function MicroView() {
     }
   }, [selectedTaskId, selectedEdgeId, dispatch]);
 
-  // Add new task
+  // Add new task (placed near center of current view)
   const addTask = useCallback(() => {
     const questIds = state.preferences.focusQuestId
       ? [state.preferences.focusQuestId]
       : [];
+
+    // Calculate position near center of visible area
+    const centerX = (-pan.x / zoom) + 400;
+    const centerY = (-pan.y / zoom) + 300;
+
     dispatch({
       type: 'ADD_TASK',
       payload: {
@@ -181,9 +237,10 @@ export function MicroView() {
         actualMinutes: null,
         isRecurring: false,
         notes: '',
+        position: { x: centerX, y: centerY },
       }
     });
-  }, [state.preferences.focusQuestId, dispatch]);
+  }, [state.preferences.focusQuestId, dispatch, pan, zoom]);
 
   // Pan handlers
   const handleMouseDown = useCallback((e) => {
@@ -197,26 +254,60 @@ export function MicroView() {
   }, [pan, edgeSourceId]);
 
   const handleMouseMove = useCallback((e) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const mouseX = (e.clientX - rect.left - pan.x) / zoom;
+    const mouseY = (e.clientY - rect.top - pan.y) / zoom;
+
     // Track mouse for edge preview
-    if (svgRef.current && edgeSourceId) {
-      const rect = svgRef.current.getBoundingClientRect();
-      setMousePos({
-        x: (e.clientX - rect.left - pan.x) / zoom,
-        y: (e.clientY - rect.top - pan.y) / zoom
+    if (edgeSourceId) {
+      setMousePos({ x: mouseX, y: mouseY });
+    }
+
+    // Handle node dragging
+    if (draggingTaskId) {
+      const newPos = {
+        x: mouseX - dragOffset.x,
+        y: mouseY - dragOffset.y,
+      };
+      setDraggedPositions(prev => {
+        const next = new Map(prev);
+        next.set(draggingTaskId, newPos);
+        return next;
       });
+      return; // Don't pan while dragging
     }
 
     if (isPanning) {
       setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
     }
-  }, [isPanning, panStart, edgeSourceId, pan, zoom]);
+  }, [isPanning, panStart, edgeSourceId, pan, zoom, draggingTaskId, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
+    // End node dragging - persist position
+    if (draggingTaskId) {
+      const finalPos = draggedPositions.get(draggingTaskId);
+      if (finalPos) {
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: {
+            id: draggingTaskId,
+            updates: { position: finalPos }
+          }
+        });
+      }
+      setDraggingTaskId(null);
+      setDraggedPositions(new Map());
+      return;
+    }
+
+    // End panning
     if (isPanning) {
       setIsPanning(false);
       dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
     }
-  }, [isPanning, pan, dispatch]);
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions]);
 
   // Zoom handlers
   const zoomIn = useCallback(() => {
@@ -478,7 +569,7 @@ export function MicroView() {
         ref={svgRef}
         style={{
           flex: 1,
-          cursor: isPanning ? 'grabbing' : (edgeSourceId ? 'crosshair' : 'grab'),
+          cursor: draggingTaskId ? 'grabbing' : (isPanning ? 'grabbing' : (edgeSourceId ? 'crosshair' : 'grab')),
           userSelect: 'none',
         }}
         onMouseDown={handleMouseDown}
@@ -540,9 +631,13 @@ export function MicroView() {
                 isSelected={selectedTaskId === task.id}
                 isEdgeSource={edgeSourceId === task.id}
                 isGhosted={isTaskGhosted(task)}
+                isDragging={draggingTaskId === task.id}
+                isCreatingEdge={!!edgeSourceId}
                 quests={questsWithColors}
                 onClick={() => handleTaskClick(task.id)}
                 onDoubleClick={() => handleTaskDoubleClick(task)}
+                onDragStart={(e) => handleNodeDragStart(task.id, e)}
+                onConnectorDragStart={(e) => handleConnectorDragStart(task.id, e)}
               />
             );
           })}
@@ -581,15 +676,11 @@ export function MicroView() {
         </div>
       )}
 
-      {/* Task Detail Panel */}
+      {/* Task Action Bar - floating, no context switching! */}
       {selectedTaskId && (
-        <TaskDetailPanel
+        <TaskActionBar
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
-          onStartEdge={() => {
-            setEdgeSourceId(selectedTaskId);
-            setSelectedTaskId(null);
-          }}
         />
       )}
     </div>

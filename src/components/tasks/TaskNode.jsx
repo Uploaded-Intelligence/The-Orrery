@@ -64,8 +64,12 @@ function getStatusStyle(status) {
  * @param {boolean} props.isSelected
  * @param {Function} props.onClick
  * @param {Function} props.onDoubleClick
+ * @param {Function} props.onDragStart - Called on mouse down to start node dragging
+ * @param {Function} props.onConnectorDragStart - Called on connector mouse down to start edge creation
  * @param {boolean} props.isEdgeSource - Currently selected as edge source
  * @param {boolean} props.isGhosted - Dimmed for quest focus overlay
+ * @param {boolean} props.isDragging - Currently being dragged
+ * @param {boolean} props.isCreatingEdge - Edge creation in progress (show drop zone)
  * @param {Array<{ id: string, title: string, color: string }>} props.quests - Quest info for badges
  */
 export function TaskNode({
@@ -75,8 +79,12 @@ export function TaskNode({
   isSelected,
   onClick,
   onDoubleClick,
+  onDragStart,
+  onConnectorDragStart,
   isEdgeSource = false,
   isGhosted = false,
+  isDragging = false,
+  isCreatingEdge = false,
   quests = [],
 }) {
   const style = getStatusStyle(computedStatus);
@@ -91,13 +99,35 @@ export function TaskNode({
   const primaryQuest = taskQuests[0];
   const hasMoreQuests = task.questIds.length > 3;
 
+  // Determine cursor based on state
+  const getCursor = () => {
+    if (isDragging) return 'grabbing';
+    if (computedStatus === 'locked' || isGhosted) return 'not-allowed';
+    return 'grab';
+  };
+
   return (
     <g
       transform={`translate(${position.x}, ${position.y})`}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      style={{ cursor: computedStatus === 'locked' || isGhosted ? 'not-allowed' : 'pointer' }}
+      onMouseDown={onDragStart}
+      style={{ cursor: getCursor() }}
     >
+      {/* Drop shadow when dragging */}
+      {isDragging && (
+        <rect
+          x="4"
+          y="4"
+          width={LAYOUT.NODE_WIDTH}
+          height={LAYOUT.NODE_HEIGHT}
+          rx="8"
+          ry="8"
+          fill="rgba(0,0,0,0.3)"
+          style={{ filter: 'blur(4px)' }}
+        />
+      )}
+
       {/* Node background */}
       <rect
         x="0"
@@ -107,8 +137,8 @@ export function TaskNode({
         rx="8"
         ry="8"
         fill={style.bg}
-        stroke={isSelected || isEdgeSource ? COLORS.accentSecondary : style.border}
-        strokeWidth={isSelected || isEdgeSource ? 3 : 2}
+        stroke={isDragging ? COLORS.accentPrimary : (isSelected || isEdgeSource ? COLORS.accentSecondary : style.border)}
+        strokeWidth={isDragging ? 3 : (isSelected || isEdgeSource ? 3 : 2)}
         opacity={effectiveOpacity}
       />
 
@@ -221,15 +251,61 @@ export function TaskNode({
         )}
       </g>
 
-      {/* Edge source indicator */}
-      {isEdgeSource && (
+      {/* Right connector handle - drag to create outgoing edge */}
+      <g
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          onConnectorDragStart?.(e);
+        }}
+        style={{ cursor: 'crosshair' }}
+      >
+        {/* Invisible hit area */}
         <circle
           cx={LAYOUT.NODE_WIDTH}
           cy={LAYOUT.NODE_HEIGHT / 2}
-          r="6"
-          fill={COLORS.accentSecondary}
+          r="12"
+          fill="transparent"
+        />
+        {/* Visible connector dot */}
+        <circle
+          cx={LAYOUT.NODE_WIDTH}
+          cy={LAYOUT.NODE_HEIGHT / 2}
+          r={isEdgeSource ? 8 : 5}
+          fill={isEdgeSource ? COLORS.accentSecondary : COLORS.textMuted}
           stroke={COLORS.bgVoid}
           strokeWidth="2"
+          opacity={isEdgeSource ? 1 : (isSelected || isDragging ? 0.8 : 0.3)}
+          style={{ transition: 'opacity 0.15s, r 0.15s' }}
+          className="connector-handle"
+        />
+        {/* Pulse animation when active */}
+        {isEdgeSource && (
+          <circle
+            cx={LAYOUT.NODE_WIDTH}
+            cy={LAYOUT.NODE_HEIGHT / 2}
+            r="12"
+            fill="none"
+            stroke={COLORS.accentSecondary}
+            strokeWidth="2"
+            opacity="0.4"
+          />
+        )}
+      </g>
+
+      {/* Drop zone indicator when edge creation in progress */}
+      {isCreatingEdge && !isEdgeSource && (
+        <rect
+          x="-4"
+          y="-4"
+          width={LAYOUT.NODE_WIDTH + 8}
+          height={LAYOUT.NODE_HEIGHT + 8}
+          rx="12"
+          ry="12"
+          fill="none"
+          stroke={COLORS.accentSecondary}
+          strokeWidth="2"
+          strokeDasharray="6 3"
+          opacity="0.6"
         />
       )}
 

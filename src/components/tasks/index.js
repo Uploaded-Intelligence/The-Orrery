@@ -4,3 +4,4 @@
 // ═══════════════════════════════════════════════════════════════
 
 export { TaskNode } from './TaskNode.jsx';
+export { TaskActionBar } from './TaskActionBar.jsx';

@@ -35,6 +35,7 @@
  * @property {TaskStatus} status
  * @property {number|null} estimatedMinutes
  * @property {number|null} actualMinutes
+ * @property {{x: number, y: number}|null} position - Manual position (null = auto-layout)
  * @property {string} createdAt - ISO timestamp
  * @property {string} updatedAt - ISO timestamp
  * @property {string|null} completedAt - ISO timestamp when done

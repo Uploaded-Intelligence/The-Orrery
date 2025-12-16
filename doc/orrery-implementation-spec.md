@@ -865,6 +865,158 @@ function autoLayoutDAG(tasks: Task[], edges: Edge[]): Map<string, { x: number, y
 }
 ```
 
+## 7.5 CRITICAL RECONCEPTUALIZATION: Organic Knowledge Graph
+
+> **IMPORTANT**: The original §7.4 layout algorithm is WRONG for this project's true intent.
+> The Orrery should feel like a **skill tree / knowledge graph**, NOT a workflow DAG tool.
+
+### The Problem with Linear DAG Layout
+
+The column-based left-to-right layout:
+- Forces "violent, reductive linearity" onto organic thought
+- Removes spatial meaning (position should convey relatedness)
+- Creates visual monotony that fails ADHD cognition
+- Doesn't match the mental model of game skill trees (references: Path of Exile, Total War reforms, Obsidian knowledge graphs)
+
+### Core Principles for Correct Implementation
+
+**1. SPATIAL FREEDOM**
+- Every node can be dragged anywhere
+- Position is persisted (`task.position: { x, y }`)
+- Spatial proximity implies relatedness
+- Users "sculpt" their own mental map
+
+**2. RADIAL/ORGANIC LAYOUT (Auto-Layout Option)**
+- Default layout should be force-directed or radial, NOT columnar
+- Nodes repel each other, edges act as springs
+- Creates organic, breathing structure
+- Optional: gravity toward quest "centers"
+
+**3. DIRECT MANIPULATION (Zero Context Switching)**
+- **Drag node** → move it
+- **Drag from node edge** → create dependency to drop target
+- **Click node** → inline edit (NOT slide-out panel)
+- **Double-click** → start session (if available)
+- Everything visible, nothing hidden in menus
+
+**4. VISUAL LANGUAGE OF SKILL TREES**
+- Nodes show lineage (quest badges as implemented)
+- Unlocked vs locked is VISUALLY OBVIOUS (glow vs dim)
+- Edges glow when path is "hot" (available)
+- Completed paths could show as "filled" or "grown"
+
+### Revised Interaction Model
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  DRAG BEHAVIORS:                                                │
+│  ─────────────────                                              │
+│  • Drag node body → MOVE node (update position)                 │
+│  • Drag from node edge-handle → CREATE EDGE (drop on target)    │
+│  • Drag background → PAN canvas                                 │
+│                                                                 │
+│  CLICK BEHAVIORS:                                               │
+│  ─────────────────                                              │
+│  • Click node → SELECT (show inline edit options)               │
+│  • Double-click available → START SESSION                       │
+│  • Click edge → SELECT edge (show delete option)                │
+│  • Click background → DESELECT all                              │
+│                                                                 │
+│  NO PANELS. NO MODALS. NO CONTEXT SWITCHING.                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Force-Directed Layout Algorithm (Replacement for §7.4)
+
+```typescript
+function forceDirectedLayout(tasks: Task[], edges: Edge[], iterations = 100) {
+  // Initialize positions (use existing or random)
+  const positions = new Map<string, { x: number, y: number, vx: number, vy: number }>();
+
+  tasks.forEach(t => {
+    if (t.position) {
+      positions.set(t.id, { ...t.position, vx: 0, vy: 0 });
+    } else {
+      // Radial initial placement
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 200 + Math.random() * 300;
+      positions.set(t.id, {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
+        vx: 0, vy: 0
+      });
+    }
+  });
+
+  const REPULSION = 5000;  // Nodes push apart
+  const ATTRACTION = 0.01; // Edges pull together
+  const DAMPING = 0.9;
+  const CENTER_GRAVITY = 0.01;
+
+  for (let i = 0; i < iterations; i++) {
+    // Repulsion between all nodes
+    tasks.forEach(t1 => {
+      tasks.forEach(t2 => {
+        if (t1.id === t2.id) return;
+        const p1 = positions.get(t1.id)!;
+        const p2 = positions.get(t2.id)!;
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const force = REPULSION / (dist * dist);
+        p1.vx += (dx / dist) * force;
+        p1.vy += (dy / dist) * force;
+      });
+    });
+
+    // Attraction along edges
+    edges.forEach(e => {
+      const p1 = positions.get(e.source);
+      const p2 = positions.get(e.target);
+      if (!p1 || !p2) return;
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const force = dist * ATTRACTION;
+      p1.vx += (dx / dist) * force;
+      p1.vy += (dy / dist) * force;
+      p2.vx -= (dx / dist) * force;
+      p2.vy -= (dy / dist) * force;
+    });
+
+    // Gravity toward center
+    tasks.forEach(t => {
+      const p = positions.get(t.id)!;
+      p.vx -= p.x * CENTER_GRAVITY;
+      p.vy -= p.y * CENTER_GRAVITY;
+    });
+
+    // Apply velocity and damping
+    tasks.forEach(t => {
+      const p = positions.get(t.id)!;
+      // Skip if manually positioned (user dragged it)
+      if (t.position) return;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= DAMPING;
+      p.vy *= DAMPING;
+    });
+  }
+
+  return positions;
+}
+```
+
+### Implementation Priority
+
+This reconceptualization should be applied in this order:
+
+1. **Node dragging with position persistence** (CRITICAL)
+2. **Drag-to-connect edge creation** (CRITICAL)
+3. **Remove TaskDetailPanel, implement inline editing** (IMPORTANT)
+4. **Replace columnar layout with force-directed** (IMPORTANT)
+5. **Add visual "glow" for available paths** (POLISH)
+
 ---
 
 # §8 TESTING CRITERIA
