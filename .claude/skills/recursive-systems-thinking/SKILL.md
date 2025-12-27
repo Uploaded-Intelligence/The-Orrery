@@ -142,6 +142,22 @@ This master skill orchestrates the specialized skills:
 | Ensuring consistency | `pattern-guardian` |
 | Checking correctness | `verification-loop` |
 | Aligning with architecture | `architectural-compass` |
+| Deciding which LLM should work | `llm-orchestrator` |
+
+## Distributed Cognition Principle
+
+**Recursive systems thinking extends beyond this conversation.**
+
+The LLM ecosystem is itself a system. Apply the same principles:
+- Distribute work across LLMs based on strengths
+- Claude = reasoning, orchestration, judgment
+- Codex = code review, verification, pattern checking
+- Gemini = exploration, large-scale search
+
+Before burning Claude tokens on mechanical work, ask:
+> "Should another LLM handle this?"
+
+See `llm-orchestrator` skill for delegation protocols.
 
 ## Anti-Patterns to Avoid
 

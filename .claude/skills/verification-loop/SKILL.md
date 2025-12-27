@@ -1,264 +1,179 @@
 ---
 name: verification-loop
-description: Systematic self-verification and correction protocol. Invoke after making changes, when something feels wrong, or when you need to validate your work. Catches errors before they propagate through checking at multiple levels from local correctness to systemic alignment.
+description: Define what needs verification and delegate to appropriate LLMs. Invoke to create verification specs for handoff to Codex or other review-capable LLMs. Claude defines WHAT to check; other LLMs DO the checking.
 ---
 
 # Verification Loop
 
-## Purpose
+## Core Principle
 
-**Trust, but verify. Then verify again.**
+**Claude defines. Codex verifies.**
 
-Even the most careful implementation can have errors. This skill provides a systematic protocol for catching errors at multiple levels - from syntax mistakes to architectural misalignment. The earlier errors are caught, the cheaper they are to fix.
+Verification is pattern-matching and checklist-running - exactly what Codex excels at. Don't burn Claude tokens on mechanical verification. Instead:
 
-## When To Invoke
+1. Claude defines what needs verification
+2. Hand off to Codex/Gemini with specific checklist
+3. Return to Claude only for judgment calls
 
-- After completing any implementation
-- Before considering a task "done"
-- When something feels off
-- When changes have unexpected effects
-- Before committing code
-- When returning to previous work
+## Verification Spec Template
 
-## The Verification Protocol
-
-### Level 1: Syntactic Verification
-
-**Does the code run at all?**
-
-- [ ] No syntax errors
-- [ ] No import errors
-- [ ] No undefined variables
-- [ ] No type mismatches (JSDoc)
-- [ ] Linter passes (`npm run lint`)
-- [ ] Build succeeds (`npm run build`)
-
-**Quick Check:**
-```bash
-npm run lint
-npm run build
-```
-
-If these fail, fix before proceeding to deeper verification.
-
-### Level 2: Local Correctness
-
-**Does this code do what it's supposed to do?**
-
-- [ ] Function returns expected output for expected input
-- [ ] Edge cases handled (null, undefined, empty, etc.)
-- [ ] Error cases handled gracefully
-- [ ] Side effects are intentional and documented
-- [ ] No obvious logical errors
-
-**Verification Method:**
-- Trace through the code mentally with sample inputs
-- Check boundary conditions
-- Consider: What if this is called with unexpected input?
-
-### Level 3: Integration Correctness
-
-**Does this code work with the rest of the system?**
-
-- [ ] Interfaces match (function signatures, prop types)
-- [ ] State changes propagate correctly
-- [ ] Event handlers fire correctly
-- [ ] Data flows as expected
-- [ ] No breaking changes to existing functionality
-
-**Verification Method:**
-- Check all call sites of modified functions
-- Verify state updates trigger expected re-renders
-- Test the feature in the running application
-
-### Level 4: Persistence Correctness
-
-**Does data persist correctly?**
-
-For The Orrery specifically:
-
-- [ ] State saves to window.storage
-- [ ] State loads correctly on refresh
-- [ ] New fields have sensible defaults for old data
-- [ ] No data loss scenarios
-- [ ] Import/export works with new changes
-
-**Verification Method:**
-1. Make change
-2. Refresh page
-3. Verify data persisted
-4. Export data
-5. Reset
-6. Import data
-7. Verify data restored
-
-### Level 5: Pattern Compliance
-
-**Does this code follow established patterns?**
-
-- [ ] Follows reducer pattern for state changes
-- [ ] Uses JSDoc for type annotations
-- [ ] Uses inline styles with COLORS constant
-- [ ] Uses generateId() for IDs
-- [ ] Follows naming conventions
-- [ ] Matches structural patterns
-
-**Verification Method:**
-- Compare to similar existing code
-- Check pattern-guardian skill catalog
-- Look for inconsistencies
-
-### Level 6: Architectural Alignment
-
-**Does this code fit the architecture?**
-
-- [ ] Belongs in current phase (Phase 0)
-- [ ] Respects component boundaries
-- [ ] Maintains separation of concerns
-- [ ] Doesn't introduce unnecessary coupling
-- [ ] Aligns with documented architecture
-
-**Verification Method:**
-- Review implementation spec
-- Check CLAUDE.MD
-- Consider: Does this belong here?
-
-### Level 7: Philosophical Alignment
-
-**Does this code serve the project's purpose?**
-
-For The Orrery:
-
-- [ ] Contributes to "I CAN SEE" success signal
-- [ ] Doesn't add cognitive load
-- [ ] Respects the design principles (visibility, dependency gating, etc.)
-- [ ] Serves the user's existence, not just productivity
-
-**Verification Method:**
-- Review soul-transmission.md
-- Ask: Would this help or hinder the user?
-- Consider: Does this feel right?
-
-## The Verification Checklist
-
-Use this checklist for every significant change:
+When verification is needed, generate this handoff spec:
 
 ```markdown
-## Verification: [Change Description]
+## Verification Request for Codex
 
-### Level 1: Syntactic
-- [ ] Lint passes
-- [ ] Build passes
-- [ ] No console errors
+### Context
+[Brief description of what was changed and why]
 
-### Level 2: Local
-- [ ] Logic is correct
-- [ ] Edge cases handled
-- [ ] Errors handled
+### Files to Review
+- [file1.jsx] - [what changed]
+- [file2.jsx] - [what changed]
 
-### Level 3: Integration
-- [ ] Call sites work
-- [ ] State flows correctly
-- [ ] UI updates correctly
+### Verification Checklist
 
-### Level 4: Persistence
-- [ ] Saves correctly
-- [ ] Loads correctly
-- [ ] Migration (if needed)
+**Syntactic**
+- [ ] No syntax errors
+- [ ] No undefined variables
+- [ ] Types match (check JSDoc annotations)
 
-### Level 5: Patterns
-- [ ] Follows reducer pattern
-- [ ] Follows style patterns
-- [ ] Follows naming patterns
+**Logic**
+- [ ] Function returns expected output
+- [ ] Edge cases: null, undefined, empty arrays
+- [ ] Error cases handled
 
-### Level 6: Architecture
-- [ ] Correct phase
-- [ ] Correct location
-- [ ] Correct coupling
+**Integration**
+- [ ] Call sites still work
+- [ ] State updates propagate correctly
+- [ ] No breaking changes to interfaces
 
-### Level 7: Philosophy
-- [ ] Serves "I CAN SEE"
-- [ ] Reduces cognitive load
-- [ ] Respects principles
+**Patterns**
+- [ ] Follows reducer pattern (dispatch, not direct mutation)
+- [ ] Uses COLORS constant for styling
+- [ ] Uses generateId() for IDs
+- [ ] JSDoc annotations present
+
+### Specific Concerns
+- [Any particular areas of risk]
+- [Specific things to look for]
+
+### Expected Response
+List any issues found with:
+- File and line number
+- What's wrong
+- Suggested fix
 ```
 
-## Verification Failure Protocol
+## Quick Verification Handoffs
 
-When verification fails at any level:
-
-1. **Stop** - Don't proceed to next level
-2. **Diagnose** - What specifically failed?
-3. **Fix** - Address the root cause
-4. **Re-verify** - Start from Level 1 again
-
-**Don't stack unverified changes.** Each layer of unverified code multiplies debugging complexity.
-
-## Common Verification Failures
-
-| Symptom | Likely Level | Common Cause |
-|---------|--------------|--------------|
-| Console errors | Level 1 | Syntax, imports |
-| Wrong output | Level 2 | Logic error |
-| Feature broken | Level 3 | Interface mismatch |
-| Data lost on refresh | Level 4 | Persistence bug |
-| Code looks different | Level 5 | Pattern violation |
-| Feature feels wrong | Level 6-7 | Architectural/philosophical misalignment |
-
-## The Feedback Loop
-
-Verification should inform future implementation:
-
+### After Small Change
 ```
-Implement → Verify → Find Issue → Understand Why → Prevent Next Time
-                                        │
-                                        └── Update mental model
-                                        └── Update verification habits
-                                        └── Update documentation if needed
+Codex: Quick review of this diff.
+Check: syntax, logic errors, pattern compliance.
+
+[paste diff]
 ```
 
-Each verification failure is a learning opportunity. Ask:
-- Why did I make this mistake?
-- How can I catch it earlier next time?
-- Is there a pattern I should follow?
+### After Feature Implementation
+```
+Codex: Review this feature implementation.
 
-## Verification Depths
+Files: [list]
+Feature: [description]
+Patterns to check: reducer, JSDoc, inline styles
 
-**Quick Verification** (after small changes):
-- Levels 1-3
-- Takes: 2-5 minutes
-- For: Minor modifications
+Focus on: breaking changes, edge cases, consistency
+```
 
-**Standard Verification** (after feature implementation):
-- Levels 1-5
-- Takes: 10-15 minutes
-- For: New features, significant changes
+### Before Commit
+```
+Codex: Pre-commit review.
 
-**Deep Verification** (before major milestones):
-- Levels 1-7
-- Takes: 20-30 minutes
-- For: Phase completion, before commits
+Changes: [summary]
+Diff: [paste or reference]
 
-## The Verification Mindset
+Verify:
+- No debug code left
+- No console.logs
+- No commented-out code
+- Patterns followed
+```
 
-**Assume Errors Exist**
-Don't ask "Did I make an error?" Ask "Where is my error?"
-This mindset catches more bugs than optimistic checking.
+## When Claude SHOULD Verify
 
-**Verify What Matters**
-Focus verification effort where failure is costly:
-- Persistence (data loss is catastrophic)
-- State management (bugs ripple everywhere)
-- User-facing features (directly impacts experience)
+Some verification requires judgment, not just checking:
 
-**Verify Incrementally**
-Don't write 500 lines then verify.
-Write 50 lines, verify, write 50 more, verify.
-Smaller batches = easier debugging.
+| Verification Type | Who |
+|-------------------|-----|
+| Syntax correct? | Codex |
+| Logic correct? | Codex |
+| Patterns followed? | Codex |
+| Architecture aligned? | Claude |
+| Philosophy aligned? | Claude |
+| Right problem solved? | Claude |
 
-## The Meta-Principle
+**Rule:** If it's a checklist → Codex. If it's a judgment → Claude.
 
-**Verification is not the end of implementation - it's part of implementation.**
+## Verification Levels (For Handoff)
 
-The code isn't written until it's verified. "Done" means "verified at all applicable levels." Unverified code is not complete code - it's a hypothesis waiting to be tested.
+### Level 1: Lint-Level (Always Codex)
+- Syntax
+- Types
+- Imports
+- Formatting
 
-The verification loop closes the feedback cycle that allows learning. Without verification, errors accumulate silently until they become crises. With verification, errors are caught early when they're cheap to fix.
+### Level 2: Logic-Level (Codex)
+- Function correctness
+- Edge cases
+- Error handling
+
+### Level 3: Integration-Level (Codex + Context)
+- Call site compatibility
+- State flow
+- Side effects
+
+### Level 4: Architecture-Level (Claude)
+- Does this belong here?
+- Is this the right phase?
+- Does it fit the design?
+
+### Level 5: Philosophy-Level (Claude)
+- Does this serve "I CAN SEE"?
+- Does this reduce cognitive load?
+- Is this how it should be?
+
+## The Handoff Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      CLAUDE                              │
+│  1. Define what was changed                              │
+│  2. Generate verification spec                           │
+│  3. Identify risk areas                                  │
+└─────────────────────┬───────────────────────────────────┘
+                      │ Handoff
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│                      CODEX                               │
+│  4. Run through checklist                                │
+│  5. Identify issues                                      │
+│  6. Suggest fixes                                        │
+└─────────────────────┬───────────────────────────────────┘
+                      │ Return
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│                      CLAUDE                              │
+│  7. Review Codex findings                                │
+│  8. Make judgment calls                                  │
+│  9. Decide on actions                                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Token Economics
+
+| Approach | Claude Tokens | Result |
+|----------|---------------|--------|
+| Claude does all verification | HIGH | Expensive, slower |
+| Claude specs → Codex verifies | LOW | Cost-effective |
+| Skip verification | ZERO | Risky |
+
+**Best practice:** Invest Claude tokens in DEFINING verification, not DOING verification.

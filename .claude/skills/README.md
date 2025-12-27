@@ -1,44 +1,59 @@
 # Recursive Systems Thinking Skills
 
-A comprehensive skill suite designed to enhance agentic coding on complex projects through recursive systems thinking.
+A comprehensive skill suite for distributed cognition across LLM systems.
 
 ## The Philosophy
 
-Complex systems cannot be understood through linear thinking alone. These skills embody recursive systems thinking - understanding how parts relate to wholes, how changes propagate, and how patterns repeat at different scales.
+Complex systems cannot be understood through linear thinking alone - and **no single LLM should be a centralized point of failure or cost.**
 
-### The Three Scales (Mirroring The Orrery)
+These skills embody recursive systems thinking at two levels:
+1. **Within Claude**: Understanding parts/wholes, change propagation, pattern recognition
+2. **Across LLMs**: Strategic delegation to leverage each system's strengths
+
+### The Distributed Architecture
 
 ```
-STRATEGIC (Macro)     → Architecture, phases, long-term direction
-    ↕ feedback
-TACTICAL (Micro)      → Specific changes, implementations, code
-    ↕ feedback
-VERIFICATION (GPS)    → Am I on track? Does this align? Is it working?
+┌─────────────────────────────────────────────────────────────┐
+│                         CLAUDE                               │
+│  Reasoning • Orchestration • Judgment • Architecture         │
+│  (High-value tokens: complex decisions, planning)            │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ Delegates to
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+│    CODEX      │ │    GEMINI     │ │  LOCAL/FAST   │
+│               │ │               │ │               │
+│ Code Review   │ │ Exploration   │ │ Quick Tasks   │
+│ Verification  │ │ Large Search  │ │ Offline Work  │
+│ Pattern Check │ │ Big Context   │ │ Repetitive    │
+└───────────────┘ └───────────────┘ └───────────────┘
 ```
 
 ## The Skill Suite
 
-### Master Orchestration
+### Orchestration Layer
 
-| Skill | Purpose | When to Invoke |
-|-------|---------|----------------|
-| **recursive-systems-thinking** | Master cognitive framework | Starting significant work, feeling overwhelmed, architectural decisions |
+| Skill | Purpose | Token Impact |
+|-------|---------|--------------|
+| **recursive-systems-thinking** | Master cognitive framework | Claude (judgment) |
+| **llm-orchestrator** | Decide which LLM handles what | Claude (routing) |
 
-### Foundational Skills
+### Claude-Owned Skills (High-Value Reasoning)
 
-| Skill | Purpose | When to Invoke |
-|-------|---------|----------------|
-| **deep-context-builder** | Build mental models before action | Starting tasks, entering unfamiliar code, something unexpected |
-| **change-impact-analyzer** | Trace ripple effects of changes | Before any non-trivial modification |
-| **recursive-decomposer** | Break complex into manageable | Large features, multi-step tasks, overwhelmed by scope |
+| Skill | Purpose | Why Claude |
+|-------|---------|------------|
+| **deep-context-builder** | Build mental models | Requires synthesis |
+| **recursive-decomposer** | Break complex into simple | Requires judgment |
+| **architectural-compass** | Maintain alignment | Requires philosophy |
 
-### Guardianship Skills
+### Delegation Skills (Specs for Other LLMs)
 
-| Skill | Purpose | When to Invoke |
-|-------|---------|----------------|
-| **pattern-guardian** | Ensure consistency with codebase | Before writing new code, during review, uncertain how to implement |
-| **architectural-compass** | Maintain alignment with vision | Design decisions, choosing approaches, phase uncertainty |
-| **verification-loop** | Systematic self-verification | After changes, something feels wrong, before commits |
+| Skill | Purpose | Delegates To |
+|-------|---------|--------------|
+| **change-impact-analyzer** | Trace ripple effects | Gemini (exploration) |
+| **pattern-guardian** | Ensure consistency | Codex (pattern matching) |
+| **verification-loop** | Define verification specs | Codex (checklist running) |
 
 ## How They Work Together
 
@@ -73,24 +88,25 @@ VERIFICATION (GPS)    → Am I on track? Does this align? Is it working?
 
 ### Before Any Significant Work
 
-1. **Invoke `recursive-systems-thinking`** - Establish the cognitive framework
-2. **Invoke `deep-context-builder`** - Build understanding before action
-3. **Invoke `architectural-compass`** - Verify alignment with project vision
+1. **Claude**: `recursive-systems-thinking` - Establish cognitive framework
+2. **Claude**: `deep-context-builder` - Build understanding (or delegate exploration to Gemini)
+3. **Claude**: `llm-orchestrator` - Decide what Claude does vs. delegates
 
 ### When Planning Changes
 
-1. **Invoke `change-impact-analyzer`** - Understand ripple effects
-2. **Invoke `recursive-decomposer`** - Break down into manageable pieces
+1. **Claude**: `recursive-decomposer` - Break down into pieces
+2. **Gemini**: Explore codebase for impact analysis (handoff from `change-impact-analyzer`)
 
 ### While Implementing
 
-1. **Invoke `pattern-guardian`** - Ensure consistency with existing patterns
-2. **Invoke `verification-loop`** - Check work at multiple levels
+1. **Claude**: Does the implementation (high-value reasoning)
+2. **Codex**: Pattern checking as you go (handoff from `pattern-guardian`)
 
 ### After Completion
 
-1. **Invoke `verification-loop`** - Full verification at all levels
-2. **Invoke `architectural-compass`** - Confirm alignment is maintained
+1. **Codex**: Verification (handoff spec from `verification-loop`)
+2. **Claude**: Review Codex findings, make judgment calls
+3. **Claude**: `architectural-compass` - Confirm alignment (requires philosophy)
 
 ## Key Concepts
 
@@ -114,12 +130,14 @@ Know what phase you're in. Don't build future phases prematurely.
 | Anti-Pattern | Prevented By |
 |--------------|--------------|
 | Acting without understanding | `deep-context-builder` |
-| Unintended consequences | `change-impact-analyzer` |
+| Unintended consequences | `change-impact-analyzer` → Gemini |
 | Overwhelming complexity | `recursive-decomposer` |
-| Inconsistent code | `pattern-guardian` |
+| Inconsistent code | `pattern-guardian` → Codex |
 | Architectural drift | `architectural-compass` |
-| Unverified assumptions | `verification-loop` |
+| Unverified assumptions | `verification-loop` → Codex |
 | Cognitive collapse | `recursive-systems-thinking` |
+| **Token burn on mechanical work** | `llm-orchestrator` |
+| **Single point of failure** | Distributed LLM architecture |
 
 ## The Meta-Pattern
 
