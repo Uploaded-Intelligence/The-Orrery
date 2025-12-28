@@ -66,6 +66,8 @@ function getStatusStyle(status) {
  * @param {Function} props.onDoubleClick
  * @param {Function} props.onDragStart - Called on mouse down to start node dragging
  * @param {Function} props.onConnectorDragStart - Called on connector mouse down to start edge creation
+ * @param {Function} props.onTouchStart - Called on touch start for mobile node dragging
+ * @param {Function} props.onConnectorTouchStart - Called on connector touch start for mobile edge creation
  * @param {boolean} props.isEdgeSource - Currently selected as edge source
  * @param {boolean} props.isGhosted - Dimmed for quest focus overlay
  * @param {boolean} props.isDragging - Currently being dragged
@@ -81,6 +83,8 @@ export function TaskNode({
   onDoubleClick,
   onDragStart,
   onConnectorDragStart,
+  onTouchStart,
+  onConnectorTouchStart,
   isEdgeSource = false,
   isGhosted = false,
   isDragging = false,
@@ -106,13 +110,31 @@ export function TaskNode({
     return 'grab';
   };
 
+  // Calculate progress percentage for fill effect
+  const getProgressPercent = () => {
+    if (computedStatus === 'completed') return 100;
+    if (!task.estimatedMinutes) return 0;
+    const actual = task.actualMinutes || 0;
+    return Math.min(100, (actual / task.estimatedMinutes) * 100);
+  };
+  const progressPercent = getProgressPercent();
+
+  // Get progress fill color
+  const getProgressColor = () => {
+    if (computedStatus === 'completed') return COLORS.statusComplete;
+    if (computedStatus === 'in_progress') return COLORS.statusActive;
+    if (progressPercent > 0) return COLORS.accentPrimary;
+    return 'transparent';
+  };
+
   return (
     <g
       transform={`translate(${position.x}, ${position.y})`}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       onMouseDown={onDragStart}
-      style={{ cursor: getCursor() }}
+      onTouchStart={onTouchStart}
+      style={{ cursor: getCursor(), touchAction: 'none' }}
     >
       {/* Drop shadow when dragging */}
       {isDragging && (
@@ -201,6 +223,38 @@ export function TaskNode({
           />
         )}
       </rect>
+
+      {/* Progress fill - visual indicator of time spent vs estimated */}
+      {progressPercent > 0 && (
+        <g>
+          {/* Clip path for rounded corners */}
+          <defs>
+            <clipPath id={`progress-clip-${task.id}`}>
+              <rect x="0" y="0" width={LAYOUT.NODE_WIDTH} height={LAYOUT.NODE_HEIGHT} rx="8" ry="8" />
+            </clipPath>
+          </defs>
+          {/* Progress fill bar at bottom */}
+          <rect
+            x="0"
+            y={LAYOUT.NODE_HEIGHT - 4}
+            width={(LAYOUT.NODE_WIDTH * progressPercent) / 100}
+            height="4"
+            fill={getProgressColor()}
+            opacity={effectiveOpacity * 0.8}
+            clipPath={`url(#progress-clip-${task.id})`}
+          >
+            {/* Animate width for in_progress */}
+            {computedStatus === 'in_progress' && (
+              <animate
+                attributeName="opacity"
+                values="0.6;0.9;0.6"
+                dur="2s"
+                repeatCount="indefinite"
+              />
+            )}
+          </rect>
+        </g>
+      )}
 
       {/* Left color stripe (primary quest) */}
       {primaryQuest && (
@@ -317,7 +371,11 @@ export function TaskNode({
           e.stopPropagation();
           onConnectorDragStart?.(e);
         }}
-        style={{ cursor: 'crosshair' }}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+          onConnectorTouchStart?.(e);
+        }}
+        style={{ cursor: 'crosshair', touchAction: 'none' }}
       >
         {/* Invisible hit area */}
         <circle

@@ -124,6 +124,22 @@ export function orreryReducer(state, action) {
             ? { ...t, status: 'completed', completedAt: now, updatedAt: now }
             : t
         ),
+        // End session if completing the active task
+        activeSession: state.activeSession?.taskId === action.payload
+          ? null
+          : state.activeSession,
+        lastSyncedAt: now,
+      };
+
+    case 'REOPEN_TASK':
+      // Undo completion - set task back to available
+      return {
+        ...state,
+        tasks: state.tasks.map(t =>
+          t.id === action.payload
+            ? { ...t, status: 'available', completedAt: null, updatedAt: now }
+            : t
+        ),
         lastSyncedAt: now,
       };
 
@@ -180,6 +196,39 @@ export function orreryReducer(state, action) {
             ? { ...t, status: 'available', updatedAt: now }
             : t
         ),
+        lastSyncedAt: now,
+      };
+
+    case 'PAUSE_SESSION': {
+      // Pause session - preserve elapsed time, don't lose progress
+      if (!state.activeSession) return state;
+      const startedAt = new Date(state.activeSession.startedAt);
+      const elapsedMs = Date.now() - startedAt.getTime();
+      const elapsedMinutes = elapsedMs / 1000 / 60;
+      const previousElapsed = state.activeSession.pausedElapsedMinutes || 0;
+      return {
+        ...state,
+        activeSession: {
+          ...state.activeSession,
+          isPaused: true,
+          pausedAt: now,
+          pausedElapsedMinutes: previousElapsed + elapsedMinutes,
+        },
+        lastSyncedAt: now,
+      };
+    }
+
+    case 'RESUME_SESSION':
+      // Resume paused session - reset startedAt to now
+      if (!state.activeSession?.isPaused) return state;
+      return {
+        ...state,
+        activeSession: {
+          ...state.activeSession,
+          isPaused: false,
+          pausedAt: null,
+          startedAt: now,
+        },
         lastSyncedAt: now,
       };
 

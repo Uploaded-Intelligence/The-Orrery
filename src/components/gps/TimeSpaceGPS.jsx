@@ -35,21 +35,37 @@ export function TimeSpaceGPS() {
     ? state.quests.find(q => currentTask.questIds.includes(q.id))
     : null;
 
-  // Calculate time remaining
+  // Calculate time remaining (accounting for paused time)
   const timeRemaining = useMemo(() => {
     if (!session) return null;
+    const previousElapsed = session.pausedElapsedMinutes || 0;
+
+    // If paused, don't count current time
+    if (session.isPaused) {
+      const remaining = session.plannedMinutes - previousElapsed;
+      return Math.max(0, remaining);
+    }
+
     const start = new Date(session.startedAt);
-    const elapsed = (now - start) / 1000 / 60; // minutes
-    const remaining = session.plannedMinutes - elapsed;
+    const currentElapsed = (now - start) / 1000 / 60;
+    const totalElapsed = previousElapsed + currentElapsed;
+    const remaining = session.plannedMinutes - totalElapsed;
     return Math.max(0, remaining);
   }, [session, now]);
 
-  // Calculate progress percentage
+  // Calculate progress percentage (accounting for paused time)
   const progress = useMemo(() => {
     if (!session) return 0;
+    const previousElapsed = session.pausedElapsedMinutes || 0;
+
+    if (session.isPaused) {
+      return Math.min(100, (previousElapsed / session.plannedMinutes) * 100);
+    }
+
     const start = new Date(session.startedAt);
-    const elapsed = (now - start) / 1000 / 60;
-    return Math.min(100, (elapsed / session.plannedMinutes) * 100);
+    const currentElapsed = (now - start) / 1000 / 60;
+    const totalElapsed = previousElapsed + currentElapsed;
+    return Math.min(100, (totalElapsed / session.plannedMinutes) * 100);
   }, [session, now]);
 
   // Calculate hard stop warning
@@ -88,6 +104,14 @@ export function TimeSpaceGPS() {
   // Handle session controls
   const handleEndSession = () => {
     dispatch({ type: 'END_SESSION' });
+  };
+
+  const handlePauseSession = () => {
+    dispatch({ type: 'PAUSE_SESSION' });
+  };
+
+  const handleResumeSession = () => {
+    dispatch({ type: 'RESUME_SESSION' });
   };
 
   const handleCompleteTask = () => {
@@ -141,17 +165,20 @@ export function TimeSpaceGPS() {
               gap: '12px',
               marginBottom: '8px',
             }}>
-              {/* Task Icon */}
+              {/* Task Icon - shows play or pause state */}
               <div style={{
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: COLORS.statusActive,
+                background: session.isPaused ? COLORS.accentWarning : COLORS.statusActive,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-                <Play size={18} color="white" fill="white" />
+                {session.isPaused
+                  ? <Pause size={18} color="white" fill="white" />
+                  : <Play size={18} color="white" fill="white" />
+                }
               </div>
 
               {/* Task Title */}
@@ -194,11 +221,12 @@ export function TimeSpaceGPS() {
                 </div>
                 <div style={{
                   fontSize: '10px',
-                  color: COLORS.textMuted,
+                  color: session.isPaused ? COLORS.accentWarning : COLORS.textMuted,
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
+                  fontWeight: session.isPaused ? 600 : 400,
                 }}>
-                  remaining
+                  {session.isPaused ? 'PAUSED' : 'remaining'}
                 </div>
               </div>
             </div>
@@ -260,6 +288,7 @@ export function TimeSpaceGPS() {
               gap: '8px',
               justifyContent: 'flex-end',
             }}>
+              {/* End button - stops session without completing */}
               <button
                 onClick={handleEndSession}
                 style={{
@@ -274,10 +303,58 @@ export function TimeSpaceGPS() {
                   fontSize: '12px',
                   cursor: 'pointer',
                 }}
+                title="End session (lose progress)"
               >
                 <Square size={12} />
                 End
               </button>
+
+              {/* Pause/Resume button */}
+              {session.isPaused ? (
+                <button
+                  onClick={handleResumeSession}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '6px 12px',
+                    background: COLORS.accentPrimary,
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  title="Resume session"
+                >
+                  <Play size={12} />
+                  Resume
+                </button>
+              ) : (
+                <button
+                  onClick={handlePauseSession}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '6px 12px',
+                    background: COLORS.accentWarning,
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  title="Pause session (keep progress)"
+                >
+                  <Pause size={12} />
+                  Pause
+                </button>
+              )}
+
+              {/* Done button - completes the task */}
               <button
                 onClick={handleCompleteTask}
                 style={{
@@ -293,6 +370,7 @@ export function TimeSpaceGPS() {
                   fontWeight: 600,
                   cursor: 'pointer',
                 }}
+                title="Mark task as complete"
               >
                 Done
               </button>

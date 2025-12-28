@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, CheckCircle2, Trash2, Edit3, X, Save, Clock } from 'lucide-react';
+import { Play, CheckCircle2, Trash2, Edit3, X, Save, Clock, RotateCcw } from 'lucide-react';
 import { COLORS } from '@/constants';
 import { useOrrery } from '@/store';
 import { getComputedTaskStatus } from '@/utils';
@@ -67,6 +67,10 @@ export function TaskActionBar({ taskId, onClose }) {
 
   const handleComplete = () => {
     dispatch({ type: 'COMPLETE_TASK', payload: task.id });
+  };
+
+  const handleReopen = () => {
+    dispatch({ type: 'REOPEN_TASK', payload: task.id });
   };
 
   const handleStartSession = () => {
@@ -264,12 +268,25 @@ export function TaskActionBar({ taskId, onClose }) {
       )}
 
       {computedStatus === 'completed' && (
-        <span style={{
-          fontSize: '12px',
-          color: COLORS.statusComplete,
-        }}>
-          Completed
-        </span>
+        <button
+          onClick={handleReopen}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            background: 'transparent',
+            border: `1px solid ${COLORS.accentWarning}`,
+            borderRadius: '6px',
+            color: COLORS.accentWarning,
+            fontSize: '13px',
+            cursor: 'pointer',
+          }}
+          title="Undo completion - reopen task"
+        >
+          <RotateCcw size={14} />
+          Reopen
+        </button>
       )}
 
       {/* Delete button */}

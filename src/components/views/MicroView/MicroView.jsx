@@ -217,15 +217,33 @@ export function MicroView() {
     }
   }, [selectedTaskId, selectedEdgeId, dispatch]);
 
-  // Add new task (placed near center of current view)
+  // Add new task (placed near center of current view, offset from existing)
   const addTask = useCallback(() => {
     const questIds = state.preferences.focusQuestId
       ? [state.preferences.focusQuestId]
       : [];
 
     // Calculate position near center of visible area
-    const centerX = (-pan.x / zoom) + 400;
-    const centerY = (-pan.y / zoom) + 300;
+    let centerX = (-pan.x / zoom) + 400;
+    let centerY = (-pan.y / zoom) + 300;
+
+    // Offset from existing tasks at same position to prevent stacking
+    const OFFSET = 30;
+    let attempts = 0;
+    while (attempts < 20) {
+      const collision = visibleTasks.some(t => {
+        const taskPos = positions.get(t.id);
+        if (!taskPos) return false;
+        const dx = Math.abs(taskPos.x - centerX);
+        const dy = Math.abs(taskPos.y - centerY);
+        return dx < LAYOUT.NODE_WIDTH && dy < LAYOUT.NODE_HEIGHT;
+      });
+      if (!collision) break;
+      // Offset diagonally to avoid stacking
+      centerX += OFFSET;
+      centerY += OFFSET;
+      attempts++;
+    }
 
     dispatch({
       type: 'ADD_TASK',
@@ -240,7 +258,7 @@ export function MicroView() {
         position: { x: centerX, y: centerY },
       }
     });
-  }, [state.preferences.focusQuestId, dispatch, pan, zoom]);
+  }, [state.preferences.focusQuestId, dispatch, pan, zoom, visibleTasks, positions]);
 
   // Pan handlers
   const handleMouseDown = useCallback((e) => {
@@ -354,6 +372,135 @@ export function MicroView() {
     }
   }, [zoom, pan, dispatch]);
 
+  // ═══════════════════════════════════════════════════════════════
+  // TOUCH EVENT HANDLERS (iOS/Mobile Support)
+  // ═══════════════════════════════════════════════════════════════
+
+  // Helper to get client coordinates from touch or mouse event
+  const getEventCoords = useCallback((e) => {
+    if (e.touches && e.touches.length > 0) {
+      return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+    }
+    return { clientX: e.clientX, clientY: e.clientY };
+  }, []);
+
+  // Touch start handler (for panning)
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      // Check if we're touching the background
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (target === svgRef.current || target?.id === 'background') {
+        setIsPanning(true);
+        setPanStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y });
+        setSelectedTaskId(null);
+        setSelectedEdgeId(null);
+        if (edgeSourceId) setEdgeSourceId(null);
+      }
+    }
+  }, [pan, edgeSourceId]);
+
+  // Touch move handler (for panning and node dragging)
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const touchX = (touch.clientX - rect.left - pan.x) / zoom;
+    const touchY = (touch.clientY - rect.top - pan.y) / zoom;
+
+    // Track position for edge preview
+    if (edgeSourceId) {
+      setMousePos({ x: touchX, y: touchY });
+    }
+
+    // Handle node dragging
+    if (draggingTaskId) {
+      e.preventDefault(); // Prevent scroll while dragging
+      const newPos = {
+        x: touchX - dragOffset.x,
+        y: touchY - dragOffset.y,
+      };
+      setDraggedPositions(prev => {
+        const next = new Map(prev);
+        next.set(draggingTaskId, newPos);
+        return next;
+      });
+      return;
+    }
+
+    // Handle panning
+    if (isPanning) {
+      e.preventDefault(); // Prevent scroll while panning
+      setPan({ x: touch.clientX - panStart.x, y: touch.clientY - panStart.y });
+    }
+  }, [isPanning, panStart, edgeSourceId, pan, zoom, draggingTaskId, dragOffset]);
+
+  // Touch end handler
+  const handleTouchEnd = useCallback(() => {
+    // Same as mouse up
+    if (draggingTaskId) {
+      const finalPos = draggedPositions.get(draggingTaskId);
+      if (finalPos) {
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: {
+            id: draggingTaskId,
+            updates: { position: finalPos }
+          }
+        });
+      }
+      setDraggingTaskId(null);
+      setDraggedPositions(new Map());
+      return;
+    }
+
+    if (isPanning) {
+      setIsPanning(false);
+      dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
+    }
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions]);
+
+  // Node touch drag start (called from TaskNode)
+  const handleNodeTouchStart = useCallback((taskId, e) => {
+    if (edgeSourceId) return;
+    if (!e.touches || e.touches.length !== 1) return;
+
+    e.stopPropagation();
+    const touch = e.touches[0];
+    const currentPos = positions.get(taskId);
+    if (!currentPos) return;
+
+    const rect = svgRef.current.getBoundingClientRect();
+    const touchX = (touch.clientX - rect.left - pan.x) / zoom;
+    const touchY = (touch.clientY - rect.top - pan.y) / zoom;
+
+    setDraggingTaskId(taskId);
+    setDragOffset({
+      x: touchX - currentPos.x,
+      y: touchY - currentPos.y,
+    });
+    setSelectedTaskId(taskId);
+    setSelectedEdgeId(null);
+  }, [edgeSourceId, positions, pan, zoom]);
+
+  // Connector touch drag start (for edge creation)
+  const handleConnectorTouchStart = useCallback((taskId, e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    e.stopPropagation();
+    setEdgeSourceId(taskId);
+    setSelectedTaskId(null);
+    setSelectedEdgeId(null);
+
+    const touch = e.touches[0];
+    const rect = svgRef.current.getBoundingClientRect();
+    setMousePos({
+      x: (touch.clientX - rect.left - pan.x) / zoom,
+      y: (touch.clientY - rect.top - pan.y) / zoom
+    });
+  }, [pan, zoom]);
+
   // Attach wheel listener with passive: false to allow preventDefault
   useEffect(() => {
     const svg = svgRef.current;
@@ -362,6 +509,16 @@ export function MicroView() {
       return () => svg.removeEventListener('wheel', handleWheel);
     }
   }, [handleWheel]);
+
+  // Attach touch listeners with passive: false for pan prevention
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (svg) {
+      const options = { passive: false };
+      svg.addEventListener('touchmove', handleTouchMove, options);
+      return () => svg.removeEventListener('touchmove', handleTouchMove);
+    }
+  }, [handleTouchMove]);
 
   // Get edge preview start position
   const edgePreviewStart = edgeSourceId ? positions.get(edgeSourceId) : null;
@@ -571,11 +728,15 @@ export function MicroView() {
           flex: 1,
           cursor: draggingTaskId ? 'grabbing' : (isPanning ? 'grabbing' : (edgeSourceId ? 'crosshair' : 'grab')),
           userSelect: 'none',
+          touchAction: 'none', // Prevent default touch behaviors
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <EdgeDefs />
 
@@ -638,6 +799,8 @@ export function MicroView() {
                 onDoubleClick={() => handleTaskDoubleClick(task)}
                 onDragStart={(e) => handleNodeDragStart(task.id, e)}
                 onConnectorDragStart={(e) => handleConnectorDragStart(task.id, e)}
+                onTouchStart={(e) => handleNodeTouchStart(task.id, e)}
+                onConnectorTouchStart={(e) => handleConnectorTouchStart(task.id, e)}
               />
             );
           })}
