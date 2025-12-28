@@ -1,7 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
-// constants/index.js
-// Barrel export for constants
+// components/ambient/index.js
+// Ambient world effects
 // ═══════════════════════════════════════════════════════════════
 
-export { COLORS, QUEST_COLORS, TIMING, GRADIENTS } from './colors.js';
-export { STORAGE_KEY, INITIAL_STATE } from './initialState.js';
+export { CosmicAmbient, LocalGlow } from './CosmicAmbient';
