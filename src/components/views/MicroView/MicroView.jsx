@@ -8,7 +8,7 @@ import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff,
 import { useOrrery } from '@/store';
 import { COLORS, QUEST_COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
-import { TaskNode, TaskActionBar } from '@/components/tasks';
+import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
 
 /**
@@ -820,6 +820,21 @@ export function MicroView() {
                 onConnectorDragStart={(e) => handleConnectorDragStart(task.id, e)}
                 onTouchStart={(e) => handleNodeTouchStart(task.id, e)}
                 onConnectorTouchStart={(e) => handleConnectorTouchStart(task.id, e)}
+                // Contextual actions - appear AT the node
+                onStartSession={() => dispatch({
+                  type: 'START_SESSION',
+                  payload: { taskId: task.id, plannedMinutes: task.estimatedMinutes || 25 }
+                })}
+                onComplete={() => dispatch({ type: 'COMPLETE_TASK', payload: task.id })}
+                onReopen={() => dispatch({ type: 'REOPEN_TASK', payload: task.id })}
+                onDelete={() => {
+                  dispatch({ type: 'DELETE_TASK', payload: task.id });
+                  setSelectedTaskId(null);
+                }}
+                onUpdate={(updates) => dispatch({
+                  type: 'UPDATE_TASK',
+                  payload: { id: task.id, updates }
+                })}
               />
             );
           })}
@@ -858,13 +873,7 @@ export function MicroView() {
         </div>
       )}
 
-      {/* Task Action Bar - floating, no context switching! */}
-      {selectedTaskId && (
-        <TaskActionBar
-          taskId={selectedTaskId}
-          onClose={() => setSelectedTaskId(null)}
-        />
-      )}
+      {/* Actions now appear contextually AT the task node - game-style! */}
     </div>
   );
 }

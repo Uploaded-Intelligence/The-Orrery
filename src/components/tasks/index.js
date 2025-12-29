@@ -4,4 +4,4 @@
 // ═══════════════════════════════════════════════════════════════
 
 export { TaskNode } from './TaskNode.jsx';
-export { TaskActionBar } from './TaskActionBar.jsx';
+// TaskActionBar removed - actions now appear contextually AT the node (game-style!)

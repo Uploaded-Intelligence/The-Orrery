@@ -1,9 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
 // components/tasks/TaskNode.jsx
-// Task node for Micro View DAG - Enhanced with quest context
+// Task node for Micro View DAG - Enhanced with contextual actions
+// Actions appear AT the node - game-style, not productivity toolbar
 // ═══════════════════════════════════════════════════════════════
 
-import { Circle, CheckCircle2, Lock, Play } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Circle, CheckCircle2, Lock, Play, Trash2, Edit3, RotateCcw, Save, X } from 'lucide-react';
 import { COLORS } from '@/constants';
 import { LAYOUT } from '@/utils';
 
@@ -57,6 +59,55 @@ function getStatusStyle(status) {
 }
 
 /**
+ * ActionButton - Small circular button that appears near the task
+ */
+function ActionButton({ x, y, icon: Icon, color, bgColor, onClick, title, delay = 0 }) {
+  return (
+    <g
+      transform={`translate(${x}, ${y})`}
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      style={{ cursor: 'pointer' }}
+    >
+      {/* Background circle */}
+      <circle
+        cx="0"
+        cy="0"
+        r="16"
+        fill={bgColor || COLORS.bgPanel}
+        stroke={color}
+        strokeWidth="2"
+        style={{
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+        }}
+      >
+        {/* Pop-in animation */}
+        <animate
+          attributeName="r"
+          from="0"
+          to="16"
+          dur="0.15s"
+          begin={`${delay}s`}
+          fill="freeze"
+        />
+      </circle>
+      {/* Icon */}
+      <foreignObject x="-10" y="-10" width="20" height="20">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100%',
+        }}>
+          <Icon size={14} color={color} />
+        </div>
+      </foreignObject>
+      <title>{title}</title>
+    </g>
+  );
+}
+
+/**
  * @param {Object} props
  * @param {import('@/types').Task} props.task
  * @param {string} props.computedStatus - Status after dependency check
@@ -73,6 +124,11 @@ function getStatusStyle(status) {
  * @param {boolean} props.isDragging - Currently being dragged
  * @param {boolean} props.isCreatingEdge - Edge creation in progress (show drop zone)
  * @param {Array<{ id: string, title: string, color: string }>} props.quests - Quest info for badges
+ * @param {Function} props.onStartSession - Start a session for this task
+ * @param {Function} props.onComplete - Mark task complete
+ * @param {Function} props.onReopen - Reopen completed task
+ * @param {Function} props.onDelete - Delete the task
+ * @param {Function} props.onUpdate - Update task (title, minutes)
  */
 export function TaskNode({
   task,
@@ -90,9 +146,37 @@ export function TaskNode({
   isDragging = false,
   isCreatingEdge = false,
   quests = [],
+  onStartSession,
+  onComplete,
+  onReopen,
+  onDelete,
+  onUpdate,
 }) {
   const style = getStatusStyle(computedStatus);
   const Icon = style.icon;
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const [editMinutes, setEditMinutes] = useState(task.estimatedMinutes || 25);
+  const inputRef = useRef(null);
+
+  // Reset edit state when selection changes
+  useEffect(() => {
+    if (!isSelected) {
+      setIsEditing(false);
+      setEditTitle(task.title);
+      setEditMinutes(task.estimatedMinutes || 25);
+    }
+  }, [isSelected, task.title, task.estimatedMinutes]);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   // Apply ghosting (for quest focus overlay)
   const ghostMultiplier = isGhosted ? 0.35 : 1;
@@ -126,6 +210,86 @@ export function TaskNode({
     if (progressPercent > 0) return COLORS.accentPrimary;
     return 'transparent';
   };
+
+  // Handle save from edit mode
+  const handleSave = () => {
+    onUpdate?.({
+      title: editTitle,
+      estimatedMinutes: parseInt(editMinutes) || 25,
+    });
+    setIsEditing(false);
+  };
+
+  // Handle key events in edit mode
+  const handleKeyDown = (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setEditTitle(task.title);
+      setEditMinutes(task.estimatedMinutes || 25);
+    }
+  };
+
+  // Action buttons position - appear to the right of the node
+  const actionX = LAYOUT.NODE_WIDTH + 24;
+  const actionStartY = LAYOUT.NODE_HEIGHT / 2;
+
+  // Build list of available actions based on status
+  const actions = [];
+
+  if (computedStatus === 'available' && onStartSession) {
+    actions.push({
+      icon: Play,
+      color: COLORS.accentPrimary,
+      bgColor: COLORS.bgElevated,
+      onClick: onStartSession,
+      title: 'Start session',
+    });
+  }
+
+  if (computedStatus === 'in_progress' && onComplete) {
+    actions.push({
+      icon: CheckCircle2,
+      color: COLORS.accentSuccess,
+      bgColor: COLORS.bgElevated,
+      onClick: onComplete,
+      title: 'Mark done',
+    });
+  }
+
+  if (computedStatus === 'completed' && onReopen) {
+    actions.push({
+      icon: RotateCcw,
+      color: COLORS.accentWarning,
+      bgColor: COLORS.bgElevated,
+      onClick: onReopen,
+      title: 'Reopen',
+    });
+  }
+
+  // Edit is always available (except when locked)
+  if (computedStatus !== 'locked') {
+    actions.push({
+      icon: Edit3,
+      color: COLORS.textSecondary,
+      bgColor: COLORS.bgElevated,
+      onClick: () => setIsEditing(true),
+      title: 'Edit',
+    });
+  }
+
+  // Delete is always available
+  if (onDelete) {
+    actions.push({
+      icon: Trash2,
+      color: COLORS.accentDanger,
+      bgColor: COLORS.bgPanel,
+      onClick: onDelete,
+      title: 'Delete',
+    });
+  }
 
   return (
     <g
@@ -441,6 +605,154 @@ export function TaskNode({
           strokeWidth="2"
           strokeOpacity="0.3"
         />
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          CONTEXTUAL ACTIONS - Appear when selected (game-style!)
+          Actions bloom from the node, not a distant toolbar
+          ═══════════════════════════════════════════════════════════════ */}
+      {isSelected && !isEditing && !isDragging && (
+        <g>
+          {/* Action buttons - vertical stack to the right */}
+          {actions.map((action, i) => (
+            <ActionButton
+              key={i}
+              x={actionX}
+              y={actionStartY + (i - (actions.length - 1) / 2) * 38}
+              icon={action.icon}
+              color={action.color}
+              bgColor={action.bgColor}
+              onClick={action.onClick}
+              title={action.title}
+              delay={i * 0.03}
+            />
+          ))}
+
+          {/* Connecting line from node to actions */}
+          <line
+            x1={LAYOUT.NODE_WIDTH + 4}
+            y1={LAYOUT.NODE_HEIGHT / 2}
+            x2={actionX - 18}
+            y2={LAYOUT.NODE_HEIGHT / 2}
+            stroke={COLORS.accentSecondary}
+            strokeWidth="2"
+            strokeOpacity="0.3"
+            strokeDasharray="4 2"
+          />
+        </g>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          EDIT PANEL - Appears attached to the node when editing
+          ═══════════════════════════════════════════════════════════════ */}
+      {isSelected && isEditing && (
+        <foreignObject
+          x={LAYOUT.NODE_WIDTH + 12}
+          y="-10"
+          width="220"
+          height={LAYOUT.NODE_HEIGHT + 20}
+        >
+          <div style={{
+            background: COLORS.bgPanel,
+            border: `2px solid ${COLORS.accentPrimary}`,
+            borderRadius: '10px',
+            padding: '10px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          }}>
+            {/* Title input */}
+            <input
+              ref={inputRef}
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              placeholder="Task title"
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                marginBottom: '8px',
+                background: COLORS.bgElevated,
+                border: `1px solid ${COLORS.textMuted}40`,
+                borderRadius: '6px',
+                color: COLORS.textPrimary,
+                fontSize: '13px',
+                fontWeight: 500,
+                boxSizing: 'border-box',
+              }}
+            />
+
+            {/* Time + buttons row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <input
+                type="number"
+                value={editMinutes}
+                onChange={(e) => setEditMinutes(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{
+                  width: '50px',
+                  padding: '4px 6px',
+                  background: COLORS.bgElevated,
+                  border: `1px solid ${COLORS.textMuted}40`,
+                  borderRadius: '4px',
+                  color: COLORS.textSecondary,
+                  fontSize: '12px',
+                  textAlign: 'center',
+                }}
+              />
+              <span style={{ color: COLORS.textMuted, fontSize: '11px' }}>min</span>
+
+              <div style={{ flex: 1 }} />
+
+              {/* Cancel */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditing(false);
+                  setEditTitle(task.title);
+                  setEditMinutes(task.estimatedMinutes || 25);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{
+                  padding: '4px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: COLORS.textMuted,
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={16} />
+              </button>
+
+              {/* Save */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSave();
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{
+                  padding: '4px 10px',
+                  background: COLORS.accentSuccess,
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'white',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <Save size={12} />
+                Save
+              </button>
+            </div>
+          </div>
+        </foreignObject>
       )}
     </g>
   );
