@@ -110,7 +110,7 @@ Before implementing ANY feature, ensure you understand:
 
 2. **Keystone v2.0** (`keystone-master-artifact-v2.md`)
    - The Experience Machine ontology
-   - The World-OS architecture
+   - The World-OE (Operating Ecosystem) architecture
    - The gameplay loops
 
 3. **This spec** — technical patterns that serve the above
@@ -1894,5 +1894,5 @@ This spec is comprehensive but not exhaustive.
 
 *Implementation Specification v2.0*
 *The Orrery — Two-Tier Visual Operating System*
-*Part of WorldOS Ecology*
+*Part of WorldOE (World Operating Ecosystem)*
 *Living Cosmos Aesthetic — Organic, Bioluminescent, Game-like*
