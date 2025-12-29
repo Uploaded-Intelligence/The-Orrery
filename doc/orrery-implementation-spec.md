@@ -98,6 +98,7 @@ interface Quest {
   description: string;           // What this quest is about
   status: QuestStatus;
   themeColor: string;            // Hex color for visual identity
+  position: { x: number, y: number } | null;  // Spatial position in macro view
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
 }
@@ -135,6 +136,19 @@ interface Edge {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// QUEST CONNECTIONS ("Celestial Vines")
+// Organic links between Quest organisms - inspired by Unfallen from Endless Space 2
+// ═══════════════════════════════════════════════════════════════
+
+interface QuestVine {
+  id: string;                    // UUID
+  sourceQuestId: string;         // Origin quest
+  targetQuestId: string;         // Destination quest
+  strength: number;              // 0.0-1.0, affects visual thickness and physics
+  createdAt: string;             // ISO timestamp
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SESSION & UI STATE
 // ═══════════════════════════════════════════════════════════════
 
@@ -149,11 +163,16 @@ interface ViewPreferences {
   currentView: 'macro' | 'micro';
   focusQuestId: string | null;   // When set, micro view highlights this quest's tasks
   showActualOnly: boolean;       // "Panic button" - hide all locked/unavailable
-  microViewPosition: {           // Pan position
+  microViewPosition: {           // Micro view pan position
     x: number;
     y: number;
   };
-  microViewZoom: number;         // Zoom level (0.5 to 2.0)
+  microViewZoom: number;         // Micro zoom level (0.5 to 2.0)
+  macroViewPosition: {           // Macro view pan position
+    x: number;
+    y: number;
+  };
+  macroViewZoom: number;         // Macro zoom level (0.5 to 2.0)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -163,7 +182,8 @@ interface ViewPreferences {
 interface OrreryState {
   quests: Quest[];
   tasks: Task[];
-  edges: Edge[];
+  edges: Edge[];                 // Task-to-task dependencies
+  questVines: QuestVine[];       // Quest-to-quest connections ("celestial vines")
   activeSession: ActiveSession | null;
   preferences: ViewPreferences;
   lastSyncedAt: string;          // ISO timestamp of last persistence
@@ -215,6 +235,7 @@ const INITIAL_STATE: OrreryState = {
   quests: [],
   tasks: [],
   edges: [],
+  questVines: [],
   activeSession: null,
   preferences: {
     currentView: 'macro',
@@ -222,6 +243,8 @@ const INITIAL_STATE: OrreryState = {
     showActualOnly: false,
     microViewPosition: { x: 0, y: 0 },
     microViewZoom: 1.0,
+    macroViewPosition: { x: 0, y: 0 },
+    macroViewZoom: 1.0,
   },
   lastSyncedAt: new Date().toISOString(),
 };
@@ -479,37 +502,59 @@ type OrreryAction =
 
 # §5 VISUAL DESIGN SYSTEM
 
-## 5.1 Color Palette
+> **LIVING COSMOS AESTHETIC**: This is NOT a mechanical orrery (clockwork planetarium).
+> It's an **organic, bioluminescent ecosystem** — mycelial networks, deep-sea creatures,
+> flowering cosmic gardens. Think Hollow Knight meets deep ocean documentaries meets Path of Exile skill trees.
+> **Inspiration**: Unfallen from Endless Space 2 (celestial vines), bioluminescent organisms, fungal networks.
+
+## 5.1 Color Palette — Bioluminescent Sci-Fantasy
 
 ```css
-/* Background layers */
---bg-void: #0a0a0f;           /* Deepest background */
---bg-space: #12121a;          /* Main canvas background */
---bg-panel: #1a1a24;          /* Panel/card backgrounds */
---bg-elevated: #22222e;       /* Elevated elements */
+/* ─── Deep Void Layers ─────────────────────────────────────────── */
+/* Not pure black - rich, living darkness with hints of color */
+--bg-void: #0a0b10;           /* Deepest void - almost black with blue */
+--bg-space: #0f1118;          /* Primary background - cosmos */
+--bg-deep: #141620;           /* Depth layer */
+--bg-panel: #1a1c28;          /* Elevated surfaces */
+--bg-elevated: #242736;       /* Highest elevation */
 
-/* Accent colors */
---accent-primary: #8b5cf6;    /* Violet - primary interactive */
---accent-secondary: #06b6d4;  /* Cyan - secondary/info */
---accent-success: #10b981;    /* Green - completed/success */
---accent-warning: #f59e0b;    /* Amber - warning/attention */
---accent-danger: #ef4444;     /* Red - danger/urgent */
+/* ─── Bioluminescent Accents ──────────────────────────────────── */
+/* Living light that pulses through the cosmos */
+--accent-primary: #7c3aed;    /* Deep violet - mystery, depth */
+--accent-secondary: #22d3ee;  /* Bright cyan - bioluminescence */
+--accent-tertiary: #a855f7;   /* Light violet - ethereal */
 
-/* Text */
---text-primary: #f1f5f9;      /* Primary text */
---text-secondary: #94a3b8;    /* Secondary text */
---text-muted: #64748b;        /* Muted/disabled text */
+/* ─── Life States ─────────────────────────────────────────────── */
+--accent-growth: #34d399;     /* Emerald - living, growing */
+--accent-energy: #fbbf24;     /* Warm amber - active energy */
+--accent-bloom: #f472b6;      /* Pink - fruiting, completion */
+--accent-danger: #f87171;     /* Soft red - warning */
 
-/* Status-specific */
---status-locked: #475569;     /* Locked task */
---status-available: #8b5cf6;  /* Available task */
---status-active: #06b6d4;     /* In progress */
---status-complete: #10b981;   /* Completed */
---status-bridge: #eab308;     /* Multi-quest bridge node */
+/* Legacy aliases */
+--accent-success: #34d399;
+--accent-warning: #fbbf24;
 
-/* Effects */
---glow-primary: rgba(139, 92, 246, 0.4);
---glow-success: rgba(16, 185, 129, 0.4);
+/* ─── Organic Text ────────────────────────────────────────────── */
+--text-primary: #f0f4f8;      /* Soft white - like moonlight */
+--text-secondary: #a0aec0;    /* Muted - distant glow */
+--text-muted: #5a6577;        /* Distant - dormant */
+--text-glow: #22d3ee;         /* Luminescent highlights */
+
+/* ─── Status States ───────────────────────────────────────────── */
+--status-locked: #3d4255;     /* Dormant, unawakened */
+--status-available: #7c3aed;  /* Ready to grow */
+--status-active: #22d3ee;     /* Pulsing with energy */
+--status-complete: #34d399;   /* Fully bloomed */
+--status-bridge: #fbbf24;     /* Connecting, bridging (multi-quest) */
+
+/* ─── Particle & Glow Colors ──────────────────────────────────── */
+--particle-core: #22d3ee;
+--particle-aura: #7c3aed;
+--particle-dust: #a855f7;
+--glow-cyan: rgba(34, 211, 238, 0.6);
+--glow-violet: rgba(124, 58, 237, 0.5);
+--glow-pink: rgba(244, 114, 182, 0.5);
+--glow-green: rgba(52, 211, 153, 0.5);
 ```
 
 ## 5.2 Typography
@@ -528,177 +573,195 @@ type OrreryAction =
 --text-2xl: 1.5rem;    /* 24px - major headings */
 ```
 
-## 5.3 Effects
+## 5.3 Effects — Living, Breathing Elements
 
 ```css
-/* Glassmorphism for panels */
+/* ─── Organic Glassmorphism ───────────────────────────────────── */
 .glass {
-  background: rgba(26, 26, 36, 0.8);
+  background: rgba(26, 28, 40, 0.75);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  border-radius: 1rem; /* Organic, not sharp */
 }
 
-/* Glow effect for active elements */
-.glow {
-  box-shadow: 0 0 20px var(--glow-primary);
+/* ─── Bioluminescent Glow ─────────────────────────────────────── */
+.glow-cyan { box-shadow: 0 0 20px var(--glow-cyan), 0 0 40px var(--glow-cyan); }
+.glow-violet { box-shadow: 0 0 20px var(--glow-violet), 0 0 40px var(--glow-violet); }
+.glow-green { box-shadow: 0 0 20px var(--glow-green), 0 0 40px var(--glow-green); }
+.glow-bloom { box-shadow: 0 0 20px var(--glow-pink), 0 0 40px var(--glow-pink); }
+
+/* ─── Radial Depth Gradients ──────────────────────────────────── */
+.void-depth {
+  background: radial-gradient(ellipse at 50% 50%, var(--bg-deep) 0%, var(--bg-void) 100%);
 }
 
-/* Scanline texture (subtle) */
-.scanlines::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.1) 0px,
-    rgba(0, 0, 0, 0.1) 1px,
-    transparent 1px,
-    transparent 2px
-  );
-  pointer-events: none;
+.cosmic-glow {
+  background: radial-gradient(ellipse at 30% 20%, rgba(124, 58, 237, 0.15) 0%, transparent 50%);
+}
+
+/* ─── Particle Auras ──────────────────────────────────────────── */
+.biolum-aura {
+  background: radial-gradient(circle, var(--glow-cyan) 0%, transparent 70%);
+}
+
+.growth-aura {
+  background: radial-gradient(circle, var(--glow-green) 0%, transparent 70%);
 }
 ```
 
-## 5.4 Animation Principles
+## 5.4 Animation Principles — Organic, Living Motion
+
+> **Core principle**: Everything breathes. Nothing is static. Motion should feel like
+> ocean currents, not machine clicks. Use long durations (2-6s) for ambient animations,
+> fast (150-300ms) for interactions.
 
 ```css
-/* Breathing animation for active task */
+/* ─── Timing Constants ────────────────────────────────────────── */
+--timing-breathe: 4s;         /* Slow, living pulse */
+--timing-pulse: 2s;           /* Active energy pulse */
+--timing-grow: 0.6s;          /* Growth animation */
+--timing-bloom: 0.8s;         /* Completion bloom */
+--timing-float: 6s;           /* Floating particles */
+--timing-shimmer: 3s;         /* Subtle shimmer */
+--timing-fast: 150ms;         /* Interaction response */
+--timing-normal: 300ms;       /* Standard transitions */
+--easing-organic: cubic-bezier(0.4, 0, 0.2, 1);
+
+/* ─── Breathing — The Heartbeat ───────────────────────────────── */
 @keyframes breathe {
-  0%, 100% { transform: scale(1); opacity: 0.9; }
-  50% { transform: scale(1.02); opacity: 1; }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.85; }
 }
 
-/* Pulse for available task */
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 var(--glow-primary); }
-  50% { box-shadow: 0 0 20px 5px var(--glow-primary); }
+/* ─── Organic Pulse — Living Energy ───────────────────────────── */
+@keyframes organicPulse {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.02) rotate(0.5deg); }
+  75% { transform: scale(0.98) rotate(-0.5deg); }
 }
 
-/* Celebration burst on completion */
-@keyframes celebrate {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); opacity: 0.7; }
+/* ─── Nucleus Pulse — Core Glow ───────────────────────────────── */
+@keyframes nucleusPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
 }
 
-/* Timing */
---duration-fast: 150ms;
---duration-normal: 300ms;
---duration-slow: 500ms;
---easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+/* ─── Bloom Ring — Completion Celebration ─────────────────────── */
+@keyframes bloomRing {
+  0% { r: 35; opacity: 0.6; stroke-width: 3; }
+  100% { r: 60; opacity: 0; stroke-width: 1; }
+}
+
+/* ─── Float Up — Ambient Particles ────────────────────────────── */
+@keyframes floatUp {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: var(--opacity, 0.5); }
+  90% { opacity: var(--opacity, 0.5); }
+  100% { transform: translateY(-100vh) translateX(var(--drift, 0)); opacity: 0; }
+}
+
+/* ─── Fade Grow In — Entrance ─────────────────────────────────── */
+@keyframes fadeGrowIn {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Pulse Ring — Hover/Selection ────────────────────────────── */
+@keyframes pulseRing {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
 ```
 
 ---
 
 # §6 IMPLEMENTATION PHASES
 
-## Phase 0: Foundation
+> **Status Legend**: ✅ Complete | ⚠️ Partial | ❌ Not Started | 🔄 In Progress
+
+## Phase 0: Foundation ✅ COMPLETE
 **Goal:** Data layer and persistence working
 
 **Deliverables:**
-- [ ] TypeScript interfaces defined
-- [ ] Reducer with all actions implemented
-- [ ] `window.storage` integration working
-- [ ] State loads on mount, saves on change
-- [ ] Import/Export JSON functionality
-- [ ] Reset state with confirmation
+- [x] TypeScript interfaces defined (JSDoc in `types/index.js`)
+- [x] Reducer with all actions implemented (`store/reducer.js`)
+- [x] `window.storage` integration working
+- [x] State loads on mount, saves on change
+- [x] Import/Export JSON functionality
+- [x] Reset state with confirmation
 
-**Acceptance test:** 
-- Add quest, reload page, quest persists
-- Export state, reset, import, state restored
-
-**Estimated complexity:** Low-Medium
+**Acceptance test:** ✅ All passing
 
 ---
 
-## Phase 1: Micro View Core
+## Phase 1: Micro View Core ✅ COMPLETE
 **Goal:** See tasks as nodes, understand dependencies
 
 **Deliverables:**
-- [ ] Task nodes render on canvas
-- [ ] Dependency edges render as arrows
-- [ ] Visual states: locked (dim), available (bright), completed (green)
-- [ ] Click task to select
-- [ ] Basic auto-layout (upstream left, downstream right)
-- [ ] Add/remove task UI
-- [ ] Add/remove edge UI (drag or button)
+- [x] Task nodes render on canvas (`components/tasks/TaskNode.jsx`)
+- [x] Dependency edges render as bezier curves
+- [x] Visual states: locked (dim), available (glow), completed (green)
+- [x] Click task to select
+- [x] Auto-layout with barycentric ordering (`utils/layout.js`)
+- [x] Add/remove task UI
+- [x] Drag-to-connect edge creation
 
-**Acceptance test:**
-- Create 5 tasks with dependencies
-- Locked tasks appear dimmed
-- Complete upstream task, downstream unlocks
-- Layout is readable without manual positioning
-
-**Estimated complexity:** Medium
+**Acceptance test:** ✅ All passing
 
 ---
 
-## Phase 2: Micro View Enhanced
+## Phase 2: Micro View Enhanced ✅ COMPLETE
 **Goal:** Usable canvas with focus and filter
 
 **Deliverables:**
-- [ ] Pan canvas (drag or middle-mouse)
-- [ ] Zoom canvas (scroll wheel)
-- [ ] "Actual" filter toggle (hides ALL locked nodes)
-- [ ] Quest focus overlay (highlight quest tasks, ghost others)
-- [ ] Improved auto-layout algorithm
-- [ ] Task detail panel (slide-out on select)
+- [x] Pan canvas (drag background)
+- [x] Zoom canvas (scroll wheel, pinch)
+- [x] "Actual" filter toggle
+- [x] Quest focus overlay (ghost non-quest tasks)
+- [x] Improved auto-layout algorithm
+- [x] Task detail panel (slide-out)
+- [x] Task dragging with position persistence
 
-**Acceptance test:**
-- 20+ tasks render without overlap
-- Actual filter shows only actionable tasks
-- Focus mode clearly distinguishes quest tasks
-- Can navigate large graph smoothly
-
-**Estimated complexity:** Medium-High
+**Acceptance test:** ✅ All passing
 
 ---
 
-## Phase 3: Macro View
+## Phase 3: Macro View ⚠️ PARTIAL (Living Cosmos v1 Complete)
 **Goal:** See all quests as constellation
 
 **Deliverables:**
-- [ ] Quest nodes render in constellation layout
-- [ ] Progress ring on each quest
-- [ ] Theme colors applied
-- [ ] Click quest → focus in micro view
-- [ ] Add/edit quest UI
-- [ ] View toggle (macro ↔ micro)
+- [x] Quest organisms render (Living Cosmos aesthetic)
+- [x] Progress shown as rising liquid fill
+- [x] Theme colors applied with bioluminescent glow
+- [x] Click quest → focus in micro view
+- [x] Add/edit quest UI
+- [x] View toggle (macro ↔ micro)
+- [ ] **Quest dragging with position persistence** ← CRITICAL MISSING
+- [ ] **Celestial vines (quest-to-quest connections)** ← CRITICAL MISSING
+- [ ] Stretchy physics for connections
 
-**Acceptance test:**
-- 5+ quests render without overlap
-- Progress updates when tasks complete
-- Clicking quest switches to focused micro view
-- Can switch views smoothly
-
-**Estimated complexity:** Medium
+**Acceptance test:** Partial — core visuals done, drag/vines needed
 
 ---
 
-## Phase 4: Time-Space GPS
+## Phase 4: Time-Space GPS ✅ COMPLETE
 **Goal:** Always-visible HUD for temporal grounding
 
 **Deliverables:**
-- [ ] GPS component renders (fixed position)
-- [ ] Shows current task + quest context
-- [ ] Countdown timer (when session active)
-- [ ] Progress bar
-- [ ] Hard stop warning
-- [ ] Session start/end controls
-- [ ] Vastness reminder (subtle)
+- [x] GPS component renders (fixed bottom)
+- [x] Shows current task + quest context
+- [x] Countdown timer (when session active)
+- [x] Progress bar
+- [x] Session start/end/pause/resume controls
+- [x] Hard stop warning visual
+- [ ] Vastness reminder (subtle) — low priority
 
-**Acceptance test:**
-- Start session, see countdown
-- Timer counts down in real-time
-- Hard stop triggers warning at 5min/1min
-- Can end session, GPS updates
-
-**Estimated complexity:** Medium
+**Acceptance test:** ✅ All core features passing
 
 ---
 
-## Phase 5: AI Integration
-**Goal:** Claude helps structure and suggest
+## Phase 5: AI Integration ❌ NOT STARTED
+**Goal:** Claude helps structure and suggest (see §12 for vision)
 
 **Deliverables:**
 - [ ] AI input panel (brain dump textarea)
@@ -707,37 +770,47 @@ type OrreryAction =
 - [ ] "Oracle" suggestion → what to do next
 - [ ] Loading states during AI calls
 - [ ] Error handling for failed calls
+- [ ] **RE-SYNTHESIS not just append** (see §12)
 
-**Acceptance test:**
-- Brain dump text → meaningful quests/tasks appear
-- Magic wand creates sensible subtasks
-- Oracle gives contextual suggestion
-- Errors handled gracefully
-
-**Estimated complexity:** Medium-High
+**Acceptance test:** Not yet applicable
 
 ---
 
-## Phase 6: Polish
+## Phase 6: Polish ⚠️ PARTIAL (Living Cosmos aesthetics added)
 **Goal:** Feels like playing a game, not using an app
 
 **Deliverables:**
-- [ ] Animations on state changes
-- [ ] Particle effects (subtle)
+- [x] Animations on state changes (breathe, pulse, bloom)
+- [x] Particle effects (CosmicAmbient floating spores)
 - [ ] Sound cues (optional, can disable)
-- [ ] Celebration on quest complete
-- [ ] Smooth transitions between views
+- [x] Bloom animation on completion
+- [x] Smooth transitions between views
 - [ ] Keyboard shortcuts
-- [ ] Touch/mobile support (if applicable)
-- [ ] Empty states (no quests yet, no tasks yet)
+- [x] Touch/mobile support (iOS touch fixes)
+- [x] Empty states ("The garden awaits")
+
+**Acceptance test:** Partial — feels alive, needs sound & shortcuts
+
+---
+
+## Phase 7: Macro View Enhanced 🔄 NEXT PRIORITY
+**Goal:** Full Unfallen-inspired organic constellation
+
+**Deliverables:**
+- [ ] Quest position persistence (`quest.position: { x, y }`)
+- [ ] Quest dragging with touch/mouse support
+- [ ] Pan/zoom macro canvas (like micro view)
+- [ ] Celestial vines (QuestVine entity)
+- [ ] Drag-to-connect vine creation
+- [ ] Stretchy physics for vines
+- [ ] Vine strength visual (thickness, glow)
 
 **Acceptance test:**
-- Completing task feels satisfying
-- Completing quest feels celebratory
-- UI feels responsive and alive
-- No jarring transitions
+- Drag quest organisms around, positions persist
+- Connect quests with vines, vines stretch when dragged
+- Vines show gradient between quest colors
 
-**Estimated complexity:** Medium
+**Estimated complexity:** Medium-High
 
 ---
 
@@ -1011,11 +1084,195 @@ function forceDirectedLayout(tasks: Task[], edges: Edge[], iterations = 100) {
 
 This reconceptualization should be applied in this order:
 
-1. **Node dragging with position persistence** (CRITICAL)
-2. **Drag-to-connect edge creation** (CRITICAL)
-3. **Remove TaskDetailPanel, implement inline editing** (IMPORTANT)
-4. **Replace columnar layout with force-directed** (IMPORTANT)
-5. **Add visual "glow" for available paths** (POLISH)
+1. **Node dragging with position persistence** (CRITICAL) ✅ DONE for Tasks
+2. **Drag-to-connect edge creation** (CRITICAL) ✅ DONE for Tasks
+3. **Remove TaskDetailPanel, implement inline editing** (IMPORTANT) — in progress
+4. **Replace columnar layout with force-directed** (IMPORTANT) — using barycentric ordering
+5. **Add visual "glow" for available paths** (POLISH) ✅ DONE
+
+## 7.6 STRETCHY PHYSICS: Living Connections
+
+> **Core insight**: Connections should feel ALIVE, not rigid. Like tendons, not wires.
+> When you drag a node, the edges should stretch, resist, and snap back organically.
+
+### Spring-Based Edge Physics
+
+```typescript
+interface SpringEdge {
+  sourceId: string;
+  targetId: string;
+  restLength: number;      // Natural length of the spring
+  stiffness: number;       // How strongly it resists stretching (0.01-0.5)
+  damping: number;         // How quickly oscillations die (0.8-0.99)
+}
+
+// During drag/animation frame:
+function updateSpringPhysics(edge: SpringEdge, sourcePos: Vec2, targetPos: Vec2) {
+  const dx = targetPos.x - sourcePos.x;
+  const dy = targetPos.y - sourcePos.y;
+  const currentLength = Math.sqrt(dx * dx + dy * dy);
+  const stretch = currentLength - edge.restLength;
+
+  // Force proportional to stretch (Hooke's law)
+  const force = stretch * edge.stiffness;
+
+  // Apply force to pull nodes together (or push apart if compressed)
+  // This creates the "stretchy" feel during drag
+  return {
+    tension: Math.abs(stretch) / edge.restLength, // 0-1, for visual feedback
+    force: force,
+    direction: { x: dx / currentLength, y: dy / currentLength }
+  };
+}
+```
+
+### Visual Feedback for Tension
+
+```css
+/* Edge thickness/glow increases with tension */
+.edge-stretched {
+  stroke-width: calc(2px + var(--tension) * 4px);
+  filter: drop-shadow(0 0 calc(var(--tension) * 10px) var(--glow-cyan));
+}
+
+/* Subtle pulse when under tension */
+@keyframes strainPulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; stroke-width: calc(2px + var(--tension) * 6px); }
+}
+```
+
+### Elastic Snap-Back
+
+When dragging ends, edges should:
+1. Animate back to rest length (if no manual position set)
+2. Use spring physics for realistic bounce
+3. Dampen over 2-3 oscillations
+
+## 7.7 CELESTIAL VINES: Quest-to-Quest Connections
+
+> **Inspiration**: The Unfallen from Endless Space 2 — their celestial vines that grow
+> between star systems, connecting them into an organic network.
+>
+> Quest connections are NOT dependencies. They're **affinities** — thematic links,
+> shared resources, narrative connections.
+
+### Visual Design
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  CELESTIAL VINE ANATOMY:                                         │
+│                                                                  │
+│    ◉ Quest A                                                     │
+│     ╲                                                            │
+│      ╲  ← Vine (glowing, organic curve)                         │
+│       ╲                                                          │
+│        ╲   ← Pulses of light travel along vine                  │
+│         ╲                                                        │
+│          ◉ Quest B                                               │
+│                                                                  │
+│  VINE CHARACTERISTICS:                                           │
+│  • Bezier curves, NOT straight lines                            │
+│  • Slight organic waviness (perlin noise offset)                │
+│  • Thickness based on strength (shared tasks, manual weighting) │
+│  • Color gradient between quest theme colors                    │
+│  • Particle flow from source → target (growth direction)        │
+│  • STRETCHY when quests are dragged apart                       │
+│                                                                  │
+│  INTERACTIONS:                                                   │
+│  • Drag from quest edge → drop on another quest = create vine   │
+│  • Click vine → show connection info, delete option             │
+│  • Vines can be manually weighted (thin → thick)                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Vine Rendering (SVG Path)
+
+```typescript
+function renderCelestialVine(
+  source: Vec2,
+  target: Vec2,
+  strength: number,  // 0-1
+  sourceColor: string,
+  targetColor: string
+): SVGPath {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  // Control points for organic bezier curve
+  const cp1 = {
+    x: source.x + dx * 0.3 + Math.sin(Date.now() * 0.001) * 10, // subtle sway
+    y: source.y + dy * 0.1
+  };
+  const cp2 = {
+    x: source.x + dx * 0.7 + Math.sin(Date.now() * 0.001 + 1) * 10,
+    y: target.y - dy * 0.1
+  };
+
+  return {
+    d: `M ${source.x} ${source.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${target.x} ${target.y}`,
+    strokeWidth: 2 + strength * 6,
+    gradient: `url(#vine-gradient-${sourceColor}-${targetColor})`,
+    filter: `drop-shadow(0 0 ${4 + strength * 8}px rgba(34, 211, 238, 0.5))`
+  };
+}
+```
+
+## 7.8 ADHD-EMPOWERING GAME DESIGN PRINCIPLES
+
+> **This is a game, not an app.** Every interaction should produce dopamine, not dread.
+> Key references: game feel ("juice"), Discovery (finding hidden things),
+> Progression (leveling up), Agency (meaningful choices), Surprise (unexpected rewards).
+
+### Core Principles
+
+**1. NOVELTY GENERATION**
+- Visual variety: each quest organism looks slightly different
+- Random ambient particles create living, changing environment
+- Completion animations are never exactly the same
+- "Discovered" quests/tasks vs manually created (AI synthesis)
+
+**2. IMMEDIATE FEEDBACK**
+- Every click produces visible change (glow, animation, sound)
+- Drag operations show tension/stretch in real-time
+- Progress is always visualized (not just numbers)
+- Errors are forgiving, not punishing
+
+**3. MICRO-CELEBRATIONS**
+- Complete a task → bloom animation + sound
+- Complete a quest → constellation celebration
+- Start a session → breathing intensifies
+- Return after absence → "welcome back" state change
+
+**4. SENSORY VARIETY**
+- Multiple animation types (breathe, pulse, grow, bloom, float)
+- Color variations based on state
+- Particle systems for ambient life
+- Optional: subtle sound design (not implemented yet)
+
+**5. CLARITY IN OVERWHELM**
+- "Actual" filter reduces to ONLY what's possible NOW
+- Quest focus dims everything else
+- Time-Space GPS anchors attention
+- North Star provides directional clarity
+
+### Anti-Patterns to Avoid
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ❌ AVOID:                           ✅ INSTEAD:                 │
+│  ─────────                           ─────────                  │
+│  • Long text instructions            • Visual demonstration     │
+│  • Multiple nested menus             • Direct manipulation      │
+│  • "Are you sure?" dialogs           • Undo always available   │
+│  • Static, unchanging UI             • Breathing, living UI    │
+│  • Punishing error states            • Forgiving, recoverable  │
+│  • Hidden functionality              • Discoverable affordances │
+│  • Counting (tasks remaining)        • Feeling (progress glow) │
+│  • Guilt-inducing reminders          • Gentle ambient awareness│
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -1363,9 +1620,149 @@ Proceeding now.
 
 ---
 
-# §12 FINAL NOTES
+# §12 AI RE-SYNTHESIS VISION
 
-This spec is comprehensive but not exhaustive. 
+> **Critical understanding**: The AI is NOT a "smart append" machine. It's a **synthesis engine**
+> that takes messy human input and RE-STRUCTURES the entire constellation of quests and tasks.
+> Think: composting organic matter into fertile soil, not stacking boxes.
+
+## 12.1 The Problem with "Append-Only" AI
+
+Traditional task tools with AI just add new items:
+```
+User: "I need to work on the authentication system"
+Bad AI: Adds task "Work on authentication system" ← USELESS
+```
+
+This fails because:
+- No context of existing structure
+- No relationship to other quests/tasks
+- No breakdown into actionable steps
+- No identification of dependencies
+
+## 12.2 True Synthesis: Ingestion → Decomposition → Recomposition
+
+The AI should:
+
+**1. INGEST** — Understand the full input
+```
+User brain dump: "Need to ship auth, also thinking about
+the database migration, oh and frontend needs to update
+the login form, might be blocked by the API changes..."
+```
+
+**2. DECOMPOSE** — Break into atomic elements
+```
+Extracted concepts:
+- Authentication system (broad goal)
+- Database migration (dependency?)
+- Frontend login form (UI task)
+- API changes (blocking dependency)
+```
+
+**3. RELATE** — Map to existing structure
+```
+Existing quest: "MVP Launch"
+Existing tasks: ["Set up CI/CD", "Write tests"]
+→ Auth work likely belongs to MVP Launch
+→ API changes may block frontend work
+```
+
+**4. RECOMPOSE** — Synthesize new structure
+```
+Proposed changes:
+- ADD quest "Authentication System" under MVP Launch theme
+- ADD tasks with proper dependencies:
+  - "API authentication endpoints" (no deps)
+  - "Database user migration" (depends on API)
+  - "Frontend login form" (depends on API)
+- CREATE edges between tasks
+- SUGGEST vine connection between "Auth" and "MVP Launch" quests
+```
+
+## 12.3 AI Prompt Architecture
+
+```typescript
+interface SynthesisContext {
+  existingQuests: Quest[];
+  existingTasks: Task[];
+  existingEdges: Edge[];
+  existingVines: QuestVine[];
+  userInput: string;
+  userHistory?: string[];  // Previous synthesis results for learning
+}
+
+interface SynthesisResult {
+  // Quests to add/modify
+  questsToAdd: Quest[];
+  questsToModify: { id: string; updates: Partial<Quest> }[];
+
+  // Tasks to add/modify
+  tasksToAdd: Task[];
+  tasksToModify: { id: string; updates: Partial<Task> }[];
+
+  // Edges (task dependencies)
+  edgesToAdd: Edge[];
+  edgesToRemove: string[];  // Edge IDs
+
+  // Quest vines (affinities)
+  vinesToAdd: QuestVine[];
+
+  // Reasoning for transparency
+  reasoning: string;
+}
+```
+
+## 12.4 AI Integration Points
+
+**1. Brain Dump → Full Synthesis**
+- Large text area for stream-of-consciousness
+- AI parses into structured quests/tasks/edges
+- User reviews and confirms changes
+
+**2. Task Expansion (Magic Wand)**
+- Select a task
+- AI breaks it into 3-7 subtasks
+- Creates proper dependency edges
+
+**3. Oracle (What Next?)**
+- AI analyzes: available tasks, time of day, energy patterns
+- Suggests what to focus on with reasoning
+- NOT prescriptive — suggestive
+
+**4. Quest Reorganization**
+- AI can suggest merging/splitting quests
+- Identify orphan tasks that need quest assignment
+- Suggest quest vines based on task overlaps
+
+## 12.5 The Ultimate Vision: Conversational Gardening
+
+```
+User (via chat): "I've been thinking about the marketing stuff,
+we need to coordinate with the launch. Also I forgot about
+the legal review that's blocking the TOS page."
+
+AI Response:
+"I see the Marketing Quest and MVP Launch Quest. Here's what I suggest:
+
+1. Add task 'Legal review for TOS' (available, no deps)
+2. Add task 'Update TOS page' (blocked by legal review)
+3. Create vine between Marketing ↔ MVP Launch (strength: 0.7)
+4. Move 'Social media assets' task to depend on 'Finalize branding'
+
+This connects your legal blocker to the launch timeline and shows
+the marketing-launch relationship visually.
+
+[Apply Changes] [Modify] [Dismiss]"
+```
+
+The key insight: **AI as thoughtful gardener**, not mechanical task-adder.
+
+---
+
+# §13 FINAL NOTES
+
+This spec is comprehensive but not exhaustive.
 
 **When uncertain:**
 - Refer to Soul Transmission for the "why"
@@ -1377,6 +1774,7 @@ This spec is comprehensive but not exhaustive.
 
 ---
 
-*Implementation Specification v1.0*
+*Implementation Specification v2.0*
 *The Orrery — Two-Tier Visual Operating System*
 *Part of WorldOS Ecology*
+*Living Cosmos Aesthetic — Organic, Bioluminescent, Game-like*
