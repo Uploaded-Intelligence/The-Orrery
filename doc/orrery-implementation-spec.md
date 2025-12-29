@@ -128,6 +128,60 @@ ASK: "Does this engage the nervous system, or does it feel like a todo app?"
 ASK: "Is the aliveness structural, or is it decoration on a dead core?"
 ```
 
+## §0.6 Interaction Design Principles (Game-Dev, Not Productivity)
+
+These principles distinguish game-feel from productivity-app-feel:
+
+### Principle 1: Actions Appear AT Objects
+
+```
+WRONG (Productivity pattern):
+  Select task → Look at distant toolbar → Click action → Action happens somewhere
+  = Cognitive distance, context switching, mapping required
+  = "I selected this, now I look over THERE to do something to it"
+
+RIGHT (Game pattern):
+  Interact with task → Actions BLOOM FROM the task → Act directly
+  = Zero cognitive distance, spatial continuity
+  = "I touch this, its powers appear, I use them"
+```
+
+In games, when you click on a unit/item/character, the contextual menu or action buttons
+appear RIGHT THERE — attached to the object. The brain doesn't have to map
+"button over there controls thing over here."
+
+**Implementation:** TaskNode renders its own action buttons when selected.
+No separate TaskActionBar at screen bottom. Actions bloom from the node.
+
+### Principle 2: Terminology Is Experience
+
+```
+WRONG: "Add Dependency" / "Depends On" / "Blocks"
+  = Developer vocabulary, industrial productivity framing
+  = Makes the user feel like they're operating a system
+
+RIGHT: "Unlocks..." / "Requires" / "Unlocks"
+  = Game vocabulary, achievement/progression framing
+  = Makes the user feel like they're playing a game
+```
+
+**Implementation:** All player-facing text uses game language:
+- "Dependency" → "Requires" / "Unlocks"
+- "Blocked" → "Locked"
+- "Complete dependencies first" → Never show this; locked tasks just appear locked
+
+### Principle 3: Touch Is First-Class
+
+Mobile/tablet touch is not a degraded desktop experience. It's often the PRIMARY
+way nervous systems want to interact with spatial games.
+
+**Implementation requirements:**
+- Hit areas sized for fingers (min 44px, prefer 48px+)
+- Touch feedback (visual response on touch)
+- Gesture support (drag, pan, pinch)
+- No hover-dependent features
+- Touch end completes drag actions (don't rely on click)
+
 If you cannot answer confidently, re-read the soul transmission.
 
 ---
