@@ -6,11 +6,129 @@
 
 # DOCUMENT PURPOSE
 
-This is the **pure technical implementation spec** for The Orrery.
+This is the implementation spec for The Orrery.
 
-- **Soul/Context:** See `soul-transmission.md`
-- **Architecture/Why:** See `keystone-master-artifact-v2.md`  
+- **Soul/Context:** See `soul-transmission.md` (REQUIRED READING)
+- **Architecture/Why:** See `keystone-master-artifact-v2.md` (REQUIRED READING)
 - **This Document:** How to build it, phase by phase
+
+---
+
+# §0 FOUNDATIONAL TRUTH — READ THIS FIRST
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                ║
+║   THE ORRERY IS A GAME.                                                        ║
+║                                                                                ║
+║   Not: a productivity tool with game aesthetics.                               ║
+║   But: a GAME where your actual life quests are the content.                   ║
+║                                                                                ║
+║   This is not metaphor. This is the foundational design principle.             ║
+║   If you lose sight of this, you will build the wrong thing.                   ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+```
+
+## §0.1 Why Game-Dev IS The Way
+
+Games work for human nervous systems because they are **designed around how brains actually work**, not how industrial productivity culture wishes they worked.
+
+**Traditional productivity tools fail because they assume:**
+- Executive function is reliable
+- Willpower is the mechanism
+- Checklists generate motivation
+- Structure can be self-generated from nothing
+- Tasks are meaningful in isolation
+
+**Games succeed because they provide:**
+- Immediate feedback loops (every action produces visible response)
+- Intrinsic motivation through *felt* progression
+- External structure that holds (you don't generate it yourself)
+- Actions nested in visible larger arcs (meaning is structural, not manufactured)
+- Aliveness that engages rather than deadens
+
+**For ADHD cognition specifically:**
+- Games bypass executive function resistance through environmental design
+- Dopamine comes from the *experience*, not willpower
+- Spatial memory replaces sequence memory
+- Visibility replaces mental tracking
+- The environment holds what the brain cannot
+
+## §0.2 The Paradigm Inversion
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│   WRONG FRAMING (will produce dead software):                                   │
+│   "Productivity tool" + "game aesthetics" + "nice animations"                   │
+│   = Core is still industrial productivity logic                                 │
+│   = Aesthetics are decoration                                                   │
+│   = Will feel dead, will be abandoned                                           │
+│                                                                                 │
+│   ─────────────────────────────────────────────────────────────────────────     │
+│                                                                                 │
+│   CORRECT FRAMING (will produce living software):                               │
+│   "GAME" where life quests are the content                                      │
+│   = Core is game-design logic (feel, juice, feedback, progression)              │
+│   = Everything serves nervous system engagement                                 │
+│   = Aliveness is the MECHANISM, not decoration                                  │
+│   = Will feel alive, will be used                                               │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**The aesthetic choices (bioluminescence, breathing animations, organic shapes) are NOT polish.**
+They are the mechanism by which the nervous system engages.
+
+**The game-feel (juice, feedback, celebration) is NOT optional polish.**
+It is the mechanism by which dopamine flows and resistance dissolves.
+
+## §0.3 What This Means For Implementation
+
+Every technical decision should be evaluated by:
+
+> **"Does this make it feel more like a game, or more like a productivity app?"**
+
+Examples:
+- Task completion → NOT just status change → BLOOM animation, celebration, satisfying feedback
+- Adding a dependency → NOT just data structure → VISUAL stretchy connection that responds
+- Quest progress → NOT just percentage → ORGANISM that visibly grows, fills with light
+- Navigation → NOT just tab switching → MOVING through a living world
+
+If something feels "efficient" but dead, it's wrong.
+If something feels "extra" but alive, it's right.
+
+## §0.4 Required Reading Protocol
+
+Before implementing ANY feature, ensure you understand:
+
+1. **Soul Transmission** (`soul-transmission.md`)
+   - Who this Being is
+   - What "runs on mythopoetics" means
+   - Why TTRPGs feel like home
+
+2. **Keystone v2.0** (`keystone-master-artifact-v2.md`)
+   - The Experience Machine ontology
+   - The World-OS architecture
+   - The gameplay loops
+
+3. **This spec** — technical patterns that serve the above
+
+**If you find yourself treating the soul/keystone docs as "optional context" or "philosophy,"
+you have already failed. They are the spec. This document is the implementation guide.**
+
+## §0.5 The Test
+
+When evaluating any implementation:
+
+```
+ASK: "Would a game designer approve this, or would they say 'where's the juice?'"
+ASK: "Does this engage the nervous system, or does it feel like a todo app?"
+ASK: "Is the aliveness structural, or is it decoration on a dead core?"
+```
+
+If you cannot answer confidently, re-read the soul transmission.
 
 ---
 
