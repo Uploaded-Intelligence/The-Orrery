@@ -251,11 +251,11 @@ export function TaskDetailPanel({ taskId, onClose, onStartEdge }) {
               </span>
             </div>
 
-            {/* Dependencies */}
+            {/* What must be done first */}
             {dependsOn.length > 0 && (
               <div>
                 <label style={{ fontSize: '11px', color: COLORS.textMuted, textTransform: 'uppercase' }}>
-                  Depends On ({dependsOn.length})
+                  Requires ({dependsOn.length})
                 </label>
                 <div style={{ marginTop: '4px' }}>
                   {dependsOn.map((title, i) => (
@@ -281,11 +281,11 @@ export function TaskDetailPanel({ taskId, onClose, onStartEdge }) {
               </div>
             )}
 
-            {/* Blocks */}
+            {/* What this unlocks when done */}
             {outgoingEdges.length > 0 && (
               <div>
                 <label style={{ fontSize: '11px', color: COLORS.textMuted, textTransform: 'uppercase' }}>
-                  Blocks ({outgoingEdges.length})
+                  Unlocks ({outgoingEdges.length})
                 </label>
                 <div style={{ marginTop: '4px' }}>
                   {outgoingEdges.map(e => {

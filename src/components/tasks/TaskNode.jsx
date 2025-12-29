@@ -60,13 +60,20 @@ function getStatusStyle(status) {
 
 /**
  * ActionButton - Small circular button that appears near the task
+ * Touch-friendly with large hit area
  */
 function ActionButton({ x, y, icon: Icon, color, bgColor, onClick, title, delay = 0 }) {
+  const handleInteraction = (e) => {
+    e.stopPropagation();
+    onClick?.();
+  };
+
   return (
     <g
       transform={`translate(${x}, ${y})`}
-      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      style={{ cursor: 'pointer' }}
+      onClick={handleInteraction}
+      onTouchEnd={handleInteraction}
+      style={{ cursor: 'pointer', touchAction: 'none' }}
     >
       {/* Background circle */}
       <circle
@@ -541,36 +548,61 @@ export function TaskNode({
         }}
         style={{ cursor: 'crosshair', touchAction: 'none' }}
       >
-        {/* Invisible hit area */}
+        {/* Invisible hit area - LARGE for touch */}
         <circle
           cx={LAYOUT.NODE_WIDTH}
           cy={LAYOUT.NODE_HEIGHT / 2}
-          r="12"
+          r="24"
           fill="transparent"
         />
-        {/* Visible connector dot */}
+        {/* Visible connector dot - more visible when selected */}
         <circle
           cx={LAYOUT.NODE_WIDTH}
           cy={LAYOUT.NODE_HEIGHT / 2}
-          r={isEdgeSource ? 8 : 5}
-          fill={isEdgeSource ? COLORS.accentSecondary : COLORS.textMuted}
+          r={isEdgeSource ? 10 : (isSelected ? 8 : 6)}
+          fill={isEdgeSource ? COLORS.accentSecondary : (isSelected ? COLORS.accentPrimary : COLORS.textMuted)}
           stroke={COLORS.bgVoid}
           strokeWidth="2"
-          opacity={isEdgeSource ? 1 : (isSelected || isDragging ? 0.8 : 0.3)}
-          style={{ transition: 'opacity 0.15s, r 0.15s' }}
+          opacity={isEdgeSource ? 1 : (isSelected ? 0.9 : 0.5)}
+          style={{ transition: 'all 0.15s ease-out' }}
           className="connector-handle"
         />
+        {/* "Link from here" hint when selected */}
+        {isSelected && !isEdgeSource && (
+          <text
+            x={LAYOUT.NODE_WIDTH + 16}
+            y={LAYOUT.NODE_HEIGHT / 2 + 4}
+            fill={COLORS.accentPrimary}
+            fontSize="10"
+            opacity="0.7"
+          >
+            →
+          </text>
+        )}
         {/* Pulse animation when active */}
         {isEdgeSource && (
           <circle
             cx={LAYOUT.NODE_WIDTH}
             cy={LAYOUT.NODE_HEIGHT / 2}
-            r="12"
+            r="16"
             fill="none"
             stroke={COLORS.accentSecondary}
             strokeWidth="2"
-            opacity="0.4"
-          />
+            opacity="0.5"
+          >
+            <animate
+              attributeName="r"
+              values="10;18;10"
+              dur="1.5s"
+              repeatCount="indefinite"
+            />
+            <animate
+              attributeName="opacity"
+              values="0.6;0.2;0.6"
+              dur="1.5s"
+              repeatCount="indefinite"
+            />
+          </circle>
         )}
       </g>
 
@@ -668,23 +700,24 @@ export function TaskNode({
               onKeyDown={handleKeyDown}
               onClick={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
               placeholder="Task title"
               style={{
                 width: '100%',
-                padding: '6px 8px',
+                padding: '8px 10px',
                 marginBottom: '8px',
                 background: COLORS.bgElevated,
                 border: `1px solid ${COLORS.textMuted}40`,
                 borderRadius: '6px',
                 color: COLORS.textPrimary,
-                fontSize: '13px',
+                fontSize: '16px', // Larger for touch
                 fontWeight: 500,
                 boxSizing: 'border-box',
               }}
             />
 
             {/* Time + buttons row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
                 type="number"
                 value={editMinutes}
@@ -692,18 +725,19 @@ export function TaskNode({
                 onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 style={{
-                  width: '50px',
-                  padding: '4px 6px',
+                  width: '55px',
+                  padding: '6px 8px',
                   background: COLORS.bgElevated,
                   border: `1px solid ${COLORS.textMuted}40`,
                   borderRadius: '4px',
                   color: COLORS.textSecondary,
-                  fontSize: '12px',
+                  fontSize: '14px',
                   textAlign: 'center',
                 }}
               />
-              <span style={{ color: COLORS.textMuted, fontSize: '11px' }}>min</span>
+              <span style={{ color: COLORS.textMuted, fontSize: '12px' }}>min</span>
 
               <div style={{ flex: 1 }} />
 
@@ -716,15 +750,17 @@ export function TaskNode({
                   setEditMinutes(task.estimatedMinutes || 25);
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 style={{
-                  padding: '4px',
-                  background: 'transparent',
+                  padding: '8px',
+                  background: COLORS.bgElevated,
                   border: 'none',
+                  borderRadius: '4px',
                   color: COLORS.textMuted,
                   cursor: 'pointer',
                 }}
               >
-                <X size={16} />
+                <X size={18} />
               </button>
 
               {/* Save */}
@@ -734,20 +770,21 @@ export function TaskNode({
                   handleSave();
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 style={{
-                  padding: '4px 10px',
+                  padding: '8px 14px',
                   background: COLORS.accentSuccess,
                   border: 'none',
                   borderRadius: '4px',
                   color: 'white',
-                  fontSize: '12px',
+                  fontSize: '13px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
                 }}
               >
-                <Save size={12} />
+                <Save size={14} />
                 Save
               </button>
             </div>

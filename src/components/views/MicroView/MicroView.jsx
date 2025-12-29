@@ -438,8 +438,39 @@ export function MicroView() {
   }, [isPanning, panStart, edgeSourceId, pan, zoom, draggingTaskId, dragOffset]);
 
   // Touch end handler
-  const handleTouchEnd = useCallback(() => {
-    // Same as mouse up
+  const handleTouchEnd = useCallback((e) => {
+    // Handle edge creation completion on touch end
+    if (edgeSourceId) {
+      // Check if we're over any task (use last known mousePos from touch move)
+      const touchX = mousePos.x;
+      const touchY = mousePos.y;
+
+      // Find task under touch position
+      const targetTask = visibleTasks.find(task => {
+        const taskPos = positions.get(task.id);
+        if (!taskPos || task.id === edgeSourceId) return false;
+
+        // Check if touch is within task bounds (with padding for easier touch)
+        const padding = 20;
+        return touchX >= taskPos.x - padding &&
+               touchX <= taskPos.x + LAYOUT.NODE_WIDTH + padding &&
+               touchY >= taskPos.y - padding &&
+               touchY <= taskPos.y + LAYOUT.NODE_HEIGHT + padding;
+      });
+
+      if (targetTask) {
+        // Create the edge!
+        dispatch({
+          type: 'ADD_EDGE',
+          payload: { source: edgeSourceId, target: targetTask.id }
+        });
+      }
+
+      setEdgeSourceId(null);
+      return;
+    }
+
+    // Handle node drag end
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
       if (finalPos) {
@@ -460,7 +491,7 @@ export function MicroView() {
       setIsPanning(false);
       dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
     }
-  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions]);
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, positions]);
 
   // Node touch drag start (called from TaskNode)
   const handleNodeTouchStart = useCallback((taskId, e) => {
@@ -586,7 +617,7 @@ export function MicroView() {
             color: COLORS.accentSecondary,
             fontSize: '12px',
           }}>
-            Click target task to create dependency
+            Tap what this unlocks →
             <button
               onClick={cancelEdgeCreation}
               style={{
@@ -661,9 +692,10 @@ export function MicroView() {
               fontSize: '13px',
               cursor: 'pointer',
             }}
+            title="Link this task to what it unlocks"
           >
             <Link2 size={16} />
-            Add Dependency
+            Unlocks...
           </button>
         )}
 
