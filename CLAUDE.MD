@@ -1,225 +1,178 @@
 # CLAUDE.MD - The Orrery Project Guide
 
+## ⚠️ FOUNDATIONAL TRUTH — READ FIRST
+
+```
+╔══════════════════════════════════════════════════════════════════════════╗
+║  THE ORRERY IS A GAME.                                                   ║
+║  Not: a productivity tool with game aesthetics.                          ║
+║  But: a GAME where your actual life quests are the content.              ║
+╚══════════════════════════════════════════════════════════════════════════╝
+```
+
+**If you lose sight of this, you will build the wrong thing.**
+
+See `doc/orrery-implementation-spec.md` §0 for full explanation of WHY game-dev IS the way.
+
+---
+
+## 🔄 DEVELOPMENT LOOP — FOLLOW THIS
+
+When implementing changes, **always complete the full loop**:
+
+```
+1. IMPLEMENT  → Make the code change
+2. DOCUMENT   → Update spec if it's a pattern/principle (not just a bug fix)
+3. COMMIT     → Both together, same commit or sequential
+```
+
+### When to Update Documentation (§0.6 in spec)
+
+Update `doc/orrery-implementation-spec.md` when you:
+- Change a **UX/interaction pattern** (e.g., where actions appear)
+- Change **player-facing terminology** (e.g., dependency → unlocks)
+- Discover a **game-dev principle** that should guide future work
+- Change **architectural patterns** (e.g., how touch events are handled)
+
+**Do NOT wait to be reminded. Documentation IS part of the change.**
+
+---
+
 ## Project Overview
 
-**The Orrery** is a two-tier spatio-visual operating system that blends macro quest planning with micro-level task execution. It's an AI-powered project and task management system that makes overarching arcs/quests, actionable tasks, time-space, and possibilities **visible**.
+**The Orrery** is a two-tier spatio-visual operating system for WorldOE (World Operating Ecosystem). It makes quests, tasks, time-space, and possibilities **visible**.
 
-### Core Concept
+### Core Views
 
-The system operates on two levels:
-- **Macro View ("The Constellation")**: Shows all Quests as an orbital constellation
-- **Micro View ("The Task Engine")**: Infinite pan/zoom DAG canvas for task dependencies
+- **Macro View ("The Constellation")**: Quest orbital map with celestial vines
+- **Micro View ("The Task Engine")**: Pan/zoom DAG canvas for tasks
 
 ### Tech Stack
 
 - **Framework**: React 19 + Vite
 - **Icons**: lucide-react
 - **Language**: JSDoc-typed JavaScript (.jsx files)
-- **Persistence**: `window.storage` API (key-value store)
-- **AI Integration**: `window.claude.complete` API
+- **Persistence**: `window.storage` API
+- **AI Integration**: `window.claude.complete` API (Phase 5)
+
+---
+
+## Required Reading (In Order)
+
+1. **Soul Transmission** (`doc/soul-transmission.md`) — Who this Being is
+2. **Keystone v2.0** (`doc/keystone-master-artifact-v2.md`) — Architecture
+3. **Implementation Spec** (`doc/orrery-implementation-spec.md`) — How to build it
+
+**The soul and keystone docs are the spec. The implementation doc is the guide.**
+
+---
+
+## Current Implementation Status
+
+- **Phase 1-4**: Core functionality complete (views, state, interactions)
+- **Phase 5**: AI Integration (NOT STARTED)
+- **Phase 6**: Polish & Game-Feel (ONGOING)
+- **Phase 7**: Macro View Enhanced (COMPLETE - quest dragging, vines)
+
+### Recent Pattern Changes
+
+- **Contextual Actions**: Actions appear AT the task node, not in a distant toolbar (§0.6 Principle 1)
+- **Game Terminology**: "Unlocks/Requires" not "Dependency/Blocks" (§0.6 Principle 2)
+- **Touch-First**: 44px+ hit areas, proper touch handlers (§0.6 Principle 3)
+
+---
+
+## Key Interaction Design Principles
+
+From `doc/orrery-implementation-spec.md` §0.6:
+
+### Principle 1: Actions Appear AT Objects
+```
+WRONG: Select thing → Look at toolbar → Click → Action happens
+RIGHT: Touch thing → Actions bloom FROM it → Act directly
+```
+
+### Principle 2: Terminology Is Experience
+```
+WRONG: "Add Dependency" / "Depends On" / "Blocks"
+RIGHT: "Unlocks..." / "Requires" / "Unlocks"
+```
+
+### Principle 3: Touch Is First-Class
+- Hit areas: min 44px, prefer 48px+
+- Touch end completes drag actions (don't rely on click)
+- No hover-dependent features
+
+---
 
 ## Project Structure
 
 ```
 /The-Orrery
 ├── doc/
-│   ├── orrery-implementation-spec.md    # Full technical specification
-│   ├── soul-transmission.md             # Project philosophy & context
-│   └── keystone-master-artifact-v2.md   # Architecture & design rationale
+│   ├── orrery-implementation-spec.md    # Technical spec + principles (§0!)
+│   ├── soul-transmission.md             # Project philosophy
+│   └── keystone-master-artifact-v2.md   # Architecture
 ├── src/
-│   ├── App.jsx                          # Main application (currently Phase 0)
-│   ├── App.css                          # Styles
-│   ├── main.jsx                         # Entry point
-│   └── assets/                          # Static assets
-├── .github/workflows/
-│   └── node.js.yml                      # CI/CD configuration
-└── package.json                         # Dependencies & scripts
+│   ├── components/
+│   │   ├── views/          # MacroView, MicroView
+│   │   ├── tasks/          # TaskNode (with contextual actions)
+│   │   ├── quests/         # QuestOrb, QuestCard
+│   │   ├── edges/          # DependencyEdge
+│   │   ├── gps/            # TimeSpaceGPS
+│   │   └── panels/         # Detail panels
+│   ├── store/              # Reducer, context, persistence
+│   ├── utils/              # Layout, helpers
+│   └── constants/          # Colors, quest colors
+├── index.html              # iOS viewport-fit, safe-area
+└── package.json
 ```
+
+---
 
 ## Core Data Model
 
 ### Quest
-- **Purpose**: Overarching projects or goals
-- **Key Fields**: id, title, description, status, themeColor
-- **Status Values**: 'active' | 'paused' | 'completed' | 'archived'
+- Fields: id, title, description, status, themeColor, position
+- Status: 'active' | 'paused' | 'completed' | 'archived'
 
 ### Task
-- **Purpose**: Actionable work items
-- **Key Fields**: id, title, notes, questIds[], status, estimatedMinutes, actualMinutes
-- **Status Values**: 'locked' | 'available' | 'in_progress' | 'completed' | 'blocked'
-- **Note**: Many-to-many relationship with Quests
+- Fields: id, title, notes, questIds[], status, estimatedMinutes, position
+- Status: 'available' | 'in_progress' | 'completed' | 'blocked'
+- Note: 'locked' is computed from edges, not stored
 
-### Edge
-- **Purpose**: Task dependencies (Directed Acyclic Graph)
-- **Key Fields**: id, fromTaskId, toTaskId
-- **Behavior**: Creates dependency chains; tasks are "locked" until dependencies complete
+### Edge (Task Unlocking)
+- Fields: id, source, target
+- Creates unlock chains; tasks are locked until upstream tasks complete
 
-### TimeBlock
-- **Purpose**: Calendar-based time allocation
-- **Key Fields**: id, taskId, startTime, endTime, isActual (scheduled vs. what actually happened)
-
-## Core Principles
-
-1. **Visibility over hiding** - Everything that matters is visible
-2. **Dependency gating** - Can't see what you can't do yet
-3. **Quest-task nesting** - Local actions connect to epic arcs
-4. **AI as party member** - Synthesize, don't just store
-5. **Panic button exists** - "Actual" filter for overwhelm moments
-
-## Current Implementation Status
-
-**Phase 0: Foundation** (In Progress)
-- Data layer with Quest, Task, Edge, TimeBlock entities
-- Persistence using window.storage API
-- Reducer-based state management
-- Basic UI scaffolding
-
-See `doc/orrery-implementation-spec.md` for full phase roadmap.
-
-## Key Features to Understand
-
-### State Management
-- Uses `useReducer` for centralized state management
-- All mutations go through reducer actions
-- State automatically persists to window.storage
-
-### Dependency System
-- Tasks form a Directed Acyclic Graph (DAG)
-- Tasks are "locked" until their dependencies complete
-- System prevents circular dependencies
-
-### Time-Space GPS
-- Always-visible component showing current task, quest, time remaining
-- Tracks both estimated and actual time spent
-- Supports hard stops and progress indicators
-
-### AI Integration
-- `window.claude.complete` API for AI assistance
-- AI can generate quests from high-level goals
-- AI can break down quests into task graphs
-- AI provides contextual suggestions
-
-## Development Workflow
-
-### Install & Run
-```bash
-npm install
-npm run dev      # Start development server
-npm run build    # Production build
-npm run lint     # Run ESLint
-```
-
-### Git Workflow
-- **Current Branch**: `claude/update-claude-md-tQB6a`
-- **Main Branch**: (check git config for default)
-- Always develop on feature branches prefixed with `claude/`
-- Commit with clear, descriptive messages
-- Push to remote: `git push -u origin <branch-name>`
-
-### Code Style
-- JSDoc type annotations for all major functions and data structures
-- Functional React components with hooks
-- Reducer pattern for state management
-- No TypeScript (use JSDoc instead)
-
-## Working with This Codebase
-
-### When Adding Features
-1. Check the implementation spec (`doc/orrery-implementation-spec.md`) for planned architecture
-2. Follow the phased approach outlined in the spec
-3. Maintain the data model structure defined in the spec
-4. Update reducer actions for state changes
-5. Ensure persistence works correctly
-
-### When Reading Code
-- Start with `src/App.jsx` for the main application structure
-- Check reducer for available actions and state shape
-- Look for JSDoc type definitions at the top of files
-- Reference `doc/orrery-implementation-spec.md` for detailed specifications
-
-### When Debugging
-- Check browser console for persistence issues
-- Verify state updates through reducer actions
-- Use React DevTools to inspect component state
-- Check window.storage for persisted data
-
-### Avoid
-- Don't add external dependencies without checking constraints
-- Don't create TypeScript files (project uses JSDoc)
-- Don't modify core data model without referencing spec
-- Don't skip persistence layer for state changes
-
-## Key Documentation
-
-1. **Implementation Spec** (`doc/orrery-implementation-spec.md`)
-   - Complete technical specification
-   - Data model definitions
-   - Component architecture
-   - Phased roadmap (Phase 0-4)
-   - Reducer actions reference
-
-2. **Soul Transmission** (`doc/soul-transmission.md`)
-   - Project philosophy and vision
-   - Problem statement and motivation
-   - Design principles
-
-3. **Keystone Master Artifact** (`doc/keystone-master-artifact-v2.md`)
-   - Architecture decisions
-   - Why certain approaches were chosen
-   - System design rationale
-
-## AI Integration Points
-
-The Orrery is designed to work with AI assistance. Key integration points:
-
-1. **Quest Generation**: AI generates quests from high-level user goals
-2. **Task Breakdown**: AI breaks quests into actionable task graphs
-3. **Smart Scheduling**: AI suggests optimal time allocations
-4. **Context Awareness**: AI understands quest/task relationships
-5. **Synthesis**: AI provides insights from task/time data
-
-## Testing Approach
-
-- No formal test suite currently configured
-- Manual testing via `npm run dev`
-- CI runs lint checks via GitHub Actions
-- Future: Consider adding Jest/Vitest for unit tests
-
-## Project Philosophy
-
-The Orrery is designed as a "gameplay loop" for productivity:
-- Tasks aren't just checkboxes, they're part of epic quests
-- Time is visible and manageable, not anxiety-inducing
-- Dependencies make progress feel natural and gated
-- AI acts as a helpful party member, not an overlord
-- Visual representation makes the invisible visible
-
-## Common Tasks
-
-### Creating a Quest
-Use reducer action: `ADD_QUEST` with Quest object
-
-### Creating a Task
-Use reducer action: `ADD_TASK` with Task object
-
-### Creating Dependencies
-Use reducer action: `ADD_EDGE` with Edge object (fromTaskId → toTaskId)
-
-### Updating State
-All state changes must go through reducer actions to ensure persistence
-
-### Accessing Persisted Data
-Data is automatically loaded from window.storage on app initialization
-
-## Questions or Issues?
-
-- Check the implementation spec first
-- Review existing reducer actions for patterns
-- Consult the architecture docs for design rationale
-- Reference this CLAUDE.MD for orientation
+### QuestVine
+- Fields: id, sourceQuestId, targetQuestId, strength
+- Visual connections between quests (not blocking, just affinity)
 
 ---
 
-**Last Updated**: 2025-12-14
-**Current Phase**: Phase 0 (Foundation)
-**Version**: Pre-release development
+## The Test
+
+When evaluating any implementation:
+
+```
+ASK: "Would a game designer approve this, or would they say 'where's the juice?'"
+ASK: "Does this engage the nervous system, or does it feel like a todo app?"
+ASK: "Is the aliveness structural, or is it decoration on a dead core?"
+```
+
+---
+
+## Development Commands
+
+```bash
+npm install
+npm run dev      # Development server
+npm run build    # Production build
+npm run lint     # ESLint
+```
+
+---
+
+**Last Updated**: 2025-12-29
+**Current Focus**: Touch UX, Game-Feel, Documentation Loop
