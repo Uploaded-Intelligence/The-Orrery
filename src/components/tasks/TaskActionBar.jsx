@@ -90,10 +90,12 @@ export function TaskActionBar({ taskId, onClose }) {
     }
   };
 
+  // Position above TimeSpaceGPS (which is ~160px from bottom)
+  // Also use safe area inset for iOS home indicator
   return (
     <div style={{
       position: 'absolute',
-      bottom: '16px',
+      bottom: 'calc(180px + env(safe-area-inset-bottom, 0px))',
       left: '50%',
       transform: 'translateX(-50%)',
       background: COLORS.bgPanel,
@@ -104,9 +106,9 @@ export function TaskActionBar({ taskId, onClose }) {
       alignItems: 'center',
       gap: '12px',
       boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-      zIndex: 100,
-      minWidth: '400px',
-      maxWidth: '600px',
+      zIndex: 1001, // Above TimeSpaceGPS (1000)
+      minWidth: 'min(400px, 90vw)', // Responsive for smaller screens
+      maxWidth: 'min(600px, 95vw)',
     }}>
       {/* Close button */}
       <button

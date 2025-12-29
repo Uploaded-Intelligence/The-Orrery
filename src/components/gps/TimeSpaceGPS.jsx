@@ -129,10 +129,11 @@ export function TimeSpaceGPS() {
   };
   const timeState = getTimeState();
 
+  // Use safe area inset for iOS home indicator
   return (
     <div style={{
       position: 'fixed',
-      bottom: '16px',
+      bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 1000,
@@ -141,6 +142,7 @@ export function TimeSpaceGPS() {
       alignItems: 'center',
       gap: '8px',
       pointerEvents: 'auto',
+      maxWidth: 'min(600px, 95vw)', // Responsive for smaller screens
     }}>
       {/* Main GPS Panel */}
       <div style={{
@@ -149,8 +151,8 @@ export function TimeSpaceGPS() {
         border: `1px solid ${session ? COLORS.statusActive : COLORS.bgElevated}`,
         borderRadius: '16px',
         padding: '12px 20px',
-        minWidth: '420px',
-        maxWidth: '600px',
+        minWidth: 'min(420px, 90vw)', // Responsive for tablets/mobile
+        maxWidth: 'min(600px, 95vw)',
         boxShadow: session
           ? `0 4px 24px rgba(6, 182, 212, 0.2), 0 0 0 1px ${COLORS.statusActive}30`
           : '0 4px 24px rgba(0,0,0,0.4)',
