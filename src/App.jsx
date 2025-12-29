@@ -130,7 +130,11 @@ export default function Orrery() {
                 Macro
               </button>
               <button
-                onClick={() => dispatch({ type: 'SET_VIEW', payload: 'micro' })}
+                onClick={() => {
+                  // Clear quest focus to show ALL tasks when manually switching to Micro
+                  dispatch({ type: 'SET_FOCUS_QUEST', payload: null });
+                  dispatch({ type: 'SET_VIEW', payload: 'micro' });
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -143,6 +147,7 @@ export default function Orrery() {
                   cursor: 'pointer',
                   fontSize: '0.8125rem',
                 }}
+                title="View all tasks (mycelial network)"
               >
                 <Network size={14} />
                 Micro

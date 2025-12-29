@@ -113,7 +113,7 @@ export function MicroView() {
     state.quests.map((q, i) => ({
       id: q.id,
       title: q.title,
-      color: q.color || QUEST_COLORS[i % QUEST_COLORS.length],
+      color: q.themeColor || QUEST_COLORS[i % QUEST_COLORS.length],
     })),
     [state.quests]
   );
@@ -548,13 +548,32 @@ export function MicroView() {
           margin: 0,
           fontSize: '16px',
           fontWeight: 600,
-          color: COLORS.textPrimary,
+          color: focusedQuest ? focusedQuest.themeColor : COLORS.textPrimary,
         }}>
           {focusedQuest ? focusedQuest.title : 'All Tasks'}
         </h2>
         <span style={{ color: COLORS.textMuted, fontSize: '13px' }}>
           ({visibleTasks.length} tasks)
         </span>
+
+        {/* Clear focus button - view all tasks */}
+        {focusedQuest && (
+          <button
+            onClick={() => dispatch({ type: 'SET_FOCUS_QUEST', payload: null })}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '4px',
+              border: `1px solid ${COLORS.textMuted}40`,
+              background: 'transparent',
+              color: COLORS.textMuted,
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+            title="Clear focus - view all tasks"
+          >
+            × Clear Focus
+          </button>
+        )}
 
         <div style={{ flex: 1 }} />
 

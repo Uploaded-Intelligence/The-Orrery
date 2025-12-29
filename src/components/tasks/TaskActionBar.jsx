@@ -182,20 +182,12 @@ export function TaskActionBar({ taskId, onClose }) {
           </button>
         </div>
       ) : (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'text',
-          }}
-          onClick={() => setIsEditing(true)}
-        >
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{
             color: COLORS.textPrimary,
             fontSize: '14px',
             fontWeight: 500,
+            flex: 1,
           }}>
             {task.title}
           </span>
@@ -205,7 +197,25 @@ export function TaskActionBar({ taskId, onClose }) {
           }}>
             {task.estimatedMinutes || 25}m
           </span>
-          <Edit3 size={14} color={COLORS.textMuted} style={{ opacity: 0.5 }} />
+          <button
+            onClick={() => setIsEditing(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px 8px',
+              background: COLORS.bgElevated,
+              border: `1px solid ${COLORS.textMuted}40`,
+              borderRadius: '4px',
+              color: COLORS.textSecondary,
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+            title="Edit task title and time"
+          >
+            <Edit3 size={12} />
+            Edit
+          </button>
         </div>
       )}
 
