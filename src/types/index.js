@@ -22,6 +22,7 @@
  * @property {string} description - What this quest is about
  * @property {QuestStatus} status
  * @property {string} themeColor - Hex color for visual identity
+ * @property {{x: number, y: number}|null} position - Spatial position in macro view (null = auto-layout)
  * @property {string} createdAt - ISO timestamp
  * @property {string} updatedAt - ISO timestamp
  */
@@ -49,6 +50,15 @@
  */
 
 /**
+ * @typedef {Object} QuestVine
+ * @property {string} id - UUID
+ * @property {string} sourceQuestId - Origin quest
+ * @property {string} targetQuestId - Destination quest
+ * @property {number} strength - 0.0-1.0, affects visual thickness
+ * @property {string} createdAt - ISO timestamp
+ */
+
+/**
  * @typedef {Object} ActiveSession
  * @property {string} taskId - Currently focused task
  * @property {string} startedAt - ISO timestamp
@@ -63,6 +73,8 @@
  * @property {boolean} showActualOnly - Panic button
  * @property {{x: number, y: number}} microViewPosition
  * @property {number} microViewZoom
+ * @property {{x: number, y: number}} macroViewPosition
+ * @property {number} macroViewZoom
  */
 
 /**
@@ -70,6 +82,7 @@
  * @property {Quest[]} quests
  * @property {Task[]} tasks
  * @property {Edge[]} edges
+ * @property {QuestVine[]} questVines - Quest-to-quest connections (celestial vines)
  * @property {ActiveSession|null} activeSession
  * @property {ViewPreferences} preferences
  * @property {string} lastSyncedAt

@@ -26,6 +26,7 @@ export function orreryReducer(state, action) {
         quests: [],
         tasks: [],
         edges: [],
+        questVines: [],
         activeSession: null,
         preferences: {
           currentView: 'macro',
@@ -33,6 +34,8 @@ export function orreryReducer(state, action) {
           showActualOnly: false,
           microViewPosition: { x: 0, y: 0 },
           microViewZoom: 1.0,
+          macroViewPosition: { x: 0, y: 0 },
+          macroViewZoom: 1.0,
         },
         lastSyncedAt: now,
       };
@@ -70,6 +73,10 @@ export function orreryReducer(state, action) {
           ...t,
           questIds: t.questIds.filter(qid => qid !== action.payload),
         })),
+        // Also remove any vines involving this quest
+        questVines: (state.questVines || []).filter(v =>
+          v.sourceQuestId !== action.payload && v.targetQuestId !== action.payload
+        ),
         // Clear focus if this quest was focused
         preferences: {
           ...state.preferences,
@@ -77,6 +84,18 @@ export function orreryReducer(state, action) {
             ? null
             : state.preferences.focusQuestId,
         },
+        lastSyncedAt: now,
+      };
+
+    case 'UPDATE_QUEST_POSITION':
+      // Update quest position for macro view dragging
+      return {
+        ...state,
+        quests: state.quests.map(q =>
+          q.id === action.payload.id
+            ? { ...q, position: action.payload.position, updatedAt: now }
+            : q
+        ),
         lastSyncedAt: now,
       };
 
@@ -264,6 +283,58 @@ export function orreryReducer(state, action) {
       return {
         ...state,
         preferences: { ...state.preferences, microViewZoom: action.payload },
+      };
+
+    case 'SET_MACRO_POSITION':
+      return {
+        ...state,
+        preferences: { ...state.preferences, macroViewPosition: action.payload },
+      };
+
+    case 'SET_MACRO_ZOOM':
+      return {
+        ...state,
+        preferences: { ...state.preferences, macroViewZoom: action.payload },
+      };
+
+    // ─── Quest Vines (Celestial Connections) ───────────────────────────────
+    case 'ADD_QUEST_VINE': {
+      // Prevent duplicate vines
+      const existingVine = (state.questVines || []).find(
+        v => v.sourceQuestId === action.payload.sourceQuestId &&
+             v.targetQuestId === action.payload.targetQuestId
+      );
+      if (existingVine) return state;
+
+      return {
+        ...state,
+        questVines: [...(state.questVines || []), {
+          id: generateId(),
+          sourceQuestId: action.payload.sourceQuestId,
+          targetQuestId: action.payload.targetQuestId,
+          strength: action.payload.strength || 0.5,
+          createdAt: now,
+        }],
+        lastSyncedAt: now,
+      };
+    }
+
+    case 'DELETE_QUEST_VINE':
+      return {
+        ...state,
+        questVines: (state.questVines || []).filter(v => v.id !== action.payload),
+        lastSyncedAt: now,
+      };
+
+    case 'UPDATE_QUEST_VINE':
+      return {
+        ...state,
+        questVines: (state.questVines || []).map(v =>
+          v.id === action.payload.id
+            ? { ...v, ...action.payload.updates }
+            : v
+        ),
+        lastSyncedAt: now,
       };
 
     // ─── Bulk Operations ────────────────────────────────────────────────────
