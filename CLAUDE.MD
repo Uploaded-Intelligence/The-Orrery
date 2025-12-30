@@ -69,12 +69,46 @@
 ## 🔄 DEVELOPMENT LOOP — FOLLOW THIS
 
 ```
-1. IMPLEMENT  → Make the code change
-2. DOCUMENT   → Update spec if it's a pattern/principle
-3. COMMIT     → Both together, same commit or sequential
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   FOR EVERY CHANGE, ASK:                                                    │
+│                                                                             │
+│   1. Is this a NEW PATTERN or PRINCIPLE?                                    │
+│      YES → Update orrery-implementation-spec.md                             │
+│                                                                             │
+│   2. Is this part of a COMPLEX INITIATIVE (multi-session)?                  │
+│      YES → Update or create working doc in doc/                             │
+│           (e.g., ai-integration-architecture.md)                            │
+│                                                                             │
+│   3. Does this change HOW CLAUDE SHOULD WORK on this project?               │
+│      YES → Update CLAUDE.MD                                                 │
+│                                                                             │
+│   4. Does this affect the THREE-LAYER architecture understanding?           │
+│      YES → Update both CLAUDE.MD and relevant spec                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Documentation Triggers (Auto-Check After Implementation)
+
+| Change Type | Document to Update |
+|-------------|-------------------|
+| New interaction pattern (e.g., actions bloom from objects) | `orrery-implementation-spec.md` §0.6 |
+| New UI terminology decision | `orrery-implementation-spec.md` §0.6 |
+| Architecture decision (AI, data flow) | `doc/ai-integration-architecture.md` |
+| Phase progress or blockers | Relevant working doc |
+| New component pattern | `orrery-implementation-spec.md` |
+| Paradigm clarification | `CLAUDE.MD` + relevant doc |
+
+### Working Documents (For Complex Initiatives)
+
+Active working documents that should be updated as work progresses:
+
+- `doc/ai-integration-architecture.md` — Phase 5 Party implementation
+- `doc/orrery-implementation-spec.md` — Technical patterns and decisions
+
 **Do NOT wait to be reminded. Documentation IS part of the change.**
+**If you complete implementation without updating docs, THE WORK IS INCOMPLETE.**
 
 ---
 
@@ -195,5 +229,6 @@ npm run lint     # ESLint
 
 ---
 
-**Last Updated**: 2025-12-29
+**Last Updated**: 2025-12-30
 **Current Focus**: AI Integration as Party Members (Phase 5)
+**Active Working Doc**: `doc/ai-integration-architecture.md`
