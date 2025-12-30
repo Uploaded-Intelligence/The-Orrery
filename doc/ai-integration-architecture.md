@@ -17,7 +17,117 @@
 
 ---
 
-# §1 ARCHITECTURAL OVERVIEW
+# §0 MVP PROTOTYPE v0.1 — BUILD THIS FIRST
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   PROTOTYPE-FIRST: Test the FEEL before building infrastructure            │
+│                                                                             │
+│   Game dev wisdom: Flavor text before full systems.                         │
+│   If talking to Party members doesn't feel right, no amount of              │
+│   PostgreSQL will fix it.                                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## What We Build (v0.1)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   THE ORRERY (existing)              │   PARTY CHAT PANEL (new)             │
+│   ════════════════════               │   ══════════════════════             │
+│                                      │                                      │
+│   ┌─────────────────────────┐        │   ┌──────────────────────┐           │
+│   │                         │        │   │ [Nav] [Orc] [Scr] [St]│          │
+│   │   Quest constellation   │        │   ├──────────────────────┤           │
+│   │   Task nodes            │        │   │                      │           │
+│   │   GPS                   │        │   │  Oracle:             │           │
+│   │                         │        │   │  "The WorldOE quest  │           │
+│   │                         │        │   │   has momentum—you   │           │
+│   │                         │        │   │   were deep in the   │           │
+│   │                         │        │   │   Party architecture │           │
+│   │                         │        │   │   yesterday..."      │           │
+│   │                         │        │   │                      │           │
+│   │                         │        │   ├──────────────────────┤           │
+│   │                         │        │   │ [Type message...]    │           │
+│   └─────────────────────────┘        │   └──────────────────────┘           │
+│                                      │                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Technical Approach
+
+```javascript
+// Simplified flow - no PostgreSQL, no MCP, just prompt injection
+
+async function sendToParty(message, partyMember) {
+  // 1. Gather current state from existing localStorage
+  const orreryState = {
+    quests: getQuests(),
+    tasks: getTasks(),
+    currentFocus: getSelectedQuest(),
+    recentSessions: getRecentSessions()
+  };
+
+  // 2. Build system prompt with character + context
+  const systemPrompt = buildPartyPrompt(partyMember, orreryState);
+
+  // 3. Send to Claude API
+  const response = await claude.messages.create({
+    model: "claude-sonnet-4-20250514",
+    system: systemPrompt,
+    messages: [...conversationHistory, { role: "user", content: message }]
+  });
+
+  return response;
+}
+```
+
+## What We DON'T Build Yet
+
+| Skip for v0.1 | Why | Build When |
+|---------------|-----|------------|
+| PostgreSQL | localStorage works for prototype | When we need multi-device sync |
+| MCP servers | Prompt injection works for prototype | When context gets too large |
+| SillyTavern/LibreChat | Direct API is simpler | If we need better voice/character features |
+| Voice input/output | Text tests the interaction model | After chat feels right |
+| Party actions (Scribe creates tasks) | Read-only tests the feel | After conversation feels right |
+
+## Success Criteria for v0.1
+
+```
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║   v0.1 IS SUCCESSFUL WHEN:                                                 ║
+║                                                                            ║
+║   1. Player can open chat panel in Orrery                                  ║
+║   2. Player can select a Party member                                      ║
+║   3. Party member responds IN CHARACTER                                    ║
+║   4. Party member KNOWS current Orrery state (quests, tasks)               ║
+║   5. Conversation FEELS like talking to a companion, not a tool            ║
+║                                                                            ║
+║   TEST: "Oracle, what should I focus on?"                                  ║
+║   PASS: Oracle references actual quests and gives strategic advice         ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+```
+
+## Build Order (v0.1 only)
+
+```
+[ ] 1. Create PartyChat component (panel UI)
+[ ] 2. Write party member system prompts (character cards)
+[ ] 3. Build context injection (gather Orrery state → prompt)
+[ ] 4. Connect to Claude API
+[ ] 5. Test: Talk to Oracle about current quests
+[ ] 6. Iterate on personality/feel
+```
+
+---
+
+# §1 ARCHITECTURAL OVERVIEW (Full System — Build After v0.1 Validated)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
