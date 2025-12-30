@@ -4,12 +4,13 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff, Info } from 'lucide-react';
+import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff, Info, MessageSquare } from 'lucide-react';
 import { useOrrery } from '@/store';
 import { COLORS, QUEST_COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
 import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
+import { PartyChatPanel } from '@/components/party';
 
 /**
  * MicroView - Task DAG visualization
@@ -38,6 +39,9 @@ export function MicroView() {
 
   // Local UI state for showing all tasks vs focused only
   const [showAllTasks, setShowAllTasks] = useState(false);
+
+  // Party chat panel state
+  const [partyChatOpen, setPartyChatOpen] = useState(false);
 
   // Filter tasks - when focused, optionally show all with ghosting
   const visibleTasks = useMemo(() => {
@@ -720,6 +724,27 @@ export function MicroView() {
           </button>
         )}
 
+        {/* Party Chat button */}
+        <button
+          onClick={() => setPartyChatOpen(!partyChatOpen)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            background: partyChatOpen ? COLORS.accentPrimary + '20' : COLORS.bgElevated,
+            border: `1px solid ${partyChatOpen ? COLORS.accentPrimary : COLORS.textMuted}40`,
+            borderRadius: '6px',
+            color: partyChatOpen ? COLORS.accentPrimary : COLORS.textSecondary,
+            fontSize: '13px',
+            cursor: 'pointer',
+          }}
+          title="Talk to your Party"
+        >
+          <MessageSquare size={16} />
+          Party
+        </button>
+
         {/* Zoom controls */}
         <div style={{
           display: 'flex',
@@ -906,6 +931,11 @@ export function MicroView() {
       )}
 
       {/* Actions now appear contextually AT the task node - game-style! */}
+
+      {/* Party Chat Panel */}
+      {partyChatOpen && (
+        <PartyChatPanel onClose={() => setPartyChatOpen(false)} />
+      )}
     </div>
   );
 }
