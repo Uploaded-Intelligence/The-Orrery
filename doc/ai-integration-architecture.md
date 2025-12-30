@@ -117,13 +117,17 @@ async function sendToParty(message, partyMember) {
 ## Build Order (v0.1 only)
 
 ```
-[ ] 1. Create PartyChat component (panel UI)
-[ ] 2. Write party member system prompts (character cards)
-[ ] 3. Build context injection (gather Orrery state → prompt)
-[ ] 4. Connect to Claude API
+[x] 1. Create PartyChat component (panel UI)
+[x] 2. Write party member system prompts (character cards)
+[x] 3. Build context injection (gather Orrery state → prompt)
+[x] 4. Connect to Claude API (with mock mode fallback)
 [ ] 5. Test: Talk to Oracle about current quests
 [ ] 6. Iterate on personality/feel
 ```
+
+**STATUS**: Core implementation complete. Ready for testing.
+- Mock mode works without API key (for UI/UX iteration)
+- Live mode requires VITE_ANTHROPIC_API_KEY in .env
 
 ---
 
