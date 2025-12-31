@@ -22,7 +22,7 @@ Skills are markdown files that teach Claude specialized workflows. They trigger 
 
 ---
 
-## The Arsenal (26 Skills)
+## The Arsenal (50 Skills)
 
 ### Core Development Workflow (obra/superpowers)
 
