@@ -30,6 +30,7 @@ function QuestOrganismSVG({
   isCreatingVine,
   onSelect,
   onEdit,
+  onDiveIn,
   onDragStart,
   onVineStart,
   index
@@ -56,7 +57,7 @@ function QuestOrganismSVG({
 
   const handleDoubleClick = (e) => {
     e.stopPropagation();
-    onEdit(quest);
+    onDiveIn(quest);
   };
 
   const handleMouseDown = (e) => {
@@ -505,6 +506,9 @@ export function MacroView() {
   const [vineSourceId, setVineSourceId] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  // Track selection to prevent click from toggling it off immediately
+  const justSelectedRef = useRef(false);
+
   // Quest data with progress
   const questsWithData = useMemo(() =>
     state.quests.map(quest => ({
@@ -542,6 +546,11 @@ export function MacroView() {
       }
       setVineSourceId(null);
     } else {
+      // If we just selected via mouseDown, don't toggle off
+      if (justSelectedRef.current && questId === selectedQuestId) {
+        justSelectedRef.current = false;
+        return;
+      }
       setSelectedQuestId(questId === selectedQuestId ? null : questId);
       setSelectedVineId(null);
     }
@@ -573,6 +582,8 @@ export function MacroView() {
     });
     setSelectedQuestId(questId);
     setSelectedVineId(null);
+    // Mark that we just selected, so click doesn't toggle it off
+    justSelectedRef.current = true;
   }, [vineSourceId, positions, pan, zoom]);
 
   // ─── Vine Creation ─────────────────────────────────────────────────────────
@@ -960,7 +971,8 @@ export function MacroView() {
                 isDragging={draggingQuestId === quest.id}
                 isCreatingVine={!!vineSourceId}
                 onSelect={handleQuestClick}
-                onEdit={handleQuestDoubleClick}
+                onEdit={setEditingQuest}
+                onDiveIn={handleQuestDoubleClick}
                 onDragStart={handleQuestDragStart}
                 onVineStart={handleVineStart}
                 index={index}
