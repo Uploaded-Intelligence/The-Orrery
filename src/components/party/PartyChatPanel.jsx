@@ -251,9 +251,10 @@ export function PartyChatPanel({ onClose }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area */}
+      {/* Input area - extra bottom padding for TimeSpaceGPS bar */}
       <div style={{
         padding: '12px 16px',
+        paddingBottom: '120px', // Space for the GPS bar at bottom
         borderTop: `1px solid ${COLORS.bgElevated}`,
         display: 'flex',
         gap: '8px',
