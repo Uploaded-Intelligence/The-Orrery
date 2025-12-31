@@ -47,7 +47,7 @@ function QuestOrganismSVG({
   const glowIntensity = isDormant ? 0.2 : 0.3 + progress * 0.5;
 
   // Animation stagger
-  const animDelay = `${index * 0.15}s`;
+  const animationDelay = `${index * 0.15}s`;
 
   const handleClick = (e) => {
     e.stopPropagation();
