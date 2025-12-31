@@ -1,6 +1,15 @@
 # Skills Arsenal
 
-This document describes the complete skills library available to Claude for The-Orrery project and any other work.
+This document describes the skills library available to Claude for The-Orrery project.
+
+## Important: Environment Isolation
+
+**Claude Code runs in isolated containers per repository.** This means:
+- `~/.claude/skills/` is ephemeral and NOT shared across repos
+- Skills MUST live in `.claude/skills/` (repo level) to be portable
+- When you clone this repo, these skills come with it
+
+**Location:** `.claude/skills/` (project level, committed to git)
 
 ## How Skills Work
 
@@ -11,11 +20,9 @@ Skills are markdown files that teach Claude specialized workflows. They trigger 
 3. **Full load** - Only matched skills load completely (<5k tokens each)
 4. **Progressive disclosure** - Supporting files load only when needed
 
-**Location:** `~/.claude/skills/` (user-wide, available everywhere)
-
 ---
 
-## The Arsenal (59 Skills)
+## The Arsenal (26 Skills)
 
 ### Core Development Workflow (obra/superpowers)
 
