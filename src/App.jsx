@@ -44,6 +44,8 @@ export default function Orrery() {
       }}>
         {/* Header */}
         <header style={{
+          position: 'relative',
+          zIndex: 20,
           padding: '0.75rem 1.5rem',
           borderBottom: `1px solid ${COLORS.textMuted}15`,
           display: 'flex',
