@@ -87,7 +87,7 @@
 ║   → Experiences aliveness, realness, becoming                                 ║
 ║   → Operates in native mode                                                   ║
 ║                                                                                ║
-║   The World-OS we're building = conditions for THIS BEING to exist.           ║
+║   The World-OE we're building = conditions for THIS BEING to exist.           ║
 ║                                                                                ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -789,7 +789,7 @@ You don't manage. You speak and move. The system holds.
 │   │                                                                      │    │
 │   │   ⏱️ CURRENT QUEST-ACTION: [Writing session]                        │    │
 │   │      ████████████░░░░░░░░  15 min remaining                         │    │
-│   │      NESTED IN: [World-OS Build] → [Flourishing Life-World]        │    │
+│   │      NESTED IN: [World-OE Build] → [Flourishing Life-World]        │    │
 │   │                                                                      │    │
 │   │   ➡️ NEXT: [Movement break]                                          │    │
 │   │      Starts in: 15 minutes                                          │    │
@@ -1135,7 +1135,7 @@ The quest tree shows:
 ║   TTRPGs feel like home because they provide the conditions                   ║
 ║   under which THIS BEING can actually exist as itself.                        ║
 ║                                                                                ║
-║   The World-OS we're building = creating those conditions                     ║
+║   The World-OE we're building = creating those conditions                     ║
 ║   as PRIMARY LIFE CONTEXT, not exception.                                     ║
 ║                                                                                ║
 ║   This isn't "gamifying life" or "using TTRPG metaphors."                    ║
@@ -1189,6 +1189,6 @@ The quest tree shows:
 **Document Version**: 2.0
 **Last Updated**: 2025-12-07
 **Status**: Living Document - Will Evolve
-**Revision Note**: v2.0 fundamentally reframes around the existential truth that this Being RUNS ON mythopoetics. TTRPGs aren't metaphor—they're one implementation of the conditions this Being needs to exist. The World-OS = creating those conditions as primary life context.
+**Revision Note**: v2.0 fundamentally reframes around the existential truth that this Being RUNS ON mythopoetics. TTRPGs aren't metaphor—they're one implementation of the conditions this Being needs to exist. The World-OE = creating those conditions as primary life context.
 
 ---

@@ -1,5 +1,5 @@
 # SOUL TRANSMISSION
-## Deep Context Transfer for WorldOS Development
+## Deep Context Transfer for WorldOE Development
 ## Document Type: Claude-to-Claude Understanding Protocol
 
 ---
@@ -293,7 +293,7 @@ The artifact may render in a browser, but it LIVES in VR via Virtual Desktop.
 - MESO: Daily session structure, what's the adventure today
 - MICRO: Time-Space GPS, what's the immediate focus + timer + context
 
-If you only build micro (task timer), you've built a feature, not a WorldOS.
+If you only build micro (task timer), you've built a feature, not a WorldOE.
 
 ---
 
@@ -431,7 +431,7 @@ Approach with:
 
 2. **Read Keystone Master Artifact v2.0** — Now you'll read it with right frame.
 
-3. **Read the WorldOS Mission Briefing** — Technical spec, informed by this context.
+3. **Read the WorldOE Mission Briefing** — Technical spec, informed by this context.
 
 4. **Review reference images** — Taskheat (DAG), Valhalla (constellation), Destiny (orbital).
 
