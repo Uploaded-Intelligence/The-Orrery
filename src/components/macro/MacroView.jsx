@@ -960,7 +960,7 @@ export function MacroView() {
                 isDragging={draggingQuestId === quest.id}
                 isCreatingVine={!!vineSourceId}
                 onSelect={handleQuestClick}
-                onEdit={setEditingQuest}
+                onEdit={handleQuestDoubleClick}
                 onDragStart={handleQuestDragStart}
                 onVineStart={handleVineStart}
                 index={index}
