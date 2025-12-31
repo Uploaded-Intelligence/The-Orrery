@@ -886,6 +886,8 @@ export function MacroView() {
       <svg
         ref={svgRef}
         style={{
+          position: 'relative',
+          zIndex: 1,
           flex: 1,
           cursor: draggingQuestId ? 'grabbing' : (isPanning ? 'grabbing' : (vineSourceId ? 'crosshair' : 'grab')),
           userSelect: 'none',
