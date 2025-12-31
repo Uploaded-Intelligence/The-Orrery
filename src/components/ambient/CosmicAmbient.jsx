@@ -45,7 +45,7 @@ export function CosmicAmbient({ intensity = 'normal' }) {
         right: 0,
         bottom: 0,
         pointerEvents: 'none',
-        zIndex: 0,
+        zIndex: -1,
         overflow: 'hidden',
       }}
     >

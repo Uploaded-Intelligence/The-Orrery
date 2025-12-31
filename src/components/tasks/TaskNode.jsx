@@ -166,6 +166,7 @@ export function TaskNode({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editMinutes, setEditMinutes] = useState(task.estimatedMinutes || 25);
+  const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef(null);
 
   // Reset edit state when selection changes
@@ -298,13 +299,26 @@ export function TaskNode({
     });
   }
 
+  // Handle double-click - open edit mode (game-style: direct manipulation)
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    if (computedStatus !== 'locked' && !isGhosted) {
+      setIsEditing(true);
+    }
+  };
+
+  // Show actions on hover OR selection
+  const showActions = (isSelected || isHovered) && !isEditing && !isDragging && !isGhosted;
+
   return (
     <g
       transform={`translate(${position.x}, ${position.y})`}
       onClick={onClick}
-      onDoubleClick={onDoubleClick}
+      onDoubleClick={handleDoubleClick}
       onMouseDown={onDragStart}
       onTouchStart={onTouchStart}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{ cursor: getCursor(), touchAction: 'none' }}
     >
       {/* Drop shadow when dragging */}
@@ -640,11 +654,11 @@ export function TaskNode({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          CONTEXTUAL ACTIONS - Appear when selected (game-style!)
+          CONTEXTUAL ACTIONS - Appear on hover or selection (game-style!)
           Actions bloom from the node, not a distant toolbar
           ═══════════════════════════════════════════════════════════════ */}
-      {isSelected && !isEditing && !isDragging && (
-        <g>
+      {showActions && (
+        <g style={{ opacity: isSelected ? 1 : 0.9 }}>
           {/* Action buttons - vertical stack to the right */}
           {actions.map((action, i) => (
             <ActionButton
@@ -668,7 +682,7 @@ export function TaskNode({
             y2={LAYOUT.NODE_HEIGHT / 2}
             stroke={COLORS.accentSecondary}
             strokeWidth="2"
-            strokeOpacity="0.3"
+            strokeOpacity={isSelected ? 0.3 : 0.2}
             strokeDasharray="4 2"
           />
         </g>
