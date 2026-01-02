@@ -35,7 +35,7 @@
               ▼                          ▼                          ▼
     ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
     │  PART 1: THE    │       │  PART 2: THE    │       │  PART 3: THE    │
-    │  EXPERIENCE     │◄─────►│  OPERATING      │◄─────►│  WORLD-OS       │
+    │  EXPERIENCE     │◄─────►│  OPERATING      │◄─────►│  WORLD-OE       │
     │  MACHINE        │       │  SYSTEM         │       │  ARCHITECTURE   │
     └────────┬────────┘       └────────┬────────┘       └────────┬────────┘
              │                         │                          │
@@ -446,9 +446,12 @@ This is The Way.
 ```
    ┌────────────────────────────────────────────────────────────────────────────┐
    │  LAYER 6: ECOSYSTEM & PORTALS                                             │
-   │  Public-facing worlds (signal dock, performances)                         │
-   │  Where creations touch territory and people                               │
-   │  The circuit completes: experiencing → witnessed → echoes back            │
+   │  Public-facing worlds (The Outwards Irreal)                                | 
+   |  Purposes/functions: Hybridisation of beacon, invitation, garden, *space* & *place* |
+   │  Where creations touch territory and KEY peoples, niches & communities     |                  
+   │  The cybernetic circuit completes: 
+   |  Experiencing → witnessed (outsource "finding algorithms") → echoed & found by Kin 
+   |  ... → more
    ├────────────────────────────────────────────────────────────────────────────┤
    │  LAYER 5: COGNITIVE OPS                                                   │
    │  Capture → Transmute → Weave → Surface                                    │
@@ -701,19 +704,19 @@ You don't manage. You speak and move. The system holds.
 ```
    ┌────────────────────────────────────────────────────────────────────────────┐
    │                                                                            │
-   │   INTERNAL WORLDING                    EXTERNAL WORLDING                  │
-   │   (Obsidian / Self-Lore)              (Signal Dock / Public)              │
-   │                                                                            │
+   │   INTERNAL WORLDING (Self-Lore & Worlding)            EXTERNAL WORLDING  │
+   │   (Inwards Irreal: LLMs -> Obsidian/ Capacities)     (Outwards Irreal: Public) │
+   │                                                                           │
    │   ┌───────────────────────┐           ┌───────────────────────┐           │
    │   │                       │           │                       │           │
-   │   │  Plural ecology       │           │  Beacon & docking     │           │
-   │   │  Character cards      │    ──►    │  bay for the world    │           │
+   │   │  Plural ecology       │           │  Beacon & visiting    │           │
+   │   │  Character cards      │    ──►    │  Garden space for the world │     │
    │   │  Therapeutic lore     │           │                       │           │
    │   │  Private mythos       │           │  Creations witnessed  │           │
    │   │                       │           │  by others            │           │
    │   │  (Engine room)        │           │                       │           │
-   │   │                       │           │  (Extends world       │           │
-   │   └───────────────────────┘           │   outward)            │           │
+   │   │                       │           │ (Extends inner worldings           │
+   │   └───────────────────────┘           │   outwards!)          │           │
    │                                       │                       │           │
    │                                       └───────────────────────┘           │
    │                                                                            │
@@ -1000,7 +1003,7 @@ The quest tree shows:
    │   SUPPORT SYSTEMS:                                                          │
    │                                                                             │
    │   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐            │
-   │   │    OBSIDIAN     │  │      LLM        │  │   SIGNAL DOCK   │            │
+   │   │    OBSIDIAN     │  │      LLM        │  │The Outwards Irreal            │
    │   │                 │  │   (Claude)      │  │                 │            │
    │   │  Internal lore  │  │                 │  │  Public-facing  │            │
    │   │  Plural selves  │  │  Voice → text   │  │  Creations out  │            │
@@ -1091,7 +1094,7 @@ The quest tree shows:
 ║   Quest tree shows visible progress across weeks, months.                    ║
 ║   "Look at all this. Look where I was. Look where I am."                    ║
 ║   Allies populating. Connections real.                                       ║
-║   Signal Dock receiving visitors. Creations witnessed.                       ║
+║   The Outwards Irreal receiving visitors. Creations witnessed.                  ║
 ║   Circuit completing: experiencing → witnessed → echoes back.                ║
 ║                                                                                ║
 ║   THE FEELING:                                                                 ║
