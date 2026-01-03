@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
 // components/tasks/TaskNode.jsx
 // Task node for Micro View DAG - Enhanced with contextual actions
-// Actions appear AT the node - game-style, not productivity toolbar
+// Direct inline editing: double-click title/time to edit in place
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react';
-import { Circle, CheckCircle2, Lock, Play, Trash2, Edit3, RotateCcw, Save, X } from 'lucide-react';
+import { Circle, CheckCircle2, Lock, Play, Trash2, RotateCcw } from 'lucide-react';
 import { COLORS } from '@/constants';
 import { LAYOUT } from '@/utils';
 
@@ -162,39 +162,32 @@ export function TaskNode({
   const style = getStatusStyle(computedStatus);
   const Icon = style.icon;
 
-  // Edit mode state
-  const [isEditing, setIsEditing] = useState(false);
+  // Inline edit state - which field is being edited ('title' | 'minutes' | null)
+  const [editingField, setEditingField] = useState(null);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editMinutes, setEditMinutes] = useState(task.estimatedMinutes || 25);
   const [isHovered, setIsHovered] = useState(false);
-  const inputRef = useRef(null);
+  const titleInputRef = useRef(null);
+  const minutesInputRef = useRef(null);
 
-  // Reset edit form values when task changes (but don't auto-close edit mode)
+  // Reset edit values when task changes
   useEffect(() => {
-    if (!isEditing) {
+    if (!editingField) {
       setEditTitle(task.title);
       setEditMinutes(task.estimatedMinutes || 25);
     }
-  }, [task.title, task.estimatedMinutes, isEditing]);
-
-  // Close edit mode when clicking outside (selection lost while not editing)
-  useEffect(() => {
-    if (!isSelected && !isHovered && isEditing) {
-      // Small delay to prevent race with double-click
-      const timer = setTimeout(() => {
-        setIsEditing(false);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isSelected, isHovered, isEditing]);
+  }, [task.title, task.estimatedMinutes, editingField]);
 
   // Focus input when entering edit mode
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+    if (editingField === 'title' && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    } else if (editingField === 'minutes' && minutesInputRef.current) {
+      minutesInputRef.current.focus();
+      minutesInputRef.current.select();
     }
-  }, [isEditing]);
+  }, [editingField]);
 
   // Apply ghosting (for quest focus overlay)
   const ghostMultiplier = isGhosted ? 0.35 : 1;
@@ -229,13 +222,13 @@ export function TaskNode({
     return 'transparent';
   };
 
-  // Handle save from edit mode
+  // Save current edit and close
   const handleSave = () => {
     onUpdate?.({
       title: editTitle,
       estimatedMinutes: parseInt(editMinutes) || 25,
     });
-    setIsEditing(false);
+    setEditingField(null);
   };
 
   // Handle key events in edit mode
@@ -244,17 +237,35 @@ export function TaskNode({
     if (e.key === 'Enter') {
       handleSave();
     } else if (e.key === 'Escape') {
-      setIsEditing(false);
+      setEditingField(null);
       setEditTitle(task.title);
       setEditMinutes(task.estimatedMinutes || 25);
+    } else if (e.key === 'Tab' && !e.shiftKey && editingField === 'title') {
+      // Tab from title to minutes
+      e.preventDefault();
+      setEditingField('minutes');
+    } else if (e.key === 'Tab' && e.shiftKey && editingField === 'minutes') {
+      // Shift+Tab from minutes to title
+      e.preventDefault();
+      setEditingField('title');
     }
+  };
+
+  // Handle blur - save and close
+  const handleBlur = (e) => {
+    // Don't close if focus is moving to another input in the same node
+    const relatedTarget = e.relatedTarget;
+    if (relatedTarget && (relatedTarget === titleInputRef.current || relatedTarget === minutesInputRef.current)) {
+      return;
+    }
+    handleSave();
   };
 
   // Action buttons position - appear to the right of the node
   const actionX = LAYOUT.NODE_WIDTH + 24;
   const actionStartY = LAYOUT.NODE_HEIGHT / 2;
 
-  // Build list of available actions based on status
+  // Build list of available actions based on status (no Edit button - use inline editing)
   const actions = [];
 
   if (computedStatus === 'available' && onStartSession) {
@@ -287,17 +298,6 @@ export function TaskNode({
     });
   }
 
-  // Edit is always available (except when locked)
-  if (computedStatus !== 'locked') {
-    actions.push({
-      icon: Edit3,
-      color: COLORS.textSecondary,
-      bgColor: COLORS.bgElevated,
-      onClick: () => setIsEditing(true),
-      title: 'Edit',
-    });
-  }
-
   // Delete is always available
   if (onDelete) {
     actions.push({
@@ -309,22 +309,13 @@ export function TaskNode({
     });
   }
 
-  // Handle double-click - open edit mode (game-style: direct manipulation)
-  const handleDoubleClick = (e) => {
-    e.stopPropagation();
-    if (computedStatus !== 'locked' && !isGhosted) {
-      setIsEditing(true);
-    }
-  };
-
-  // Show actions on hover OR selection
-  const showActions = (isSelected || isHovered) && !isEditing && !isDragging && !isGhosted;
+  // Show actions on hover OR selection (but not while editing)
+  const showActions = (isSelected || isHovered) && !editingField && !isDragging && !isGhosted;
 
   return (
     <g
       transform={`translate(${position.x}, ${position.y})`}
       onClick={onClick}
-      onDoubleClick={handleDoubleClick}
       onMouseDown={onDragStart}
       onTouchStart={onTouchStart}
       onMouseEnter={() => setIsHovered(true)}
@@ -473,31 +464,111 @@ export function TaskNode({
         />
       </foreignObject>
 
-      {/* Task title */}
-      <text
-        x="42"
-        y="26"
-        fill={style.text}
-        fontSize="13"
-        fontWeight="600"
-        opacity={effectiveOpacity}
-        style={{ pointerEvents: 'none' }}
-      >
-        {task.title.length > 22 ? task.title.slice(0, 20) + '...' : task.title}
-      </text>
+      {/* ═══════════════════════════════════════════════════════════════
+          TITLE - Display or inline edit
+          Double-click to edit in place
+          ═══════════════════════════════════════════════════════════════ */}
+      {editingField === 'title' ? (
+        <foreignObject x="38" y="10" width={LAYOUT.NODE_WIDTH - 50} height="24">
+          <input
+            ref={titleInputRef}
+            type="text"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              height: '100%',
+              padding: '2px 6px',
+              background: COLORS.bgElevated,
+              border: `1px solid ${COLORS.accentPrimary}`,
+              borderRadius: '4px',
+              color: COLORS.textPrimary,
+              fontSize: '13px',
+              fontWeight: 600,
+              boxSizing: 'border-box',
+              outline: 'none',
+            }}
+          />
+        </foreignObject>
+      ) : (
+        <text
+          x="42"
+          y="26"
+          fill={style.text}
+          fontSize="13"
+          fontWeight="600"
+          opacity={effectiveOpacity}
+          style={{
+            cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit',
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (computedStatus !== 'locked' && !isGhosted) {
+              setEditingField('title');
+            }
+          }}
+        >
+          {task.title.length > 22 ? task.title.slice(0, 20) + '...' : task.title}
+        </text>
+      )}
 
-      {/* Estimated time */}
-      <text
-        x="42"
-        y="44"
-        fill={COLORS.textMuted}
-        fontSize="11"
-        opacity={effectiveOpacity * 0.8}
-        style={{ pointerEvents: 'none' }}
-      >
-        {task.estimatedMinutes ? `${task.estimatedMinutes}m` : '—'}
-        {task.actualMinutes && ` (${task.actualMinutes}m actual)`}
-      </text>
+      {/* ═══════════════════════════════════════════════════════════════
+          ESTIMATED TIME - Display or inline edit
+          Double-click to edit in place
+          ═══════════════════════════════════════════════════════════════ */}
+      {editingField === 'minutes' ? (
+        <foreignObject x="38" y="32" width="60" height="20">
+          <input
+            ref={minutesInputRef}
+            type="number"
+            value={editMinutes}
+            onChange={(e) => setEditMinutes(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            style={{
+              width: '45px',
+              height: '100%',
+              padding: '2px 4px',
+              background: COLORS.bgElevated,
+              border: `1px solid ${COLORS.accentPrimary}`,
+              borderRadius: '4px',
+              color: COLORS.textSecondary,
+              fontSize: '11px',
+              textAlign: 'center',
+              boxSizing: 'border-box',
+              outline: 'none',
+            }}
+          />
+        </foreignObject>
+      ) : (
+        <text
+          x="42"
+          y="44"
+          fill={COLORS.textMuted}
+          fontSize="11"
+          opacity={effectiveOpacity * 0.8}
+          style={{
+            cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit',
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (computedStatus !== 'locked' && !isGhosted) {
+              setEditingField('minutes');
+            }
+          }}
+        >
+          {task.estimatedMinutes ? `${task.estimatedMinutes}m` : '—'}
+          {task.actualMinutes && ` (${task.actualMinutes}m actual)`}
+        </text>
+      )}
 
       {/* Quest badges row */}
       <g transform={`translate(12, ${LAYOUT.NODE_HEIGHT - 22})`}>
@@ -667,7 +738,7 @@ export function TaskNode({
           CONTEXTUAL ACTIONS - Appear on hover or selection (game-style!)
           Actions bloom from the node, not a distant toolbar
           ═══════════════════════════════════════════════════════════════ */}
-      {showActions && (
+      {showActions && actions.length > 0 && (
         <g style={{ opacity: isSelected ? 1 : 0.9 }}>
           {/* Action buttons - vertical stack to the right */}
           {actions.map((action, i) => (
@@ -696,125 +767,6 @@ export function TaskNode({
             strokeDasharray="4 2"
           />
         </g>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════
-          EDIT PANEL - Appears attached to the node when editing
-          Shows when editing, regardless of selection state
-          ═══════════════════════════════════════════════════════════════ */}
-      {isEditing && (
-        <foreignObject
-          x={LAYOUT.NODE_WIDTH + 12}
-          y="-10"
-          width="220"
-          height={LAYOUT.NODE_HEIGHT + 20}
-        >
-          <div style={{
-            background: COLORS.bgPanel,
-            border: `2px solid ${COLORS.accentPrimary}`,
-            borderRadius: '10px',
-            padding: '10px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-          }}>
-            {/* Title input */}
-            <input
-              ref={inputRef}
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              placeholder="Task title"
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                marginBottom: '8px',
-                background: COLORS.bgElevated,
-                border: `1px solid ${COLORS.textMuted}40`,
-                borderRadius: '6px',
-                color: COLORS.textPrimary,
-                fontSize: '16px', // Larger for touch
-                fontWeight: 500,
-                boxSizing: 'border-box',
-              }}
-            />
-
-            {/* Time + buttons row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                type="number"
-                value={editMinutes}
-                onChange={(e) => setEditMinutes(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                style={{
-                  width: '55px',
-                  padding: '6px 8px',
-                  background: COLORS.bgElevated,
-                  border: `1px solid ${COLORS.textMuted}40`,
-                  borderRadius: '4px',
-                  color: COLORS.textSecondary,
-                  fontSize: '14px',
-                  textAlign: 'center',
-                }}
-              />
-              <span style={{ color: COLORS.textMuted, fontSize: '12px' }}>min</span>
-
-              <div style={{ flex: 1 }} />
-
-              {/* Cancel */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditing(false);
-                  setEditTitle(task.title);
-                  setEditMinutes(task.estimatedMinutes || 25);
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                style={{
-                  padding: '8px',
-                  background: COLORS.bgElevated,
-                  border: 'none',
-                  borderRadius: '4px',
-                  color: COLORS.textMuted,
-                  cursor: 'pointer',
-                }}
-              >
-                <X size={18} />
-              </button>
-
-              {/* Save */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSave();
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                style={{
-                  padding: '8px 14px',
-                  background: COLORS.accentSuccess,
-                  border: 'none',
-                  borderRadius: '4px',
-                  color: 'white',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Save size={14} />
-                Save
-              </button>
-            </div>
-          </div>
-        </foreignObject>
       )}
     </g>
   );
