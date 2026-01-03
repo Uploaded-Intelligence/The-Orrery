@@ -82,11 +82,19 @@ function formatTime(minutes) {
  * ActionButton - Contextual action that appears on hover/select
  */
 function ActionButton({ x, y, icon: Icon, color, bgColor, onClick, title, delay = 0 }) {
+  const handleInteraction = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onClick?.();
+  };
+
   return (
     <g
       transform={`translate(${x}, ${y})`}
-      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      onTouchEnd={(e) => { e.stopPropagation(); onClick?.(); }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onClick={handleInteraction}
+      onTouchEnd={handleInteraction}
       style={{ cursor: 'pointer', touchAction: 'none' }}
     >
       <circle
