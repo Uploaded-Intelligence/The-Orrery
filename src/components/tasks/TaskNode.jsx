@@ -1,57 +1,66 @@
 // ═══════════════════════════════════════════════════════════════
 // components/tasks/TaskNode.jsx
-// Task node for Micro View DAG - Enhanced with contextual actions
-// Direct inline editing: double-click title/time to edit in place
+// Task node for Micro View DAG - ADHD-Optimized Mythopoetic Design
+//
+// Design principles:
+// - TIME IS HERO: Large, prominent time display (fights time blindness)
+// - VISUAL CLARITY: Clear hierarchy, not corporate blandness
+// - MYTHOPOETIC: Feels like a cosmic artifact, not a Jira card
+// - DIRECT MANIPULATION: Double-click to edit in place
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react';
-import { Circle, CheckCircle2, Lock, Play, Trash2, RotateCcw } from 'lucide-react';
+import { Circle, CheckCircle2, Lock, Play, Trash2, RotateCcw, Clock } from 'lucide-react';
 import { COLORS } from '@/constants';
 import { LAYOUT } from '@/utils';
 
 /**
  * Get visual style based on task status
- * @param {'locked' | 'available' | 'in_progress' | 'completed'} status
  */
 function getStatusStyle(status) {
   switch (status) {
     case 'locked':
       return {
-        bg: COLORS.bgPanel,
+        bg: 'rgba(30, 30, 40, 0.8)',
         border: COLORS.statusLocked,
         text: COLORS.textMuted,
-        opacity: 0.6,
+        glow: 'none',
+        opacity: 0.5,
         icon: Lock,
       };
     case 'available':
       return {
-        bg: COLORS.bgElevated,
+        bg: 'rgba(40, 45, 60, 0.95)',
         border: COLORS.statusAvailable,
         text: COLORS.textPrimary,
+        glow: `0 0 20px ${COLORS.statusAvailable}40`,
         opacity: 1,
         icon: Circle,
       };
     case 'in_progress':
       return {
-        bg: COLORS.bgElevated,
+        bg: 'rgba(50, 45, 70, 0.95)',
         border: COLORS.statusActive,
         text: COLORS.textPrimary,
+        glow: `0 0 25px ${COLORS.statusActive}50`,
         opacity: 1,
         icon: Play,
       };
     case 'completed':
       return {
-        bg: COLORS.bgPanel,
+        bg: 'rgba(35, 45, 40, 0.85)',
         border: COLORS.statusComplete,
         text: COLORS.textSecondary,
-        opacity: 0.8,
+        glow: `0 0 15px ${COLORS.statusComplete}30`,
+        opacity: 0.75,
         icon: CheckCircle2,
       };
     default:
       return {
-        bg: COLORS.bgPanel,
+        bg: 'rgba(30, 30, 40, 0.7)',
         border: COLORS.textMuted,
         text: COLORS.textSecondary,
+        glow: 'none',
         opacity: 0.5,
         icon: Circle,
       };
@@ -59,23 +68,27 @@ function getStatusStyle(status) {
 }
 
 /**
- * ActionButton - Small circular button that appears near the task
- * Touch-friendly with large hit area
+ * Format time for display - ADHD friendly (clear, scannable)
+ */
+function formatTime(minutes) {
+  if (!minutes) return '—';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
+/**
+ * ActionButton - Contextual action that appears on hover/select
  */
 function ActionButton({ x, y, icon: Icon, color, bgColor, onClick, title, delay = 0 }) {
-  const handleInteraction = (e) => {
-    e.stopPropagation();
-    onClick?.();
-  };
-
   return (
     <g
       transform={`translate(${x}, ${y})`}
-      onClick={handleInteraction}
-      onTouchEnd={handleInteraction}
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      onTouchEnd={(e) => { e.stopPropagation(); onClick?.(); }}
       style={{ cursor: 'pointer', touchAction: 'none' }}
     >
-      {/* Background circle */}
       <circle
         cx="0"
         cy="0"
@@ -83,29 +96,12 @@ function ActionButton({ x, y, icon: Icon, color, bgColor, onClick, title, delay 
         fill={bgColor || COLORS.bgPanel}
         stroke={color}
         strokeWidth="2"
-        style={{
-          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
-        }}
+        style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))' }}
       >
-        {/* Pop-in animation */}
-        <animate
-          attributeName="r"
-          from="0"
-          to="16"
-          dur="0.15s"
-          begin={`${delay}s`}
-          fill="freeze"
-        />
+        <animate attributeName="r" from="0" to="16" dur="0.15s" begin={`${delay}s`} fill="freeze" />
       </circle>
-      {/* Icon */}
       <foreignObject x="-10" y="-10" width="20" height="20">
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
           <Icon size={14} color={color} />
         </div>
       </foreignObject>
@@ -115,27 +111,13 @@ function ActionButton({ x, y, icon: Icon, color, bgColor, onClick, title, delay 
 }
 
 /**
- * @param {Object} props
- * @param {import('@/types').Task} props.task
- * @param {string} props.computedStatus - Status after dependency check
- * @param {{ x: number, y: number }} props.position
- * @param {boolean} props.isSelected
- * @param {Function} props.onClick
- * @param {Function} props.onDoubleClick
- * @param {Function} props.onDragStart - Called on mouse down to start node dragging
- * @param {Function} props.onConnectorDragStart - Called on connector mouse down to start edge creation
- * @param {Function} props.onTouchStart - Called on touch start for mobile node dragging
- * @param {Function} props.onConnectorTouchStart - Called on connector touch start for mobile edge creation
- * @param {boolean} props.isEdgeSource - Currently selected as edge source
- * @param {boolean} props.isGhosted - Dimmed for quest focus overlay
- * @param {boolean} props.isDragging - Currently being dragged
- * @param {boolean} props.isCreatingEdge - Edge creation in progress (show drop zone)
- * @param {Array<{ id: string, title: string, color: string }>} props.quests - Quest info for badges
- * @param {Function} props.onStartSession - Start a session for this task
- * @param {Function} props.onComplete - Mark task complete
- * @param {Function} props.onReopen - Reopen completed task
- * @param {Function} props.onDelete - Delete the task
- * @param {Function} props.onUpdate - Update task (title, minutes)
+ * TaskNode - ADHD-optimized task display
+ *
+ * Layout:
+ * ┌─────────────────────────────────┐
+ * │ ⬤ Task Title Here          25m │  ← Time is BIG and prominent
+ * │   Quest Badge                   │
+ * └─────────────────────────────────┘
  */
 export function TaskNode({
   task,
@@ -143,7 +125,6 @@ export function TaskNode({
   position,
   isSelected,
   onClick,
-  onDoubleClick,
   onDragStart,
   onConnectorDragStart,
   onTouchStart,
@@ -162,7 +143,7 @@ export function TaskNode({
   const style = getStatusStyle(computedStatus);
   const Icon = style.icon;
 
-  // Inline edit state - which field is being edited ('title' | 'minutes' | null)
+  // Inline edit state
   const [editingField, setEditingField] = useState(null);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editMinutes, setEditMinutes] = useState(task.estimatedMinutes || 25);
@@ -189,40 +170,30 @@ export function TaskNode({
     }
   }, [editingField]);
 
-  // Apply ghosting (for quest focus overlay)
-  const ghostMultiplier = isGhosted ? 0.35 : 1;
+  // Ghosting for quest focus
+  const ghostMultiplier = isGhosted ? 0.3 : 1;
   const effectiveOpacity = style.opacity * ghostMultiplier;
 
-  // Get quest badges for this task (max 3 visible)
-  const taskQuests = quests.filter(q => task.questIds.includes(q.id)).slice(0, 3);
+  // Quest info
+  const taskQuests = quests.filter(q => task.questIds.includes(q.id)).slice(0, 2);
   const primaryQuest = taskQuests[0];
-  const hasMoreQuests = task.questIds.length > 3;
 
-  // Determine cursor based on state
+  // Cursor
   const getCursor = () => {
     if (isDragging) return 'grabbing';
     if (computedStatus === 'locked' || isGhosted) return 'not-allowed';
     return 'grab';
   };
 
-  // Calculate progress percentage for fill effect
+  // Progress
   const getProgressPercent = () => {
     if (computedStatus === 'completed') return 100;
     if (!task.estimatedMinutes) return 0;
-    const actual = task.actualMinutes || 0;
-    return Math.min(100, (actual / task.estimatedMinutes) * 100);
+    return Math.min(100, ((task.actualMinutes || 0) / task.estimatedMinutes) * 100);
   };
   const progressPercent = getProgressPercent();
 
-  // Get progress fill color
-  const getProgressColor = () => {
-    if (computedStatus === 'completed') return COLORS.statusComplete;
-    if (computedStatus === 'in_progress') return COLORS.statusActive;
-    if (progressPercent > 0) return COLORS.accentPrimary;
-    return 'transparent';
-  };
-
-  // Save current edit and close
+  // Save edit
   const handleSave = () => {
     onUpdate?.({
       title: editTitle,
@@ -231,85 +202,47 @@ export function TaskNode({
     setEditingField(null);
   };
 
-  // Handle key events in edit mode
+  // Keyboard handling
   const handleKeyDown = (e) => {
     e.stopPropagation();
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
+    if (e.key === 'Enter') handleSave();
+    else if (e.key === 'Escape') {
       setEditingField(null);
       setEditTitle(task.title);
       setEditMinutes(task.estimatedMinutes || 25);
     } else if (e.key === 'Tab' && !e.shiftKey && editingField === 'title') {
-      // Tab from title to minutes
       e.preventDefault();
       setEditingField('minutes');
     } else if (e.key === 'Tab' && e.shiftKey && editingField === 'minutes') {
-      // Shift+Tab from minutes to title
       e.preventDefault();
       setEditingField('title');
     }
   };
 
-  // Handle blur - save and close
+  // Blur handling
   const handleBlur = (e) => {
-    // Don't close if focus is moving to another input in the same node
-    const relatedTarget = e.relatedTarget;
-    if (relatedTarget && (relatedTarget === titleInputRef.current || relatedTarget === minutesInputRef.current)) {
-      return;
-    }
+    if (e.relatedTarget === titleInputRef.current || e.relatedTarget === minutesInputRef.current) return;
     handleSave();
   };
 
-  // Action buttons position - appear to the right of the node
+  // Actions
   const actionX = LAYOUT.NODE_WIDTH + 24;
-  const actionStartY = LAYOUT.NODE_HEIGHT / 2;
-
-  // Build list of available actions based on status (no Edit button - use inline editing)
+  const actionY = LAYOUT.NODE_HEIGHT / 2;
   const actions = [];
 
   if (computedStatus === 'available' && onStartSession) {
-    actions.push({
-      icon: Play,
-      color: COLORS.accentPrimary,
-      bgColor: COLORS.bgElevated,
-      onClick: onStartSession,
-      title: 'Start session',
-    });
+    actions.push({ icon: Play, color: COLORS.accentPrimary, onClick: onStartSession, title: 'Start' });
   }
-
   if (computedStatus === 'in_progress' && onComplete) {
-    actions.push({
-      icon: CheckCircle2,
-      color: COLORS.accentSuccess,
-      bgColor: COLORS.bgElevated,
-      onClick: onComplete,
-      title: 'Mark done',
-    });
+    actions.push({ icon: CheckCircle2, color: COLORS.accentSuccess, onClick: onComplete, title: 'Done' });
   }
-
   if (computedStatus === 'completed' && onReopen) {
-    actions.push({
-      icon: RotateCcw,
-      color: COLORS.accentWarning,
-      bgColor: COLORS.bgElevated,
-      onClick: onReopen,
-      title: 'Reopen',
-    });
+    actions.push({ icon: RotateCcw, color: COLORS.accentWarning, onClick: onReopen, title: 'Reopen' });
   }
-
-  // Delete is always available
   if (onDelete) {
-    actions.push({
-      icon: Trash2,
-      color: COLORS.accentDanger,
-      bgColor: COLORS.bgPanel,
-      onClick: onDelete,
-      title: 'Delete',
-    });
+    actions.push({ icon: Trash2, color: COLORS.accentDanger, onClick: onDelete, title: 'Delete' });
   }
 
-  // Show actions on hover OR selection (but not while editing)
   const showActions = (isSelected || isHovered) && !editingField && !isDragging && !isGhosted;
 
   return (
@@ -322,132 +255,87 @@ export function TaskNode({
       onMouseLeave={() => setIsHovered(false)}
       style={{ cursor: getCursor(), touchAction: 'none' }}
     >
-      {/* Drop shadow when dragging */}
-      {isDragging && (
+      {/* ═══ GLOW EFFECTS ═══ */}
+
+      {/* Ambient glow for available tasks - "you can do this NOW" */}
+      {computedStatus === 'available' && !isGhosted && (
         <rect
-          x="4"
-          y="4"
-          width={LAYOUT.NODE_WIDTH}
-          height={LAYOUT.NODE_HEIGHT}
-          rx="8"
-          ry="8"
-          fill="rgba(0,0,0,0.3)"
-          style={{ filter: 'blur(4px)' }}
-        />
+          x="-8"
+          y="-8"
+          width={LAYOUT.NODE_WIDTH + 16}
+          height={LAYOUT.NODE_HEIGHT + 16}
+          rx="16"
+          fill="none"
+          stroke={COLORS.statusAvailable}
+          strokeWidth="3"
+          opacity="0.4"
+        >
+          <animate attributeName="stroke-opacity" values="0.2;0.5;0.2" dur="2s" repeatCount="indefinite" />
+        </rect>
       )}
 
-      {/* Pulsing glow ring for AVAILABLE tasks - "you can do this NOW" */}
-      {computedStatus === 'available' && !isGhosted && (
+      {/* Active pulse for in-progress - "this is alive" */}
+      {computedStatus === 'in_progress' && !isGhosted && (
         <rect
           x="-6"
           y="-6"
           width={LAYOUT.NODE_WIDTH + 12}
           height={LAYOUT.NODE_HEIGHT + 12}
           rx="14"
-          ry="14"
-          fill="none"
-          stroke={COLORS.statusAvailable}
-          strokeWidth="2"
-        >
-          <animate
-            attributeName="stroke-opacity"
-            values="0.1;0.5;0.1"
-            dur="2.5s"
-            repeatCount="indefinite"
-          />
-          <animate
-            attributeName="stroke-width"
-            values="2;4;2"
-            dur="2.5s"
-            repeatCount="indefinite"
-          />
-        </rect>
-      )}
-
-      {/* Breathing glow for IN_PROGRESS tasks - "this is alive" */}
-      {computedStatus === 'in_progress' && !isGhosted && (
-        <rect
-          x="-4"
-          y="-4"
-          width={LAYOUT.NODE_WIDTH + 8}
-          height={LAYOUT.NODE_HEIGHT + 8}
-          rx="12"
-          ry="12"
           fill="none"
           stroke={COLORS.statusActive}
           strokeWidth="3"
         >
-          <animate
-            attributeName="stroke-opacity"
-            values="0.3;0.8;0.3"
-            dur="3s"
-            repeatCount="indefinite"
-          />
+          <animate attributeName="stroke-opacity" values="0.3;0.7;0.3" dur="2.5s" repeatCount="indefinite" />
         </rect>
       )}
 
-      {/* Node background */}
+      {/* Drop shadow when dragging */}
+      {isDragging && (
+        <rect
+          x="6"
+          y="6"
+          width={LAYOUT.NODE_WIDTH}
+          height={LAYOUT.NODE_HEIGHT}
+          rx="12"
+          fill="rgba(0,0,0,0.4)"
+          style={{ filter: 'blur(6px)' }}
+        />
+      )}
+
+      {/* ═══ MAIN NODE BODY ═══ */}
       <rect
         x="0"
         y="0"
         width={LAYOUT.NODE_WIDTH}
         height={LAYOUT.NODE_HEIGHT}
-        rx="8"
-        ry="8"
+        rx="12"
         fill={style.bg}
-        stroke={isDragging ? COLORS.accentPrimary : (isSelected || isEdgeSource ? COLORS.accentSecondary : style.border)}
-        strokeWidth={isDragging ? 3 : (isSelected || isEdgeSource ? 3 : 2)}
+        stroke={isDragging ? COLORS.accentPrimary : (isSelected ? COLORS.accentSecondary : style.border)}
+        strokeWidth={isSelected || isDragging ? 3 : 2}
         opacity={effectiveOpacity}
-      >
-        {/* Subtle brightness breathing for in_progress */}
-        {computedStatus === 'in_progress' && !isGhosted && (
-          <animate
-            attributeName="fill-opacity"
-            values="1;0.85;1"
-            dur="3s"
-            repeatCount="indefinite"
-          />
-        )}
-      </rect>
+        style={{ filter: style.glow !== 'none' ? `drop-shadow(${style.glow})` : 'none' }}
+      />
 
-      {/* Progress fill - visual indicator of time spent vs estimated */}
+      {/* Progress bar at bottom */}
       {progressPercent > 0 && (
-        <g>
-          {/* Clip path for rounded corners */}
-          <defs>
-            <clipPath id={`progress-clip-${task.id}`}>
-              <rect x="0" y="0" width={LAYOUT.NODE_WIDTH} height={LAYOUT.NODE_HEIGHT} rx="8" ry="8" />
-            </clipPath>
-          </defs>
-          {/* Progress fill bar at bottom */}
-          <rect
-            x="0"
-            y={LAYOUT.NODE_HEIGHT - 4}
-            width={(LAYOUT.NODE_WIDTH * progressPercent) / 100}
-            height="4"
-            fill={getProgressColor()}
-            opacity={effectiveOpacity * 0.8}
-            clipPath={`url(#progress-clip-${task.id})`}
-          >
-            {/* Animate width for in_progress */}
-            {computedStatus === 'in_progress' && (
-              <animate
-                attributeName="opacity"
-                values="0.6;0.9;0.6"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            )}
-          </rect>
-        </g>
+        <rect
+          x="4"
+          y={LAYOUT.NODE_HEIGHT - 6}
+          width={Math.max(0, (LAYOUT.NODE_WIDTH - 8) * progressPercent / 100)}
+          height="3"
+          rx="1.5"
+          fill={computedStatus === 'completed' ? COLORS.statusComplete : COLORS.statusActive}
+          opacity={effectiveOpacity * 0.9}
+        />
       )}
 
-      {/* Left color stripe (primary quest) */}
+      {/* Quest color stripe */}
       {primaryQuest && (
         <rect
           x="0"
           y="0"
-          width="4"
+          width="5"
           height={LAYOUT.NODE_HEIGHT}
           rx="2"
           fill={primaryQuest.color}
@@ -455,21 +343,16 @@ export function TaskNode({
         />
       )}
 
-      {/* Status icon */}
-      <foreignObject x="14" y="12" width="20" height="20">
-        <Icon
-          size={18}
-          color={style.border}
-          style={{ opacity: effectiveOpacity }}
-        />
+      {/* ═══ STATUS ICON ═══ */}
+      <foreignObject x="12" y="14" width="22" height="22">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={20} color={style.border} style={{ opacity: effectiveOpacity }} />
+        </div>
       </foreignObject>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          TITLE - Display or inline edit
-          Double-click to edit in place
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* ═══ TITLE (editable) ═══ */}
       {editingField === 'title' ? (
-        <foreignObject x="38" y="10" width={LAYOUT.NODE_WIDTH - 50} height="24">
+        <foreignObject x="38" y="12" width={LAYOUT.NODE_WIDTH - 90} height="26">
           <input
             ref={titleInputRef}
             type="text"
@@ -479,17 +362,17 @@ export function TaskNode({
             onBlur={handleBlur}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
             style={{
               width: '100%',
               height: '100%',
-              padding: '2px 6px',
+              padding: '4px 8px',
               background: COLORS.bgElevated,
-              border: `1px solid ${COLORS.accentPrimary}`,
-              borderRadius: '4px',
+              border: `2px solid ${COLORS.accentPrimary}`,
+              borderRadius: '6px',
               color: COLORS.textPrimary,
-              fontSize: '13px',
-              fontWeight: 600,
+              fontSize: '14px',
+              fontWeight: 700,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
               boxSizing: 'border-box',
               outline: 'none',
             }}
@@ -497,32 +380,27 @@ export function TaskNode({
         </foreignObject>
       ) : (
         <text
-          x="42"
-          y="26"
+          x="40"
+          y="30"
           fill={style.text}
-          fontSize="13"
-          fontWeight="600"
+          fontSize="14"
+          fontWeight="700"
+          fontFamily="system-ui, -apple-system, sans-serif"
           opacity={effectiveOpacity}
-          style={{
-            cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit',
-          }}
+          style={{ cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit' }}
           onDoubleClick={(e) => {
             e.stopPropagation();
-            if (computedStatus !== 'locked' && !isGhosted) {
-              setEditingField('title');
-            }
+            if (computedStatus !== 'locked' && !isGhosted) setEditingField('title');
           }}
         >
-          {task.title.length > 22 ? task.title.slice(0, 20) + '...' : task.title}
+          {task.title.length > 18 ? task.title.slice(0, 16) + '…' : task.title}
         </text>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          ESTIMATED TIME - Display or inline edit
-          Double-click to edit in place
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* ═══ TIME DISPLAY - THE HERO ═══ */}
+      {/* Time is BIG and PROMINENT - fights ADHD time blindness */}
       {editingField === 'minutes' ? (
-        <foreignObject x="38" y="32" width="60" height="20">
+        <foreignObject x={LAYOUT.NODE_WIDTH - 58} y="8" width="50" height="28">
           <input
             ref={minutesInputRef}
             type="number"
@@ -532,16 +410,16 @@ export function TaskNode({
             onBlur={handleBlur}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
             style={{
-              width: '45px',
+              width: '100%',
               height: '100%',
-              padding: '2px 4px',
+              padding: '4px',
               background: COLORS.bgElevated,
-              border: `1px solid ${COLORS.accentPrimary}`,
-              borderRadius: '4px',
-              color: COLORS.textSecondary,
-              fontSize: '11px',
+              border: `2px solid ${COLORS.accentPrimary}`,
+              borderRadius: '6px',
+              color: COLORS.accentPrimary,
+              fontSize: '16px',
+              fontWeight: 800,
               textAlign: 'center',
               boxSizing: 'border-box',
               outline: 'none',
@@ -549,108 +427,117 @@ export function TaskNode({
           />
         </foreignObject>
       ) : (
-        <text
-          x="42"
-          y="44"
-          fill={COLORS.textMuted}
-          fontSize="11"
-          opacity={effectiveOpacity * 0.8}
-          style={{
-            cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit',
-          }}
+        <g
+          style={{ cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit' }}
           onDoubleClick={(e) => {
             e.stopPropagation();
-            if (computedStatus !== 'locked' && !isGhosted) {
-              setEditingField('minutes');
-            }
+            if (computedStatus !== 'locked' && !isGhosted) setEditingField('minutes');
           }}
         >
-          {task.estimatedMinutes ? `${task.estimatedMinutes}m` : '—'}
-          {task.actualMinutes && ` (${task.actualMinutes}m actual)`}
-        </text>
+          {/* Time background pill */}
+          <rect
+            x={LAYOUT.NODE_WIDTH - 56}
+            y="10"
+            width="48"
+            height="24"
+            rx="12"
+            fill={computedStatus === 'in_progress' ? COLORS.statusActive : COLORS.accentPrimary}
+            fillOpacity={effectiveOpacity * 0.2}
+            stroke={computedStatus === 'in_progress' ? COLORS.statusActive : COLORS.accentPrimary}
+            strokeWidth="1.5"
+            strokeOpacity={effectiveOpacity * 0.5}
+          />
+          {/* Time text - LARGE and BOLD */}
+          <text
+            x={LAYOUT.NODE_WIDTH - 32}
+            y="28"
+            fill={computedStatus === 'in_progress' ? COLORS.statusActive : COLORS.accentPrimary}
+            fontSize="15"
+            fontWeight="800"
+            fontFamily="system-ui, -apple-system, sans-serif"
+            textAnchor="middle"
+            opacity={effectiveOpacity}
+          >
+            {formatTime(task.estimatedMinutes)}
+          </text>
+        </g>
       )}
 
-      {/* Quest badges row */}
-      <g transform={`translate(12, ${LAYOUT.NODE_HEIGHT - 22})`}>
+      {/* ═══ QUEST BADGES ═══ */}
+      <g transform={`translate(12, ${LAYOUT.NODE_HEIGHT - 26})`}>
         {taskQuests.map((quest, i) => (
-          <g key={quest.id} transform={`translate(${i * 52}, 0)`}>
-            {/* Badge background */}
+          <g key={quest.id} transform={`translate(${i * 58}, 0)`}>
             <rect
               x="0"
               y="0"
-              width="48"
-              height="16"
-              rx="3"
+              width="54"
+              height="18"
+              rx="9"
               fill={quest.color}
-              fillOpacity={effectiveOpacity * 0.25}
+              fillOpacity={effectiveOpacity * 0.2}
               stroke={quest.color}
               strokeWidth="1"
-              strokeOpacity={effectiveOpacity * 0.5}
+              strokeOpacity={effectiveOpacity * 0.6}
             />
-            {/* Badge text */}
             <text
-              x="24"
-              y="11"
+              x="27"
+              y="13"
               fill={quest.color}
-              fontSize="9"
-              fontWeight="500"
+              fontSize="10"
+              fontWeight="600"
               textAnchor="middle"
               opacity={effectiveOpacity}
               style={{ pointerEvents: 'none' }}
             >
-              {quest.title.length > 6 ? quest.title.slice(0, 5) + '…' : quest.title}
+              {quest.title.length > 7 ? quest.title.slice(0, 6) + '…' : quest.title}
             </text>
           </g>
         ))}
-        {/* More quests indicator */}
-        {hasMoreQuests && (
-          <text
-            x={taskQuests.length * 52 + 4}
-            y="11"
-            fill={COLORS.textMuted}
-            fontSize="9"
-            opacity={effectiveOpacity * 0.7}
-            style={{ pointerEvents: 'none' }}
-          >
-            +{task.questIds.length - 3}
-          </text>
-        )}
-        {/* No quest indicator */}
         {taskQuests.length === 0 && (
           <text
             x="0"
-            y="11"
+            y="13"
             fill={COLORS.textMuted}
-            fontSize="9"
+            fontSize="10"
             fontStyle="italic"
-            opacity={effectiveOpacity * 0.5}
-            style={{ pointerEvents: 'none' }}
+            opacity={effectiveOpacity * 0.4}
           >
             No quest
           </text>
         )}
       </g>
 
-      {/* Right connector handle - drag to create outgoing edge */}
+      {/* ═══ ACTUAL TIME (if tracked) ═══ */}
+      {task.actualMinutes > 0 && (
+        <g>
+          <foreignObject x={LAYOUT.NODE_WIDTH - 56} y="36" width="48" height="16">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '2px',
+              opacity: effectiveOpacity * 0.7,
+            }}>
+              <Clock size={10} color={COLORS.textMuted} />
+              <span style={{
+                color: COLORS.textMuted,
+                fontSize: '10px',
+                fontWeight: 500,
+              }}>
+                {formatTime(task.actualMinutes)}
+              </span>
+            </div>
+          </foreignObject>
+        </g>
+      )}
+
+      {/* ═══ CONNECTOR HANDLE ═══ */}
       <g
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          onConnectorDragStart?.(e);
-        }}
-        onTouchStart={(e) => {
-          e.stopPropagation();
-          onConnectorTouchStart?.(e);
-        }}
+        onMouseDown={(e) => { e.stopPropagation(); onConnectorDragStart?.(e); }}
+        onTouchStart={(e) => { e.stopPropagation(); onConnectorTouchStart?.(e); }}
         style={{ cursor: 'crosshair', touchAction: 'none' }}
       >
-        {/* Invisible hit area - LARGE for touch */}
-        <circle
-          cx={LAYOUT.NODE_WIDTH}
-          cy={LAYOUT.NODE_HEIGHT / 2}
-          r="24"
-          fill="transparent"
-        />
-        {/* Visible connector dot - more visible when selected */}
+        <circle cx={LAYOUT.NODE_WIDTH} cy={LAYOUT.NODE_HEIGHT / 2} r="20" fill="transparent" />
         <circle
           cx={LAYOUT.NODE_WIDTH}
           cy={LAYOUT.NODE_HEIGHT / 2}
@@ -658,104 +545,63 @@ export function TaskNode({
           fill={isEdgeSource ? COLORS.accentSecondary : (isSelected ? COLORS.accentPrimary : COLORS.textMuted)}
           stroke={COLORS.bgVoid}
           strokeWidth="2"
-          opacity={isEdgeSource ? 1 : (isSelected ? 0.9 : 0.5)}
+          opacity={isEdgeSource ? 1 : (isSelected ? 0.9 : 0.4)}
           style={{ transition: 'all 0.15s ease-out' }}
-          className="connector-handle"
         />
-        {/* "Link from here" hint when selected */}
-        {isSelected && !isEdgeSource && (
-          <text
-            x={LAYOUT.NODE_WIDTH + 16}
-            y={LAYOUT.NODE_HEIGHT / 2 + 4}
-            fill={COLORS.accentPrimary}
-            fontSize="10"
-            opacity="0.7"
-          >
-            →
-          </text>
-        )}
-        {/* Pulse animation when active */}
         {isEdgeSource && (
-          <circle
-            cx={LAYOUT.NODE_WIDTH}
-            cy={LAYOUT.NODE_HEIGHT / 2}
-            r="16"
-            fill="none"
-            stroke={COLORS.accentSecondary}
-            strokeWidth="2"
-            opacity="0.5"
-          >
-            <animate
-              attributeName="r"
-              values="10;18;10"
-              dur="1.5s"
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="opacity"
-              values="0.6;0.2;0.6"
-              dur="1.5s"
-              repeatCount="indefinite"
-            />
+          <circle cx={LAYOUT.NODE_WIDTH} cy={LAYOUT.NODE_HEIGHT / 2} r="14" fill="none" stroke={COLORS.accentSecondary} strokeWidth="2" opacity="0.4">
+            <animate attributeName="r" values="10;16;10" dur="1.2s" repeatCount="indefinite" />
           </circle>
         )}
       </g>
 
-      {/* Drop zone indicator when edge creation in progress */}
+      {/* Drop zone when creating edge */}
       {isCreatingEdge && !isEdgeSource && (
         <rect
           x="-4"
           y="-4"
           width={LAYOUT.NODE_WIDTH + 8}
           height={LAYOUT.NODE_HEIGHT + 8}
-          rx="12"
-          ry="12"
+          rx="16"
           fill="none"
           stroke={COLORS.accentSecondary}
           strokeWidth="2"
           strokeDasharray="6 3"
-          opacity="0.6"
+          opacity="0.5"
         />
       )}
 
-      {/* Selection glow */}
+      {/* Selection indicator */}
       {isSelected && (
         <rect
-          x="-2"
-          y="-2"
-          width={LAYOUT.NODE_WIDTH + 4}
-          height={LAYOUT.NODE_HEIGHT + 4}
-          rx="10"
-          ry="10"
+          x="-3"
+          y="-3"
+          width={LAYOUT.NODE_WIDTH + 6}
+          height={LAYOUT.NODE_HEIGHT + 6}
+          rx="15"
           fill="none"
           stroke={COLORS.accentSecondary}
           strokeWidth="2"
-          strokeOpacity="0.3"
+          strokeOpacity="0.4"
         />
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          CONTEXTUAL ACTIONS - Appear on hover or selection (game-style!)
-          Actions bloom from the node, not a distant toolbar
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* ═══ CONTEXTUAL ACTIONS ═══ */}
       {showActions && actions.length > 0 && (
-        <g style={{ opacity: isSelected ? 1 : 0.9 }}>
-          {/* Action buttons - vertical stack to the right */}
+        <g style={{ opacity: isSelected ? 1 : 0.85 }}>
           {actions.map((action, i) => (
             <ActionButton
               key={i}
               x={actionX}
-              y={actionStartY + (i - (actions.length - 1) / 2) * 38}
+              y={actionY + (i - (actions.length - 1) / 2) * 36}
               icon={action.icon}
               color={action.color}
-              bgColor={action.bgColor}
+              bgColor={COLORS.bgElevated}
               onClick={action.onClick}
               title={action.title}
               delay={i * 0.03}
             />
           ))}
-
-          {/* Connecting line from node to actions */}
           <line
             x1={LAYOUT.NODE_WIDTH + 4}
             y1={LAYOUT.NODE_HEIGHT / 2}
@@ -763,7 +609,7 @@ export function TaskNode({
             y2={LAYOUT.NODE_HEIGHT / 2}
             stroke={COLORS.accentSecondary}
             strokeWidth="2"
-            strokeOpacity={isSelected ? 0.3 : 0.2}
+            strokeOpacity="0.25"
             strokeDasharray="4 2"
           />
         </g>

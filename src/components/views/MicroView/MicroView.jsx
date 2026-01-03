@@ -130,7 +130,7 @@ export function MicroView() {
     [state.quests]
   );
 
-  // Handle task click
+  // Handle task click - always select (click canvas to deselect)
   const handleTaskClick = useCallback((taskId) => {
     if (edgeSourceId) {
       // Creating edge - target selected
@@ -142,11 +142,11 @@ export function MicroView() {
       }
       setEdgeSourceId(null);
     } else {
-      // Normal selection
-      setSelectedTaskId(taskId === selectedTaskId ? null : taskId);
+      // Always select - don't toggle (click canvas to deselect)
+      setSelectedTaskId(taskId);
       setSelectedEdgeId(null);
     }
-  }, [edgeSourceId, selectedTaskId, dispatch]);
+  }, [edgeSourceId, dispatch]);
 
   // Handle task double-click (start session or complete)
   const handleTaskDoubleClick = useCallback((task) => {
