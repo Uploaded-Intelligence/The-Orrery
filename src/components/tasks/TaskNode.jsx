@@ -169,14 +169,24 @@ export function TaskNode({
   const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef(null);
 
-  // Reset edit state when selection changes
+  // Reset edit form values when task changes (but don't auto-close edit mode)
   useEffect(() => {
-    if (!isSelected) {
-      setIsEditing(false);
+    if (!isEditing) {
       setEditTitle(task.title);
       setEditMinutes(task.estimatedMinutes || 25);
     }
-  }, [isSelected, task.title, task.estimatedMinutes]);
+  }, [task.title, task.estimatedMinutes, isEditing]);
+
+  // Close edit mode when clicking outside (selection lost while not editing)
+  useEffect(() => {
+    if (!isSelected && !isHovered && isEditing) {
+      // Small delay to prevent race with double-click
+      const timer = setTimeout(() => {
+        setIsEditing(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isSelected, isHovered, isEditing]);
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -690,8 +700,9 @@ export function TaskNode({
 
       {/* ═══════════════════════════════════════════════════════════════
           EDIT PANEL - Appears attached to the node when editing
+          Shows when editing, regardless of selection state
           ═══════════════════════════════════════════════════════════════ */}
-      {isSelected && isEditing && (
+      {isEditing && (
         <foreignObject
           x={LAYOUT.NODE_WIDTH + 12}
           y="-10"
