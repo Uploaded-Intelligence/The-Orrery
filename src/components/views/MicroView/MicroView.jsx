@@ -37,6 +37,14 @@ export function MicroView() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [draggedPositions, setDraggedPositions] = useState(new Map()); // Temp positions during drag
 
+  // Sync local pan/zoom with persisted preferences (e.g., after localStorage load)
+  useEffect(() => {
+    if (!isPanning && !draggingTaskId) {
+      setPan(state.preferences.microViewPosition);
+      setZoom(state.preferences.microViewZoom);
+    }
+  }, [state.preferences.microViewPosition, state.preferences.microViewZoom, isPanning, draggingTaskId]);
+
   // Local UI state for showing all tasks vs focused only
   const [showAllTasks, setShowAllTasks] = useState(false);
 

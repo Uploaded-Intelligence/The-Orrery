@@ -77,9 +77,11 @@ export function TaskDetailPanel({ taskId, onClose, onStartEdge }) {
       type: 'UPDATE_TASK',
       payload: {
         id: task.id,
-        title: editForm.title,
-        estimatedMinutes: parseInt(editForm.estimatedMinutes) || 25,
-        notes: editForm.notes,
+        updates: {
+          title: editForm.title,
+          estimatedMinutes: parseInt(editForm.estimatedMinutes) || 25,
+          notes: editForm.notes,
+        }
       }
     });
     setIsEditing(false);
