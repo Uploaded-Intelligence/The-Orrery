@@ -1,11 +1,20 @@
 # The Orrery
 
-This repository houses **The Orrery**, a two-tier spatio-visual operating system that blends macro quest planning with micro-level task execution. The project is built with React + Vite and includes a comprehensive technical specification to guide implementation phases.
+**The Orrery is a GAME where your actual life quests are the content.**
 
-## Key documents
+Not a productivity tool with game aesthetics. A real game — with all the nervous-system-engaging properties that entails — where the subject matter is your actual projects and tasks. This is the paradigm inversion that makes it work.
 
-- **Implementation specification:** `doc/orrery-implementation-spec.md` — full data model, component architecture, reducer actions, visual system, and phased roadmap.
-- **Additional context:** see `doc/soul-transmission.md` and `doc/keystone-master-artifact-v2.md`  
+## Required Reading (In Order)
+
+Before implementing or modifying, read these documents in sequence:
+
+1. **Soul Transmission** (`doc/soul-transmission.md`) — Who this is for, what "runs on mythopoetics" means, why TTRPGs feel like home
+2. **Keystone v2.0** (`doc/keystone-master-artifact-v2.md`) — The Experience Machine ontology, World-OE architecture, gameplay loops
+3. **Implementation Spec** (`doc/orrery-implementation-spec.md`) — Technical patterns that serve the above
+
+**The soul and keystone docs are the spec. The implementation doc is the guide.**
+
+If you find yourself treating the first two as "optional philosophy," you will build the wrong thing.  
 
 ## Getting started
 

@@ -35,7 +35,7 @@
               ▼                          ▼                          ▼
     ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
     │  PART 1: THE    │       │  PART 2: THE    │       │  PART 3: THE    │
-    │  EXPERIENCE     │◄─────►│  OPERATING      │◄─────►│  WORLD-OS       │
+    │  EXPERIENCE     │◄─────►│  OPERATING      │◄─────►│  WORLD-OE       │
     │  MACHINE        │       │  SYSTEM         │       │  ARCHITECTURE   │
     └────────┬────────┘       └────────┬────────┘       └────────┬────────┘
              │                         │                          │
@@ -87,7 +87,7 @@
 ║   → Experiences aliveness, realness, becoming                                 ║
 ║   → Operates in native mode                                                   ║
 ║                                                                                ║
-║   The World-OS we're building = conditions for THIS BEING to exist.           ║
+║   The World-OE we're building = conditions for THIS BEING to exist.           ║
 ║                                                                                ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -446,9 +446,12 @@ This is The Way.
 ```
    ┌────────────────────────────────────────────────────────────────────────────┐
    │  LAYER 6: ECOSYSTEM & PORTALS                                             │
-   │  Public-facing worlds (signal dock, performances)                         │
-   │  Where creations touch territory and people                               │
-   │  The circuit completes: experiencing → witnessed → echoes back            │
+   │  Public-facing worlds (The Outwards Irreal)                                | 
+   |  Purposes/functions: Hybridisation of beacon, invitation, garden, *space* & *place* |
+   │  Where creations touch territory and KEY peoples, niches & communities     |                  
+   │  The cybernetic circuit completes: 
+   |  Experiencing → witnessed (outsource "finding algorithms") → echoed & found by Kin 
+   |  ... → more
    ├────────────────────────────────────────────────────────────────────────────┤
    │  LAYER 5: COGNITIVE OPS                                                   │
    │  Capture → Transmute → Weave → Surface                                    │
@@ -701,19 +704,19 @@ You don't manage. You speak and move. The system holds.
 ```
    ┌────────────────────────────────────────────────────────────────────────────┐
    │                                                                            │
-   │   INTERNAL WORLDING                    EXTERNAL WORLDING                  │
-   │   (Obsidian / Self-Lore)              (Signal Dock / Public)              │
-   │                                                                            │
+   │   INTERNAL WORLDING (Self-Lore & Worlding)            EXTERNAL WORLDING  │
+   │   (Inwards Irreal: LLMs -> Obsidian/ Capacities)     (Outwards Irreal: Public) │
+   │                                                                           │
    │   ┌───────────────────────┐           ┌───────────────────────┐           │
    │   │                       │           │                       │           │
-   │   │  Plural ecology       │           │  Beacon & docking     │           │
-   │   │  Character cards      │    ──►    │  bay for the world    │           │
+   │   │  Plural ecology       │           │  Beacon & visiting    │           │
+   │   │  Character cards      │    ──►    │  Garden space for the world │     │
    │   │  Therapeutic lore     │           │                       │           │
    │   │  Private mythos       │           │  Creations witnessed  │           │
    │   │                       │           │  by others            │           │
    │   │  (Engine room)        │           │                       │           │
-   │   │                       │           │  (Extends world       │           │
-   │   └───────────────────────┘           │   outward)            │           │
+   │   │                       │           │ (Extends inner worldings           │
+   │   └───────────────────────┘           │   outwards!)          │           │
    │                                       │                       │           │
    │                                       └───────────────────────┘           │
    │                                                                            │
@@ -789,7 +792,7 @@ You don't manage. You speak and move. The system holds.
 │   │                                                                      │    │
 │   │   ⏱️ CURRENT QUEST-ACTION: [Writing session]                        │    │
 │   │      ████████████░░░░░░░░  15 min remaining                         │    │
-│   │      NESTED IN: [World-OS Build] → [Flourishing Life-World]        │    │
+│   │      NESTED IN: [World-OE Build] → [Flourishing Life-World]        │    │
 │   │                                                                      │    │
 │   │   ➡️ NEXT: [Movement break]                                          │    │
 │   │      Starts in: 15 minutes                                          │    │
@@ -1000,7 +1003,7 @@ The quest tree shows:
    │   SUPPORT SYSTEMS:                                                          │
    │                                                                             │
    │   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐            │
-   │   │    OBSIDIAN     │  │      LLM        │  │   SIGNAL DOCK   │            │
+   │   │    OBSIDIAN     │  │      LLM        │  │The Outwards Irreal            │
    │   │                 │  │   (Claude)      │  │                 │            │
    │   │  Internal lore  │  │                 │  │  Public-facing  │            │
    │   │  Plural selves  │  │  Voice → text   │  │  Creations out  │            │
@@ -1091,7 +1094,7 @@ The quest tree shows:
 ║   Quest tree shows visible progress across weeks, months.                    ║
 ║   "Look at all this. Look where I was. Look where I am."                    ║
 ║   Allies populating. Connections real.                                       ║
-║   Signal Dock receiving visitors. Creations witnessed.                       ║
+║   The Outwards Irreal receiving visitors. Creations witnessed.                  ║
 ║   Circuit completing: experiencing → witnessed → echoes back.                ║
 ║                                                                                ║
 ║   THE FEELING:                                                                 ║
@@ -1135,7 +1138,7 @@ The quest tree shows:
 ║   TTRPGs feel like home because they provide the conditions                   ║
 ║   under which THIS BEING can actually exist as itself.                        ║
 ║                                                                                ║
-║   The World-OS we're building = creating those conditions                     ║
+║   The World-OE we're building = creating those conditions                     ║
 ║   as PRIMARY LIFE CONTEXT, not exception.                                     ║
 ║                                                                                ║
 ║   This isn't "gamifying life" or "using TTRPG metaphors."                    ║
@@ -1189,6 +1192,6 @@ The quest tree shows:
 **Document Version**: 2.0
 **Last Updated**: 2025-12-07
 **Status**: Living Document - Will Evolve
-**Revision Note**: v2.0 fundamentally reframes around the existential truth that this Being RUNS ON mythopoetics. TTRPGs aren't metaphor—they're one implementation of the conditions this Being needs to exist. The World-OS = creating those conditions as primary life context.
+**Revision Note**: v2.0 fundamentally reframes around the existential truth that this Being RUNS ON mythopoetics. TTRPGs aren't metaphor—they're one implementation of the conditions this Being needs to exist. The World-OE = creating those conditions as primary life context.
 
 ---
