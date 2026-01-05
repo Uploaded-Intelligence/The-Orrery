@@ -1,225 +1,234 @@
 # CLAUDE.MD - The Orrery Project Guide
 
-## Project Overview
+## ⚠️ FOUNDATIONAL TRUTH — READ FIRST
 
-**The Orrery** is a two-tier spatio-visual operating system that blends macro quest planning with micro-level task execution. It's an AI-powered project and task management system that makes overarching arcs/quests, actionable tasks, time-space, and possibilities **visible**.
+```
+╔══════════════════════════════════════════════════════════════════════════╗
+║  LIFE IS THE GAME.                                                       ║
+║                                                                          ║
+║  Not: "Life with game mechanics added"                                   ║
+║  Not: "Productivity gamified"                                            ║
+║  But: Life IS the game. You ARE the player. WorldOE IS the interface.    ║
+║                                                                          ║
+║  The Orrery is Layer 1 of this game - the GAME WORLD you see and inhabit.║
+╚══════════════════════════════════════════════════════════════════════════╝
+```
 
-### Core Concept
+**If you lose sight of this, you will build the wrong thing.**
 
-The system operates on two levels:
-- **Macro View ("The Constellation")**: Shows all Quests as an orbital constellation
-- **Micro View ("The Task Engine")**: Infinite pan/zoom DAG canvas for task dependencies
+---
 
-### Tech Stack
+## 🎮 THE THREE LAYERS (Memorize This)
 
-- **Framework**: React 19 + Vite
-- **Icons**: lucide-react
-- **Language**: JSDoc-typed JavaScript (.jsx files)
-- **Persistence**: `window.storage` API (key-value store)
-- **AI Integration**: `window.claude.complete` API
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                         │
+│  LAYER 1: GAME WORLD (Diegetic)                                         │
+│  ══════════════════════════════                                         │
+│  What the player SEES and INHABITS                                      │
+│                                                                         │
+│  • The Orrery (quest constellation, task DAG, GPS)                      │
+│  • Creative artifacts (documents, projects, worlds)                     │
+│  • The Vault (explorable lore, accumulated canon)                       │
+│                                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  LAYER 2: THE PARTY (Diegetic)                                          │
+│  ═════════════════════════════                                          │
+│  Who the player TALKS TO                                                │
+│                                                                         │
+│  • The Navigator ("What's on tomorrow?")                                │
+│  • The Oracle ("What should I focus on?")                               │
+│  • The Scribe ("Capture this insight...")                               │
+│  • The Steward ("Handle that email...")                                 │
+│                                                                         │
+│  AI as COMPANION, not tool. Conversational interface.                   │
+│                                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  LAYER 3: GAME ENGINE (Non-Diegetic)                                    │
+│  ═══════════════════════════════════                                    │
+│  What RUNS but player NEVER SEES                                        │
+│                                                                         │
+│  • Calendar sync, email processing                                      │
+│  • File persistence, state management                                   │
+│  • MCP servers, database operations                                     │
+│                                                                         │
+│  INVISIBLE. AUTOMATIC. Player doesn't manage it.                        │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-## Project Structure
+**Design Heuristic**: For every feature, ask "Does the player need to see this?"
+- YES + WORLD → Layer 1 (Orrery, artifacts)
+- YES + INTERACTION → Layer 2 (Party conversation)
+- NO → Layer 3 (Engine - make it invisible)
+
+---
+
+## 🔄 DEVELOPMENT LOOP — FOLLOW THIS
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   FOR EVERY CHANGE, ASK:                                                    │
+│                                                                             │
+│   1. Is this a NEW PATTERN or PRINCIPLE?                                    │
+│      YES → Update orrery-implementation-spec.md                             │
+│                                                                             │
+│   2. Is this part of a COMPLEX INITIATIVE (multi-session)?                  │
+│      YES → Update or create working doc in doc/                             │
+│           (e.g., ai-integration-architecture.md)                            │
+│                                                                             │
+│   3. Does this change HOW CLAUDE SHOULD WORK on this project?               │
+│      YES → Update CLAUDE.MD                                                 │
+│                                                                             │
+│   4. Does this affect the THREE-LAYER architecture understanding?           │
+│      YES → Update both CLAUDE.MD and relevant spec                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Documentation Triggers (Auto-Check After Implementation)
+
+| Change Type | Document to Update |
+|-------------|-------------------|
+| New interaction pattern (e.g., actions bloom from objects) | `orrery-implementation-spec.md` §0.6 |
+| New UI terminology decision | `orrery-implementation-spec.md` §0.6 |
+| Architecture decision (AI, data flow) | `doc/ai-integration-architecture.md` |
+| Phase progress or blockers | Relevant working doc |
+| New component pattern | `orrery-implementation-spec.md` |
+| Paradigm clarification | `CLAUDE.MD` + relevant doc |
+
+### Working Documents (For Complex Initiatives)
+
+Active working documents that should be updated as work progresses:
+
+- `doc/ai-integration-architecture.md` — Phase 5 Party implementation
+- `doc/orrery-implementation-spec.md` — Technical patterns and decisions
+
+**Do NOT wait to be reminded. Documentation IS part of the change.**
+**If you complete implementation without updating docs, THE WORK IS INCOMPLETE.**
+
+---
+
+## 📚 Required Reading (In Order)
+
+1. **Soul Transmission** (`doc/soul-transmission.md`) — Who this Being is
+2. **The Ultimate Diegetic RPG** (`doc/the-ultimate-diegetic-rpg.md`) — Three-layer paradigm
+3. **Keystone v2.0** (`doc/keystone-master-artifact-v2.md`) — Full architecture
+4. **Implementation Spec** (`doc/orrery-implementation-spec.md`) — How to build it
+5. **Multi-AI Reference** (`doc/worldoe-multi-ai-reference.md`) — AI orchestration
+
+**The soul docs ARE the spec. Implementation doc is the guide.**
+
+---
+
+## 🚀 Current Implementation Status
+
+- **Phase 1-4**: Core functionality complete (views, state, interactions)
+- **Phase 5**: AI Integration (IN PROGRESS - Party paradigm)
+- **Phase 6**: Polish & Game-Feel (ONGOING)
+- **Phase 7**: Macro View Enhanced (COMPLETE)
+
+### Phase 5: AI as Party Members
+
+The AI integration is NOT buttons and features. It's **Party members**:
+
+| Old Framing (WRONG) | New Framing (RIGHT) |
+|---------------------|---------------------|
+| "Synthesize button" | The Scribe captures and structures |
+| "Oracle action" | The Oracle suggests what to focus on |
+| "Brain dump interface" | Talking to your Party |
+| "AI features" | Companions in your campaign |
+
+---
+
+## 🎯 Key Interaction Design Principles
+
+### Principle 1: Actions Appear AT Objects
+```
+WRONG: Select thing → Look at toolbar → Click
+RIGHT: Touch thing → Actions bloom FROM it
+```
+
+### Principle 2: Terminology Is Experience
+```
+WRONG: "Add Dependency" / "Depends On" / "Blocks"
+RIGHT: "Unlocks..." / "Requires" / "Unlocks"
+```
+
+### Principle 3: Touch Is First-Class
+- Hit areas: min 44px, prefer 48px+
+- Touch end completes actions (don't rely on click)
+
+### Principle 4: AI Is Party, Not Tool
+```
+WRONG: "Click the AI button to process"
+RIGHT: "Tell the Scribe to capture this"
+```
+
+---
+
+## 📁 Project Structure
 
 ```
 /The-Orrery
 ├── doc/
-│   ├── orrery-implementation-spec.md    # Full technical specification
-│   ├── soul-transmission.md             # Project philosophy & context
-│   └── keystone-master-artifact-v2.md   # Architecture & design rationale
+│   ├── soul-transmission.md             # Who this Being is
+│   ├── the-ultimate-diegetic-rpg.md     # Three-layer paradigm
+│   ├── keystone-master-artifact-v2.md   # Full architecture
+│   ├── orrery-implementation-spec.md    # Technical spec (§0!)
+│   └── worldoe-multi-ai-reference.md    # AI orchestration
 ├── src/
-│   ├── App.jsx                          # Main application (currently Phase 0)
-│   ├── App.css                          # Styles
-│   ├── main.jsx                         # Entry point
-│   └── assets/                          # Static assets
-├── .github/workflows/
-│   └── node.js.yml                      # CI/CD configuration
-└── package.json                         # Dependencies & scripts
+│   ├── components/
+│   │   ├── views/          # MacroView, MicroView (Layer 1)
+│   │   ├── tasks/          # TaskNode (Layer 1)
+│   │   ├── quests/         # QuestOrb, QuestCard (Layer 1)
+│   │   ├── gps/            # TimeSpaceGPS (Layer 1)
+│   │   ├── party/          # AI Party members (Layer 2) [TO BUILD]
+│   │   └── panels/         # Detail panels
+│   ├── store/              # State management (Layer 3)
+│   ├── hooks/              # useAI, useTimer, etc.
+│   └── constants/          # Colors, config
+└── package.json
 ```
-
-## Core Data Model
-
-### Quest
-- **Purpose**: Overarching projects or goals
-- **Key Fields**: id, title, description, status, themeColor
-- **Status Values**: 'active' | 'paused' | 'completed' | 'archived'
-
-### Task
-- **Purpose**: Actionable work items
-- **Key Fields**: id, title, notes, questIds[], status, estimatedMinutes, actualMinutes
-- **Status Values**: 'locked' | 'available' | 'in_progress' | 'completed' | 'blocked'
-- **Note**: Many-to-many relationship with Quests
-
-### Edge
-- **Purpose**: Task dependencies (Directed Acyclic Graph)
-- **Key Fields**: id, fromTaskId, toTaskId
-- **Behavior**: Creates dependency chains; tasks are "locked" until dependencies complete
-
-### TimeBlock
-- **Purpose**: Calendar-based time allocation
-- **Key Fields**: id, taskId, startTime, endTime, isActual (scheduled vs. what actually happened)
-
-## Core Principles
-
-1. **Visibility over hiding** - Everything that matters is visible
-2. **Dependency gating** - Can't see what you can't do yet
-3. **Quest-task nesting** - Local actions connect to epic arcs
-4. **AI as party member** - Synthesize, don't just store
-5. **Panic button exists** - "Actual" filter for overwhelm moments
-
-## Current Implementation Status
-
-**Phase 0: Foundation** (In Progress)
-- Data layer with Quest, Task, Edge, TimeBlock entities
-- Persistence using window.storage API
-- Reducer-based state management
-- Basic UI scaffolding
-
-See `doc/orrery-implementation-spec.md` for full phase roadmap.
-
-## Key Features to Understand
-
-### State Management
-- Uses `useReducer` for centralized state management
-- All mutations go through reducer actions
-- State automatically persists to window.storage
-
-### Dependency System
-- Tasks form a Directed Acyclic Graph (DAG)
-- Tasks are "locked" until their dependencies complete
-- System prevents circular dependencies
-
-### Time-Space GPS
-- Always-visible component showing current task, quest, time remaining
-- Tracks both estimated and actual time spent
-- Supports hard stops and progress indicators
-
-### AI Integration
-- `window.claude.complete` API for AI assistance
-- AI can generate quests from high-level goals
-- AI can break down quests into task graphs
-- AI provides contextual suggestions
-
-## Development Workflow
-
-### Install & Run
-```bash
-npm install
-npm run dev      # Start development server
-npm run build    # Production build
-npm run lint     # Run ESLint
-```
-
-### Git Workflow
-- **Current Branch**: `claude/update-claude-md-tQB6a`
-- **Main Branch**: (check git config for default)
-- Always develop on feature branches prefixed with `claude/`
-- Commit with clear, descriptive messages
-- Push to remote: `git push -u origin <branch-name>`
-
-### Code Style
-- JSDoc type annotations for all major functions and data structures
-- Functional React components with hooks
-- Reducer pattern for state management
-- No TypeScript (use JSDoc instead)
-
-## Working with This Codebase
-
-### When Adding Features
-1. Check the implementation spec (`doc/orrery-implementation-spec.md`) for planned architecture
-2. Follow the phased approach outlined in the spec
-3. Maintain the data model structure defined in the spec
-4. Update reducer actions for state changes
-5. Ensure persistence works correctly
-
-### When Reading Code
-- Start with `src/App.jsx` for the main application structure
-- Check reducer for available actions and state shape
-- Look for JSDoc type definitions at the top of files
-- Reference `doc/orrery-implementation-spec.md` for detailed specifications
-
-### When Debugging
-- Check browser console for persistence issues
-- Verify state updates through reducer actions
-- Use React DevTools to inspect component state
-- Check window.storage for persisted data
-
-### Avoid
-- Don't add external dependencies without checking constraints
-- Don't create TypeScript files (project uses JSDoc)
-- Don't modify core data model without referencing spec
-- Don't skip persistence layer for state changes
-
-## Key Documentation
-
-1. **Implementation Spec** (`doc/orrery-implementation-spec.md`)
-   - Complete technical specification
-   - Data model definitions
-   - Component architecture
-   - Phased roadmap (Phase 0-4)
-   - Reducer actions reference
-
-2. **Soul Transmission** (`doc/soul-transmission.md`)
-   - Project philosophy and vision
-   - Problem statement and motivation
-   - Design principles
-
-3. **Keystone Master Artifact** (`doc/keystone-master-artifact-v2.md`)
-   - Architecture decisions
-   - Why certain approaches were chosen
-   - System design rationale
-
-## AI Integration Points
-
-The Orrery is designed to work with AI assistance. Key integration points:
-
-1. **Quest Generation**: AI generates quests from high-level user goals
-2. **Task Breakdown**: AI breaks quests into actionable task graphs
-3. **Smart Scheduling**: AI suggests optimal time allocations
-4. **Context Awareness**: AI understands quest/task relationships
-5. **Synthesis**: AI provides insights from task/time data
-
-## Testing Approach
-
-- No formal test suite currently configured
-- Manual testing via `npm run dev`
-- CI runs lint checks via GitHub Actions
-- Future: Consider adding Jest/Vitest for unit tests
-
-## Project Philosophy
-
-The Orrery is designed as a "gameplay loop" for productivity:
-- Tasks aren't just checkboxes, they're part of epic quests
-- Time is visible and manageable, not anxiety-inducing
-- Dependencies make progress feel natural and gated
-- AI acts as a helpful party member, not an overlord
-- Visual representation makes the invisible visible
-
-## Common Tasks
-
-### Creating a Quest
-Use reducer action: `ADD_QUEST` with Quest object
-
-### Creating a Task
-Use reducer action: `ADD_TASK` with Task object
-
-### Creating Dependencies
-Use reducer action: `ADD_EDGE` with Edge object (fromTaskId → toTaskId)
-
-### Updating State
-All state changes must go through reducer actions to ensure persistence
-
-### Accessing Persisted Data
-Data is automatically loaded from window.storage on app initialization
-
-## Questions or Issues?
-
-- Check the implementation spec first
-- Review existing reducer actions for patterns
-- Consult the architecture docs for design rationale
-- Reference this CLAUDE.MD for orientation
 
 ---
 
-**Last Updated**: 2025-12-14
-**Current Phase**: Phase 0 (Foundation)
-**Version**: Pre-release development
+## 🔧 Tech Stack
+
+- **Framework**: React 19 + Vite
+- **Icons**: lucide-react
+- **Language**: JSDoc-typed JavaScript (.jsx)
+- **Current Persistence**: `window.storage` API
+- **Target Persistence**: PostgreSQL via worldoe-db MCP server
+- **AI Integration**: `window.claude.complete` API → evolving to multi-AI via MCP
+
+---
+
+## ✅ The Test
+
+```
+ASK: "Does the player need to see this?"
+ASK: "Is this WORLD or PARTY or ENGINE?"
+ASK: "Would a game designer approve, or say 'where's the juice?'"
+ASK: "Is the AI a tool or a companion?"
+```
+
+---
+
+## 🛠️ Development Commands
+
+```bash
+npm install
+npm run dev      # Development server
+npm run build    # Production build
+npm run lint     # ESLint
+```
+
+---
+
+**Last Updated**: 2025-12-30
+**Current Focus**: AI Integration as Party Members (Phase 5)
+**Active Working Doc**: `doc/ai-integration-architecture.md`
