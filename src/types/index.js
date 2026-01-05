@@ -28,10 +28,12 @@
  */
 
 /**
- * @typedef {1 | 2 | 3} CognitiveLoad
- * 1 = Light (routine, autopilot)
- * 2 = Medium (focused attention)
- * 3 = Heavy (deep work, high mental effort)
+ * @typedef {1 | 2 | 3 | 4 | 5} CognitiveLoad
+ * 1 = Autopilot (routine, mindless)
+ * 2 = Light focus
+ * 3 = Focused attention (default)
+ * 4 = Heavy (deep work)
+ * 5 = Maximum cognitive load (consider decomposing)
  */
 
 /**

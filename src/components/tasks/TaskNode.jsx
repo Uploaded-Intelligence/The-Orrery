@@ -4,87 +4,51 @@
 //
 // NO MORE ABSTRACT NUMBERS - Everything is VISUAL:
 // - TIME → Arc around node (fuller = longer task)
-// - COGNITIVE LOAD → Glow intensity (brighter = heavier)
+// - COGNITIVE LOAD → 5 orbs with glow intensity (1-5 scale)
+// - HIGH LOAD → Decompose button for Claude to break down
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react';
-import { Circle, CheckCircle2, Lock, Play, Trash2, RotateCcw, Zap } from 'lucide-react';
+import { Circle, CheckCircle2, Lock, Play, Trash2, RotateCcw, Sparkles } from 'lucide-react';
 import { COLORS } from '@/constants';
 import { LAYOUT } from '@/utils';
 
 // Visual constants
-const TIME_ARC_RADIUS = 48; // Radius of time arc
-const MAX_MINUTES = 120;    // Full arc = 2 hours
+const TIME_ARC_RADIUS = 48;
+const MAX_MINUTES = 120;
 
 /**
  * Generate SVG arc path
- * @param {number} percentage - 0 to 1
- * @param {number} radius
- * @param {number} cx - center x
- * @param {number} cy - center y
  */
 function describeArc(percentage, radius, cx, cy) {
   if (percentage <= 0) return '';
   if (percentage >= 1) {
-    // Full circle
     return `M ${cx} ${cy - radius} A ${radius} ${radius} 0 1 1 ${cx - 0.01} ${cy - radius}`;
   }
-
-  const startAngle = -90; // Start at top
+  const startAngle = -90;
   const endAngle = startAngle + (percentage * 360);
-
   const startRad = (startAngle * Math.PI) / 180;
   const endRad = (endAngle * Math.PI) / 180;
-
   const x1 = cx + radius * Math.cos(startRad);
   const y1 = cy + radius * Math.sin(startRad);
   const x2 = cx + radius * Math.cos(endRad);
   const y2 = cy + radius * Math.sin(endRad);
-
   const largeArcFlag = percentage > 0.5 ? 1 : 0;
-
   return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
 }
 
 /**
- * Get cognitive load visual properties
- * @param {1|2|3} load
+ * Get cognitive load visual properties (1-5 scale)
  */
 function getCognitiveLoadStyle(load) {
-  switch (load) {
-    case 1: // Light - autopilot
-      return {
-        glowIntensity: 0.2,
-        borderWidth: 2,
-        pulseSpeed: 0,
-        color: '#6EE7B7', // Soft green
-        label: '◦',
-      };
-    case 2: // Medium - focused
-      return {
-        glowIntensity: 0.4,
-        borderWidth: 2.5,
-        pulseSpeed: 0,
-        color: '#FBBF24', // Amber
-        label: '◦◦',
-      };
-    case 3: // Heavy - deep work
-      return {
-        glowIntensity: 0.7,
-        borderWidth: 3,
-        pulseSpeed: 2,
-        color: '#F87171', // Red
-        label: '◦◦◦',
-      };
-    default:
-      return {
-        glowIntensity: 0.3,
-        borderWidth: 2,
-        pulseSpeed: 0,
-        color: '#9CA3AF',
-        label: '◦◦',
-      };
-  }
+  const styles = {
+    1: { color: '#6EE7B7', glowIntensity: 0.15, borderWidth: 2, pulseSpeed: 0, arcWidth: 4 },      // Autopilot - green
+    2: { color: '#22D3EE', glowIntensity: 0.25, borderWidth: 2, pulseSpeed: 0, arcWidth: 5 },      // Light - teal
+    3: { color: '#FBBF24', glowIntensity: 0.4, borderWidth: 2.5, pulseSpeed: 0, arcWidth: 6 },     // Focused - amber
+    4: { color: '#F97316', glowIntensity: 0.6, borderWidth: 3, pulseSpeed: 3, arcWidth: 7 },       // Heavy - orange
+    5: { color: '#EF4444', glowIntensity: 0.8, borderWidth: 3.5, pulseSpeed: 1.5, arcWidth: 8 },   // Maximum - red
+  };
+  return styles[load] || styles[3];
 }
 
 /**
@@ -108,20 +72,20 @@ function getStatusStyle(status) {
 /**
  * ActionButton
  */
-function ActionButton({ x, y, icon: Icon, color, onClick, title, delay = 0 }) {
+function ActionButton({ x, y, icon: Icon, color, onClick, title, delay = 0, size = 16 }) {
   return (
     <g
       transform={`translate(${x}, ${y})`}
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       style={{ cursor: 'pointer' }}
     >
-      <circle cx="0" cy="0" r="16" fill={COLORS.bgElevated} stroke={color} strokeWidth="2"
+      <circle cx="0" cy="0" r={size} fill={COLORS.bgElevated} stroke={color} strokeWidth="2"
         style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-        <animate attributeName="r" from="0" to="16" dur="0.12s" begin={`${delay}s`} fill="freeze" />
+        <animate attributeName="r" from="0" to={size} dur="0.12s" begin={`${delay}s`} fill="freeze" />
       </circle>
-      <foreignObject x="-10" y="-10" width="20" height="20">
+      <foreignObject x={-size * 0.625} y={-size * 0.625} width={size * 1.25} height={size * 1.25}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-          <Icon size={14} color={color} />
+          <Icon size={size * 0.875} color={color} />
         </div>
       </foreignObject>
       <title>{title}</title>
@@ -130,7 +94,7 @@ function ActionButton({ x, y, icon: Icon, color, onClick, title, delay = 0 }) {
 }
 
 /**
- * TaskNode - VISUAL ADHD-optimized design
+ * TaskNode - VISUAL ADHD-optimized design with 5-level cognitive load
  */
 export function TaskNode({
   task,
@@ -152,16 +116,16 @@ export function TaskNode({
   onReopen,
   onDelete,
   onUpdate,
+  onDecompose, // New: Ask Claude to break down high-load tasks
 }) {
   const statusStyle = getStatusStyle(computedStatus);
-  const cognitiveStyle = getCognitiveLoadStyle(task.cognitiveLoad || 2);
+  const cognitiveStyle = getCognitiveLoadStyle(task.cognitiveLoad || 3);
   const StatusIcon = statusStyle.icon;
 
   // Edit state
   const [editingField, setEditingField] = useState(null);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editMinutes, setEditMinutes] = useState(task.estimatedMinutes || 25);
-  const [editLoad, setEditLoad] = useState(task.cognitiveLoad || 2);
   const [isHovered, setIsHovered] = useState(false);
   const titleInputRef = useRef(null);
 
@@ -169,9 +133,8 @@ export function TaskNode({
     if (!editingField) {
       setEditTitle(task.title);
       setEditMinutes(task.estimatedMinutes || 25);
-      setEditLoad(task.cognitiveLoad || 2);
     }
-  }, [task.title, task.estimatedMinutes, task.cognitiveLoad, editingField]);
+  }, [task.title, task.estimatedMinutes, editingField]);
 
   useEffect(() => {
     if (editingField === 'title' && titleInputRef.current) {
@@ -184,26 +147,26 @@ export function TaskNode({
   const ghostMult = isGhosted ? 0.3 : 1;
   const effectiveOpacity = statusStyle.opacity * ghostMult;
 
-  // Time arc - visual representation of duration
+  // Time arc
   const timePercent = Math.min(1, (task.estimatedMinutes || 0) / MAX_MINUTES);
   const timeArcPath = describeArc(timePercent, TIME_ARC_RADIUS, LAYOUT.NODE_WIDTH / 2, LAYOUT.NODE_HEIGHT / 2);
 
   // Quest info
   const primaryQuest = quests.find(q => task.questIds.includes(q.id));
 
-  // Cursor
+  // High cognitive load warning (4 or 5)
+  const isHighLoad = (task.cognitiveLoad || 3) >= 4;
+
   const getCursor = () => {
     if (isDragging) return 'grabbing';
     if (computedStatus === 'locked' || isGhosted) return 'not-allowed';
     return 'grab';
   };
 
-  // Save
   const handleSave = () => {
     onUpdate?.({
       title: editTitle,
       estimatedMinutes: parseInt(editMinutes) || 25,
-      cognitiveLoad: editLoad,
     });
     setEditingField(null);
   };
@@ -215,7 +178,6 @@ export function TaskNode({
       setEditingField(null);
       setEditTitle(task.title);
       setEditMinutes(task.estimatedMinutes || 25);
-      setEditLoad(task.cognitiveLoad || 2);
     }
   };
 
@@ -226,14 +188,31 @@ export function TaskNode({
     }, 150);
   };
 
+  // Cycle cognitive load on double-click
+  const handleCycleLoad = () => {
+    if (computedStatus === 'locked' || isGhosted) return;
+    const currentLoad = task.cognitiveLoad || 3;
+    const newLoad = (currentLoad % 5) + 1; // 1 → 2 → 3 → 4 → 5 → 1
+    onUpdate?.({ cognitiveLoad: newLoad });
+  };
+
   // Actions
   const actionX = LAYOUT.NODE_WIDTH + 28;
   const actionY = LAYOUT.NODE_HEIGHT / 2;
   const actions = [];
-  if (computedStatus === 'available' && onStartSession) actions.push({ icon: Play, color: COLORS.accentPrimary, onClick: onStartSession, title: 'Start' });
-  if (computedStatus === 'in_progress' && onComplete) actions.push({ icon: CheckCircle2, color: COLORS.accentSuccess, onClick: onComplete, title: 'Done' });
-  if (computedStatus === 'completed' && onReopen) actions.push({ icon: RotateCcw, color: COLORS.accentWarning, onClick: onReopen, title: 'Reopen' });
-  if (onDelete) actions.push({ icon: Trash2, color: COLORS.accentDanger, onClick: onDelete, title: 'Delete' });
+
+  if (computedStatus === 'available' && onStartSession) {
+    actions.push({ icon: Play, color: COLORS.accentPrimary, onClick: onStartSession, title: 'Start' });
+  }
+  if (computedStatus === 'in_progress' && onComplete) {
+    actions.push({ icon: CheckCircle2, color: COLORS.accentSuccess, onClick: onComplete, title: 'Done' });
+  }
+  if (computedStatus === 'completed' && onReopen) {
+    actions.push({ icon: RotateCcw, color: COLORS.accentWarning, onClick: onReopen, title: 'Reopen' });
+  }
+  if (onDelete) {
+    actions.push({ icon: Trash2, color: COLORS.accentDanger, onClick: onDelete, title: 'Delete' });
+  }
 
   const showActions = (isSelected || isHovered) && !editingField && !isDragging && !isGhosted;
 
@@ -249,14 +228,14 @@ export function TaskNode({
     >
       {/* ═══════════════════════════════════════════════════════════════
           TIME ARC - Visual duration indicator
-          Fuller arc = longer task. Instant visual scan.
+          Fuller arc = longer task. Arc color/width from cognitive load.
           ═══════════════════════════════════════════════════════════════ */}
       {timePercent > 0 && (
         <path
           d={timeArcPath}
           fill="none"
           stroke={cognitiveStyle.color}
-          strokeWidth={4 + (task.cognitiveLoad || 2)}
+          strokeWidth={cognitiveStyle.arcWidth}
           strokeLinecap="round"
           opacity={effectiveOpacity * 0.7}
           style={{ filter: `drop-shadow(0 0 ${6 + cognitiveStyle.glowIntensity * 10}px ${cognitiveStyle.color})` }}
@@ -269,9 +248,8 @@ export function TaskNode({
 
       {/* ═══════════════════════════════════════════════════════════════
           COGNITIVE LOAD GLOW - Visual mental effort indicator
-          Brighter/thicker glow = heavier cognitive load
           ═══════════════════════════════════════════════════════════════ */}
-      {!isGhosted && (task.cognitiveLoad || 2) >= 2 && (
+      {!isGhosted && (task.cognitiveLoad || 3) >= 3 && (
         <rect
           x="-4"
           y="-4"
@@ -285,7 +263,12 @@ export function TaskNode({
           style={{ filter: `blur(${cognitiveStyle.glowIntensity * 4}px)` }}
         >
           {cognitiveStyle.pulseSpeed > 0 && (
-            <animate attributeName="stroke-opacity" values={`${cognitiveStyle.glowIntensity * 0.5};${cognitiveStyle.glowIntensity};${cognitiveStyle.glowIntensity * 0.5}`} dur={`${cognitiveStyle.pulseSpeed}s`} repeatCount="indefinite" />
+            <animate
+              attributeName="stroke-opacity"
+              values={`${cognitiveStyle.glowIntensity * 0.5};${cognitiveStyle.glowIntensity};${cognitiveStyle.glowIntensity * 0.5}`}
+              dur={`${cognitiveStyle.pulseSpeed}s`}
+              repeatCount="indefinite"
+            />
           )}
         </rect>
       )}
@@ -323,37 +306,43 @@ export function TaskNode({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          COGNITIVE LOAD INDICATOR - Visual dots
-          ◦ = light, ◦◦ = medium, ◦◦◦ = heavy
+          COGNITIVE LOAD INDICATOR - 5 Orbs
+          ◦◦◦◦◦ - Visual representation of mental effort
+          Double-click to cycle through 1-5
           ═══════════════════════════════════════════════════════════════ */}
       <g
-        transform={`translate(${LAYOUT.NODE_WIDTH - 30}, 14)`}
+        transform={`translate(${LAYOUT.NODE_WIDTH - 46}, 12)`}
         style={{ cursor: 'pointer' }}
         onDoubleClick={(e) => {
           e.stopPropagation();
-          if (computedStatus !== 'locked' && !isGhosted) {
-            // Cycle through loads: 1 → 2 → 3 → 1
-            const newLoad = ((task.cognitiveLoad || 2) % 3) + 1;
-            onUpdate?.({ cognitiveLoad: newLoad });
-          }
+          handleCycleLoad();
         }}
       >
-        {[1, 2, 3].map((level) => (
+        {[1, 2, 3, 4, 5].map((level) => (
           <circle
             key={level}
             cx={(level - 1) * 8}
             cy="0"
             r="3"
-            fill={level <= (task.cognitiveLoad || 2) ? cognitiveStyle.color : 'transparent'}
+            fill={level <= (task.cognitiveLoad || 3) ? cognitiveStyle.color : 'transparent'}
             stroke={cognitiveStyle.color}
             strokeWidth="1"
-            opacity={effectiveOpacity * (level <= (task.cognitiveLoad || 2) ? 1 : 0.3)}
-          />
+            opacity={effectiveOpacity * (level <= (task.cognitiveLoad || 3) ? 1 : 0.25)}
+          >
+            {level <= (task.cognitiveLoad || 3) && cognitiveStyle.pulseSpeed > 0 && (
+              <animate
+                attributeName="fill-opacity"
+                values="0.6;1;0.6"
+                dur={`${cognitiveStyle.pulseSpeed}s`}
+                repeatCount="indefinite"
+              />
+            )}
+          </circle>
         ))}
       </g>
 
       {/* Status icon */}
-      <foreignObject x="12" y="20" width="24" height="24">
+      <foreignObject x="12" y="18" width="24" height="24">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <StatusIcon size={22} color={statusStyle.border} style={{ opacity: effectiveOpacity }} />
         </div>
@@ -363,7 +352,7 @@ export function TaskNode({
           TITLE
           ═══════════════════════════════════════════════════════════════ */}
       {editingField === 'title' ? (
-        <foreignObject x="40" y="18" width={LAYOUT.NODE_WIDTH - 80} height="28">
+        <foreignObject x="40" y="16" width={LAYOUT.NODE_WIDTH - 90} height="28">
           <input
             ref={titleInputRef}
             type="text"
@@ -384,7 +373,7 @@ export function TaskNode({
       ) : (
         <text
           x="42"
-          y="38"
+          y="36"
           fill={COLORS.textPrimary}
           fontSize="15"
           fontWeight="700"
@@ -400,7 +389,7 @@ export function TaskNode({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          TIME DISPLAY - Clickable to edit, but arc is the visual hero
+          TIME DISPLAY - Double-click to edit
           ═══════════════════════════════════════════════════════════════ */}
       <g
         transform={`translate(14, ${LAYOUT.NODE_HEIGHT - 22})`}
@@ -431,7 +420,6 @@ export function TaskNode({
           </foreignObject>
         ) : (
           <>
-            {/* Time pill */}
             <rect
               x="0" y="-10" width="50" height="20" rx="10"
               fill={cognitiveStyle.color} fillOpacity={effectiveOpacity * 0.15}
@@ -457,6 +445,47 @@ export function TaskNode({
           <rect x="0" y="-10" width="60" height="20" rx="10" fill={primaryQuest.color} fillOpacity={effectiveOpacity * 0.2} stroke={primaryQuest.color} strokeWidth="1" strokeOpacity={effectiveOpacity * 0.5} />
           <text x="30" y="5" fill={primaryQuest.color} fontSize="10" fontWeight="600" textAnchor="middle" opacity={effectiveOpacity}>
             {primaryQuest.title.length > 8 ? primaryQuest.title.slice(0, 7) + '…' : primaryQuest.title}
+          </text>
+        </g>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          DECOMPOSE BUTTON - For high cognitive load (4-5)
+          Appears when selected/hovered on heavy tasks
+          ═══════════════════════════════════════════════════════════════ */}
+      {isHighLoad && showActions && onDecompose && (
+        <g
+          transform={`translate(${LAYOUT.NODE_WIDTH / 2}, ${LAYOUT.NODE_HEIGHT + 20})`}
+          onClick={(e) => { e.stopPropagation(); onDecompose?.(task); }}
+          style={{ cursor: 'pointer' }}
+        >
+          <rect
+            x="-55"
+            y="-12"
+            width="110"
+            height="24"
+            rx="12"
+            fill={cognitiveStyle.color}
+            fillOpacity="0.2"
+            stroke={cognitiveStyle.color}
+            strokeWidth="1.5"
+          >
+            <animate attributeName="stroke-opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite" />
+          </rect>
+          <foreignObject x="-50" y="-10" width="20" height="20">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Sparkles size={14} color={cognitiveStyle.color} />
+            </div>
+          </foreignObject>
+          <text
+            x="5"
+            y="5"
+            fill={cognitiveStyle.color}
+            fontSize="11"
+            fontWeight="600"
+            opacity="0.9"
+          >
+            Break it down
           </text>
         </g>
       )}

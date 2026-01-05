@@ -1446,6 +1446,114 @@ function renderCelestialVine(
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## 7.9 ADHD-VISUAL TASK DESIGN: Time & Cognitive Load
+
+> **CRITICAL INSIGHT**: Numbers are abstract. ADHD brains need to SEE at a glance:
+> - "This is a BIG task" vs "This is quick"
+> - "This is mentally heavy" vs "This is light"
+>
+> Everything must be VISUAL, not numerical.
+
+### 7.9.1 Time Arc — Visual Duration Indicator
+
+Instead of showing "25m" or "60m" as text, time is represented as an **arc around the task node**:
+
+```
+Short task (15m):    ⌒ (small arc, ~quarter circle)
+Medium task (60m):   ◠ (half arc)
+Long task (120m):    ○ (full circle)
+```
+
+**Implementation:**
+- Arc radiates from node center
+- Max time = 120 minutes = full circle (configurable)
+- Arc color matches cognitive load color
+- Arc thickness increases with cognitive load
+- In-progress arcs pulse gently
+
+```typescript
+const TIME_ARC_RADIUS = 48;
+const MAX_MINUTES = 120;
+const timePercent = Math.min(1, estimatedMinutes / MAX_MINUTES);
+const arcPath = describeArc(timePercent, TIME_ARC_RADIUS, centerX, centerY);
+```
+
+### 7.9.2 Cognitive Load — Visual Mental Effort (1-5 Orbs)
+
+Cognitive load is NOT a number the user reads — it's a **visual weight** they feel:
+
+```
+◦         (1) Green, soft glow      = Autopilot (routine, mindless)
+◦◦        (2) Teal, light glow      = Light focus
+◦◦◦       (3) Amber, medium glow    = Focused attention
+◦◦◦◦      (4) Orange, strong glow   = Heavy (deep work)
+◦◦◦◦◦     (5) Red, pulsing intense  = Maximum cognitive load
+```
+
+**Visual Properties by Load Level:**
+
+| Load | Color   | Glow Intensity | Border Width | Pulse | Arc Thickness |
+|------|---------|----------------|--------------|-------|---------------|
+| 1    | #6EE7B7 | 0.15           | 2px          | none  | 4px           |
+| 2    | #22D3EE | 0.25           | 2px          | none  | 5px           |
+| 3    | #FBBF24 | 0.4            | 2.5px        | none  | 6px           |
+| 4    | #F97316 | 0.6            | 3px          | slow  | 7px           |
+| 5    | #EF4444 | 0.8            | 3.5px        | fast  | 8px           |
+
+**Interaction:**
+- Double-click orbs to cycle: 1 → 2 → 3 → 4 → 5 → 1
+- Visual scan at a glance: big red glowing arc = "heavy long task"
+
+### 7.9.3 Auto-Decomposition Prompt
+
+When cognitive load is 4 or 5, the system offers:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  🔴 High cognitive load detected (4/5)                          │
+│                                                                 │
+│  This task might be too heavy for one session.                  │
+│  [✨ Ask Claude to break this down]                             │
+│                                                                 │
+│  Tip: Heavy tasks often hide 3-7 smaller tasks inside.          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+This triggers the AI "Magic Wand" functionality (§12) to decompose the task into subtasks with proper dependencies.
+
+### 7.9.4 Visual Scan Patterns (ADHD Optimization)
+
+The combination of time arc + cognitive load creates instant visual patterns:
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│  VISUAL PATTERN RECOGNITION:                                   │
+│                                                                │
+│  Small green arc    = Quick easy task (do it now!)            │
+│  Small red arc      = Quick but mentally hard (need focus)    │
+│  Large green arc    = Long but easy (podcast task)            │
+│  Large red arc      = Marathon deep work (schedule carefully) │
+│                                                                │
+│  The user doesn't read numbers — they SEE task weight.        │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### 7.9.5 Task Data Structure Update
+
+```typescript
+interface Task {
+  // ... existing fields ...
+  cognitiveLoad: 1 | 2 | 3 | 4 | 5;  // Mental effort required
+  // 1 = Autopilot (routine)
+  // 2 = Light focus
+  // 3 = Focused attention (default)
+  // 4 = Heavy (deep work)
+  // 5 = Maximum cognitive load
+}
+```
+
+Default value: `3` (focused attention) — middle of the scale.
+
 ---
 
 # §8 TESTING CRITERIA

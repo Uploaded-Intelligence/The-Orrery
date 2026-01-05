@@ -105,7 +105,7 @@ export function orreryReducer(state, action) {
         ...state,
         tasks: [...state.tasks, {
           id: generateId(),
-          cognitiveLoad: 2, // Default to medium if not specified
+          cognitiveLoad: 3, // Default to focused attention (middle of 1-5 scale)
           ...action.payload,
           createdAt: now,
           updatedAt: now,
