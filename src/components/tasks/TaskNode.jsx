@@ -15,11 +15,15 @@ import { COLORS } from '@/constants';
 import { LAYOUT } from '@/utils';
 
 // Visual constants
-const TIME_ARC_RADIUS = 48;
-const MAX_MINUTES = 120;
 const ORB_RADIUS = 5;        // Bigger orbs
 const ORB_SPACING = 12;      // More spacing
 const ORB_COUNT = 5;
+
+// Hour ring constants - PROMINENT time visualization
+const RING_BASE_RADIUS = 58;  // Just outside node
+const RING_SPACING = 10;      // Space between rings
+const RING_STROKE = 4;        // Visible stroke
+const MINUTES_PER_RING = 60;  // 1 hour = 1 full ring
 
 /**
  * Generate SVG arc path
@@ -74,13 +78,22 @@ function getStatusStyle(status) {
 }
 
 /**
- * ActionButton
+ * ActionButton - MUST stop mousedown to prevent drag interference
  */
 function ActionButton({ x, y, icon: Icon, color, onClick, title, delay = 0, size = 16 }) {
+  const handleClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onClick?.();
+  };
+
   return (
     <g
       transform={`translate(${x}, ${y})`}
-      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onClick={handleClick}
+      onTouchEnd={handleClick}
       style={{ cursor: 'pointer' }}
     >
       <circle cx="0" cy="0" r={size} fill={COLORS.bgElevated} stroke={color} strokeWidth="2"
@@ -157,9 +170,13 @@ export function TaskNode({
   const ghostMult = isGhosted ? 0.3 : 1;
   const effectiveOpacity = statusStyle.opacity * ghostMult;
 
-  // Time arc
-  const timePercent = Math.min(1, (task.estimatedMinutes || 0) / MAX_MINUTES);
-  const timeArcPath = describeArc(timePercent, TIME_ARC_RADIUS, LAYOUT.NODE_WIDTH / 2, LAYOUT.NODE_HEIGHT / 2);
+  // Hour rings calculation
+  const totalMinutes = task.estimatedMinutes || 0;
+  const fullHours = Math.floor(totalMinutes / MINUTES_PER_RING);
+  const remainingMinutes = totalMinutes % MINUTES_PER_RING;
+  const partialPercent = remainingMinutes / MINUTES_PER_RING;
+  const centerX = LAYOUT.NODE_WIDTH / 2;
+  const centerY = LAYOUT.NODE_HEIGHT / 2;
 
   // Quest info
   const primaryQuest = quests.find(q => task.questIds.includes(q.id));
@@ -282,23 +299,9 @@ export function TaskNode({
       style={{ cursor: getCursor(), touchAction: 'none' }}
     >
       {/* ═══════════════════════════════════════════════════════════════
-          TIME ARC - Visual duration indicator
+          HOUR RINGS - Visual duration indicator (1 ring = 1 hour)
+          Drawn OUTSIDE the node for maximum visibility
           ═══════════════════════════════════════════════════════════════ */}
-      {timePercent > 0 && (
-        <path
-          d={timeArcPath}
-          fill="none"
-          stroke={cognitiveStyle.color}
-          strokeWidth={cognitiveStyle.arcWidth}
-          strokeLinecap="round"
-          opacity={effectiveOpacity * 0.7}
-          style={{ filter: `drop-shadow(0 0 ${6 + cognitiveStyle.glowIntensity * 10}px ${cognitiveStyle.color})` }}
-        >
-          {computedStatus === 'in_progress' && (
-            <animate attributeName="stroke-opacity" values="0.5;0.9;0.5" dur="2s" repeatCount="indefinite" />
-          )}
-        </path>
-      )}
 
       {/* ═══════════════════════════════════════════════════════════════
           COGNITIVE LOAD GLOW
@@ -606,6 +609,89 @@ export function TaskNode({
             <ActionButton key={i} x={actionX} y={actionY + (i - (actions.length - 1) / 2) * 36} icon={action.icon} color={action.color} onClick={action.onClick} title={action.title} delay={i * 0.03} />
           ))}
           <line x1={LAYOUT.NODE_WIDTH + 4} y1={LAYOUT.NODE_HEIGHT / 2} x2={actionX - 18} y2={LAYOUT.NODE_HEIGHT / 2} stroke={COLORS.accentSecondary} strokeWidth="2" strokeOpacity="0.2" strokeDasharray="4 2" />
+        </g>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          HOUR RINGS - Rendered ON TOP for maximum visibility
+          Each full ring = 1 hour, partial ring for remaining minutes
+          Pin this to your browser for highly visual time tracking!
+          ═══════════════════════════════════════════════════════════════ */}
+      {totalMinutes > 0 && (
+        <g style={{ pointerEvents: 'none' }}>
+          {/* Full hour rings */}
+          {Array.from({ length: fullHours }, (_, i) => {
+            const radius = RING_BASE_RADIUS + i * RING_SPACING;
+            return (
+              <circle
+                key={`ring-${i}`}
+                cx={centerX}
+                cy={centerY}
+                r={radius}
+                fill="none"
+                stroke={cognitiveStyle.color}
+                strokeWidth={RING_STROKE}
+                opacity={effectiveOpacity * 0.8}
+                style={{
+                  filter: `drop-shadow(0 0 ${4 + cognitiveStyle.glowIntensity * 6}px ${cognitiveStyle.color})`,
+                }}
+              >
+                {computedStatus === 'in_progress' && (
+                  <animate
+                    attributeName="stroke-opacity"
+                    values="0.6;1;0.6"
+                    dur={`${2 + i * 0.5}s`}
+                    repeatCount="indefinite"
+                  />
+                )}
+              </circle>
+            );
+          })}
+
+          {/* Partial ring for remaining minutes */}
+          {partialPercent > 0 && (
+            <path
+              d={describeArc(
+                partialPercent,
+                RING_BASE_RADIUS + fullHours * RING_SPACING,
+                centerX,
+                centerY
+              )}
+              fill="none"
+              stroke={cognitiveStyle.color}
+              strokeWidth={RING_STROKE}
+              strokeLinecap="round"
+              opacity={effectiveOpacity * 0.9}
+              style={{
+                filter: `drop-shadow(0 0 ${6 + cognitiveStyle.glowIntensity * 8}px ${cognitiveStyle.color})`,
+              }}
+            >
+              {computedStatus === 'in_progress' && (
+                <animate
+                  attributeName="stroke-opacity"
+                  values="0.7;1;0.7"
+                  dur="1.5s"
+                  repeatCount="indefinite"
+                />
+              )}
+            </path>
+          )}
+
+          {/* Time label on outer ring */}
+          <text
+            x={centerX}
+            y={centerY - RING_BASE_RADIUS - (fullHours * RING_SPACING) - 8}
+            fill={cognitiveStyle.color}
+            fontSize="11"
+            fontWeight="700"
+            textAnchor="middle"
+            opacity={effectiveOpacity * 0.9}
+            style={{
+              filter: `drop-shadow(0 0 4px ${COLORS.bgVoid})`,
+            }}
+          >
+            {fullHours > 0 ? `${fullHours}h${remainingMinutes > 0 ? remainingMinutes : ''}` : `${remainingMinutes}m`}
+          </text>
         </g>
       )}
     </g>

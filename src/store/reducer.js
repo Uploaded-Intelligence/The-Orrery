@@ -372,6 +372,67 @@ export function orreryReducer(state, action) {
         lastSyncedAt: now,
       };
 
+    // ═══════════════════════════════════════════════════════════════
+    // BLOCKER ACTIONS
+    // ═══════════════════════════════════════════════════════════════
+    case 'ADD_BLOCKER':
+      return {
+        ...state,
+        tasks: state.tasks.map(t =>
+          t.id === action.payload.taskId
+            ? {
+                ...t,
+                blockers: [
+                  ...(t.blockers || []),
+                  {
+                    id: generateId(),
+                    text: action.payload.text,
+                    oracleSuggestion: null,
+                    status: 'pending',
+                    createdAt: now,
+                  }
+                ],
+                updatedAt: now,
+              }
+            : t
+        ),
+        lastSyncedAt: now,
+      };
+
+    case 'UPDATE_BLOCKER':
+      return {
+        ...state,
+        tasks: state.tasks.map(t =>
+          t.id === action.payload.taskId
+            ? {
+                ...t,
+                blockers: (t.blockers || []).map(b =>
+                  b.id === action.payload.blockerId
+                    ? { ...b, ...action.payload.updates }
+                    : b
+                ),
+                updatedAt: now,
+              }
+            : t
+        ),
+        lastSyncedAt: now,
+      };
+
+    case 'REMOVE_BLOCKER':
+      return {
+        ...state,
+        tasks: state.tasks.map(t =>
+          t.id === action.payload.taskId
+            ? {
+                ...t,
+                blockers: (t.blockers || []).filter(b => b.id !== action.payload.blockerId),
+                updatedAt: now,
+              }
+            : t
+        ),
+        lastSyncedAt: now,
+      };
+
     default:
       return state;
   }

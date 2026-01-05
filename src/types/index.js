@@ -37,6 +37,15 @@
  */
 
 /**
+ * @typedef {Object} Blocker
+ * @property {string} id - UUID
+ * @property {string} text - Description of the blocker
+ * @property {string|null} oracleSuggestion - AI suggestion for handling this blocker
+ * @property {'pending' | 'resolved' | 'ignored'} status
+ * @property {string} createdAt - ISO timestamp
+ */
+
+/**
  * @typedef {Object} Task
  * @property {string} id - UUID
  * @property {string} title - Display name
@@ -46,6 +55,7 @@
  * @property {number|null} estimatedMinutes
  * @property {number|null} actualMinutes
  * @property {CognitiveLoad} cognitiveLoad - Mental effort required (1=light, 2=medium, 3=heavy)
+ * @property {Blocker[]} blockers - What's blocking this task
  * @property {{x: number, y: number}|null} position - Manual position (null = auto-layout)
  * @property {string} createdAt - ISO timestamp
  * @property {string} updatedAt - ISO timestamp

@@ -11,6 +11,7 @@ import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } fr
 import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
 import { PartyChatPanel } from '@/components/party';
+import { ExpandedTaskEditor } from '@/components/panels';
 
 /**
  * MicroView - Task DAG visualization
@@ -944,6 +945,25 @@ export function MicroView() {
       {partyChatOpen && (
         <PartyChatPanel onClose={() => setPartyChatOpen(false)} />
       )}
+
+      {/* Expanded Task Editor - appears when task is selected */}
+      {selectedTaskId && (() => {
+        const selectedTask = state.tasks.find(t => t.id === selectedTaskId);
+        const taskPos = positions.get(selectedTaskId);
+        if (!selectedTask || !taskPos) return null;
+
+        // Convert SVG coordinates to screen coordinates
+        const screenX = taskPos.x * zoom + pan.x;
+        const screenY = taskPos.y * zoom + pan.y;
+
+        return (
+          <ExpandedTaskEditor
+            task={selectedTask}
+            position={{ x: screenX, y: screenY }}
+            onClose={() => setSelectedTaskId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
