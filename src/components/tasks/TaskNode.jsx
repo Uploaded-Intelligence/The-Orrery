@@ -1,104 +1,123 @@
 // ═══════════════════════════════════════════════════════════════
 // components/tasks/TaskNode.jsx
-// Task node for Micro View DAG - ADHD-Optimized Mythopoetic Design
+// Task node for Micro View - VISUAL ADHD Design
 //
-// Design principles:
-// - TIME IS HERO: Large, prominent time display (fights time blindness)
-// - VISUAL CLARITY: Clear hierarchy, not corporate blandness
-// - MYTHOPOETIC: Feels like a cosmic artifact, not a Jira card
-// - DIRECT MANIPULATION: Double-click to edit in place
+// NO MORE ABSTRACT NUMBERS - Everything is VISUAL:
+// - TIME → Arc around node (fuller = longer task)
+// - COGNITIVE LOAD → Glow intensity (brighter = heavier)
 // ═══════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react';
-import { Circle, CheckCircle2, Lock, Play, Trash2, RotateCcw, Clock } from 'lucide-react';
+import { Circle, CheckCircle2, Lock, Play, Trash2, RotateCcw, Zap } from 'lucide-react';
 import { COLORS } from '@/constants';
 import { LAYOUT } from '@/utils';
 
+// Visual constants
+const TIME_ARC_RADIUS = 48; // Radius of time arc
+const MAX_MINUTES = 120;    // Full arc = 2 hours
+
 /**
- * Get visual style based on task status
+ * Generate SVG arc path
+ * @param {number} percentage - 0 to 1
+ * @param {number} radius
+ * @param {number} cx - center x
+ * @param {number} cy - center y
  */
-function getStatusStyle(status) {
-  switch (status) {
-    case 'locked':
+function describeArc(percentage, radius, cx, cy) {
+  if (percentage <= 0) return '';
+  if (percentage >= 1) {
+    // Full circle
+    return `M ${cx} ${cy - radius} A ${radius} ${radius} 0 1 1 ${cx - 0.01} ${cy - radius}`;
+  }
+
+  const startAngle = -90; // Start at top
+  const endAngle = startAngle + (percentage * 360);
+
+  const startRad = (startAngle * Math.PI) / 180;
+  const endRad = (endAngle * Math.PI) / 180;
+
+  const x1 = cx + radius * Math.cos(startRad);
+  const y1 = cy + radius * Math.sin(startRad);
+  const x2 = cx + radius * Math.cos(endRad);
+  const y2 = cy + radius * Math.sin(endRad);
+
+  const largeArcFlag = percentage > 0.5 ? 1 : 0;
+
+  return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
+}
+
+/**
+ * Get cognitive load visual properties
+ * @param {1|2|3} load
+ */
+function getCognitiveLoadStyle(load) {
+  switch (load) {
+    case 1: // Light - autopilot
       return {
-        bg: 'rgba(30, 30, 40, 0.8)',
-        border: COLORS.statusLocked,
-        text: COLORS.textMuted,
-        glow: 'none',
-        opacity: 0.5,
-        icon: Lock,
+        glowIntensity: 0.2,
+        borderWidth: 2,
+        pulseSpeed: 0,
+        color: '#6EE7B7', // Soft green
+        label: '◦',
       };
-    case 'available':
+    case 2: // Medium - focused
       return {
-        bg: 'rgba(40, 45, 60, 0.95)',
-        border: COLORS.statusAvailable,
-        text: COLORS.textPrimary,
-        glow: `0 0 20px ${COLORS.statusAvailable}40`,
-        opacity: 1,
-        icon: Circle,
+        glowIntensity: 0.4,
+        borderWidth: 2.5,
+        pulseSpeed: 0,
+        color: '#FBBF24', // Amber
+        label: '◦◦',
       };
-    case 'in_progress':
+    case 3: // Heavy - deep work
       return {
-        bg: 'rgba(50, 45, 70, 0.95)',
-        border: COLORS.statusActive,
-        text: COLORS.textPrimary,
-        glow: `0 0 25px ${COLORS.statusActive}50`,
-        opacity: 1,
-        icon: Play,
-      };
-    case 'completed':
-      return {
-        bg: 'rgba(35, 45, 40, 0.85)',
-        border: COLORS.statusComplete,
-        text: COLORS.textSecondary,
-        glow: `0 0 15px ${COLORS.statusComplete}30`,
-        opacity: 0.75,
-        icon: CheckCircle2,
+        glowIntensity: 0.7,
+        borderWidth: 3,
+        pulseSpeed: 2,
+        color: '#F87171', // Red
+        label: '◦◦◦',
       };
     default:
       return {
-        bg: 'rgba(30, 30, 40, 0.7)',
-        border: COLORS.textMuted,
-        text: COLORS.textSecondary,
-        glow: 'none',
-        opacity: 0.5,
-        icon: Circle,
+        glowIntensity: 0.3,
+        borderWidth: 2,
+        pulseSpeed: 0,
+        color: '#9CA3AF',
+        label: '◦◦',
       };
   }
 }
 
 /**
- * Format time for display - ADHD friendly (clear, scannable)
+ * Get status style
  */
-function formatTime(minutes) {
-  if (!minutes) return '—';
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+function getStatusStyle(status) {
+  switch (status) {
+    case 'locked':
+      return { bg: 'rgba(30, 30, 40, 0.7)', border: COLORS.statusLocked, icon: Lock, opacity: 0.5 };
+    case 'available':
+      return { bg: 'rgba(40, 45, 60, 0.95)', border: COLORS.statusAvailable, icon: Circle, opacity: 1 };
+    case 'in_progress':
+      return { bg: 'rgba(50, 45, 70, 0.95)', border: COLORS.statusActive, icon: Play, opacity: 1 };
+    case 'completed':
+      return { bg: 'rgba(35, 45, 40, 0.85)', border: COLORS.statusComplete, icon: CheckCircle2, opacity: 0.7 };
+    default:
+      return { bg: 'rgba(30, 30, 40, 0.7)', border: COLORS.textMuted, icon: Circle, opacity: 0.5 };
+  }
 }
 
 /**
- * ActionButton - Contextual action that appears on hover/select
+ * ActionButton
  */
-function ActionButton({ x, y, icon: Icon, color, bgColor, onClick, title, delay = 0 }) {
+function ActionButton({ x, y, icon: Icon, color, onClick, title, delay = 0 }) {
   return (
     <g
       transform={`translate(${x}, ${y})`}
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      onTouchEnd={(e) => { e.stopPropagation(); onClick?.(); }}
-      style={{ cursor: 'pointer', touchAction: 'none' }}
+      style={{ cursor: 'pointer' }}
     >
-      <circle
-        cx="0"
-        cy="0"
-        r="16"
-        fill={bgColor || COLORS.bgPanel}
-        stroke={color}
-        strokeWidth="2"
-        style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))' }}
-      >
-        <animate attributeName="r" from="0" to="16" dur="0.15s" begin={`${delay}s`} fill="freeze" />
+      <circle cx="0" cy="0" r="16" fill={COLORS.bgElevated} stroke={color} strokeWidth="2"
+        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
+        <animate attributeName="r" from="0" to="16" dur="0.12s" begin={`${delay}s`} fill="freeze" />
       </circle>
       <foreignObject x="-10" y="-10" width="20" height="20">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
@@ -111,13 +130,7 @@ function ActionButton({ x, y, icon: Icon, color, bgColor, onClick, title, delay 
 }
 
 /**
- * TaskNode - ADHD-optimized task display
- *
- * Layout:
- * ┌─────────────────────────────────┐
- * │ ⬤ Task Title Here          25m │  ← Time is BIG and prominent
- * │   Quest Badge                   │
- * └─────────────────────────────────┘
+ * TaskNode - VISUAL ADHD-optimized design
  */
 export function TaskNode({
   task,
@@ -140,43 +153,43 @@ export function TaskNode({
   onDelete,
   onUpdate,
 }) {
-  const style = getStatusStyle(computedStatus);
-  const Icon = style.icon;
+  const statusStyle = getStatusStyle(computedStatus);
+  const cognitiveStyle = getCognitiveLoadStyle(task.cognitiveLoad || 2);
+  const StatusIcon = statusStyle.icon;
 
-  // Inline edit state
+  // Edit state
   const [editingField, setEditingField] = useState(null);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editMinutes, setEditMinutes] = useState(task.estimatedMinutes || 25);
+  const [editLoad, setEditLoad] = useState(task.cognitiveLoad || 2);
   const [isHovered, setIsHovered] = useState(false);
   const titleInputRef = useRef(null);
-  const minutesInputRef = useRef(null);
 
-  // Reset edit values when task changes
   useEffect(() => {
     if (!editingField) {
       setEditTitle(task.title);
       setEditMinutes(task.estimatedMinutes || 25);
+      setEditLoad(task.cognitiveLoad || 2);
     }
-  }, [task.title, task.estimatedMinutes, editingField]);
+  }, [task.title, task.estimatedMinutes, task.cognitiveLoad, editingField]);
 
-  // Focus input when entering edit mode
   useEffect(() => {
     if (editingField === 'title' && titleInputRef.current) {
       titleInputRef.current.focus();
       titleInputRef.current.select();
-    } else if (editingField === 'minutes' && minutesInputRef.current) {
-      minutesInputRef.current.focus();
-      minutesInputRef.current.select();
     }
   }, [editingField]);
 
-  // Ghosting for quest focus
-  const ghostMultiplier = isGhosted ? 0.3 : 1;
-  const effectiveOpacity = style.opacity * ghostMultiplier;
+  // Visual calculations
+  const ghostMult = isGhosted ? 0.3 : 1;
+  const effectiveOpacity = statusStyle.opacity * ghostMult;
+
+  // Time arc - visual representation of duration
+  const timePercent = Math.min(1, (task.estimatedMinutes || 0) / MAX_MINUTES);
+  const timeArcPath = describeArc(timePercent, TIME_ARC_RADIUS, LAYOUT.NODE_WIDTH / 2, LAYOUT.NODE_HEIGHT / 2);
 
   // Quest info
-  const taskQuests = quests.filter(q => task.questIds.includes(q.id)).slice(0, 2);
-  const primaryQuest = taskQuests[0];
+  const primaryQuest = quests.find(q => task.questIds.includes(q.id));
 
   // Cursor
   const getCursor = () => {
@@ -185,24 +198,16 @@ export function TaskNode({
     return 'grab';
   };
 
-  // Progress
-  const getProgressPercent = () => {
-    if (computedStatus === 'completed') return 100;
-    if (!task.estimatedMinutes) return 0;
-    return Math.min(100, ((task.actualMinutes || 0) / task.estimatedMinutes) * 100);
-  };
-  const progressPercent = getProgressPercent();
-
-  // Save edit
+  // Save
   const handleSave = () => {
     onUpdate?.({
       title: editTitle,
       estimatedMinutes: parseInt(editMinutes) || 25,
+      cognitiveLoad: editLoad,
     });
     setEditingField(null);
   };
 
-  // Keyboard handling
   const handleKeyDown = (e) => {
     e.stopPropagation();
     if (e.key === 'Enter') handleSave();
@@ -210,38 +215,25 @@ export function TaskNode({
       setEditingField(null);
       setEditTitle(task.title);
       setEditMinutes(task.estimatedMinutes || 25);
-    } else if (e.key === 'Tab' && !e.shiftKey && editingField === 'title') {
-      e.preventDefault();
-      setEditingField('minutes');
-    } else if (e.key === 'Tab' && e.shiftKey && editingField === 'minutes') {
-      e.preventDefault();
-      setEditingField('title');
+      setEditLoad(task.cognitiveLoad || 2);
     }
   };
 
-  // Blur handling
-  const handleBlur = (e) => {
-    if (e.relatedTarget === titleInputRef.current || e.relatedTarget === minutesInputRef.current) return;
-    handleSave();
+  const handleBlur = () => {
+    setTimeout(() => {
+      if (!editingField) return;
+      handleSave();
+    }, 150);
   };
 
   // Actions
-  const actionX = LAYOUT.NODE_WIDTH + 24;
+  const actionX = LAYOUT.NODE_WIDTH + 28;
   const actionY = LAYOUT.NODE_HEIGHT / 2;
   const actions = [];
-
-  if (computedStatus === 'available' && onStartSession) {
-    actions.push({ icon: Play, color: COLORS.accentPrimary, onClick: onStartSession, title: 'Start' });
-  }
-  if (computedStatus === 'in_progress' && onComplete) {
-    actions.push({ icon: CheckCircle2, color: COLORS.accentSuccess, onClick: onComplete, title: 'Done' });
-  }
-  if (computedStatus === 'completed' && onReopen) {
-    actions.push({ icon: RotateCcw, color: COLORS.accentWarning, onClick: onReopen, title: 'Reopen' });
-  }
-  if (onDelete) {
-    actions.push({ icon: Trash2, color: COLORS.accentDanger, onClick: onDelete, title: 'Delete' });
-  }
+  if (computedStatus === 'available' && onStartSession) actions.push({ icon: Play, color: COLORS.accentPrimary, onClick: onStartSession, title: 'Start' });
+  if (computedStatus === 'in_progress' && onComplete) actions.push({ icon: CheckCircle2, color: COLORS.accentSuccess, onClick: onComplete, title: 'Done' });
+  if (computedStatus === 'completed' && onReopen) actions.push({ icon: RotateCcw, color: COLORS.accentWarning, onClick: onReopen, title: 'Reopen' });
+  if (onDelete) actions.push({ icon: Trash2, color: COLORS.accentDanger, onClick: onDelete, title: 'Delete' });
 
   const showActions = (isSelected || isHovered) && !editingField && !isDragging && !isGhosted;
 
@@ -255,104 +247,123 @@ export function TaskNode({
       onMouseLeave={() => setIsHovered(false)}
       style={{ cursor: getCursor(), touchAction: 'none' }}
     >
-      {/* ═══ GLOW EFFECTS ═══ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          TIME ARC - Visual duration indicator
+          Fuller arc = longer task. Instant visual scan.
+          ═══════════════════════════════════════════════════════════════ */}
+      {timePercent > 0 && (
+        <path
+          d={timeArcPath}
+          fill="none"
+          stroke={cognitiveStyle.color}
+          strokeWidth={4 + (task.cognitiveLoad || 2)}
+          strokeLinecap="round"
+          opacity={effectiveOpacity * 0.7}
+          style={{ filter: `drop-shadow(0 0 ${6 + cognitiveStyle.glowIntensity * 10}px ${cognitiveStyle.color})` }}
+        >
+          {computedStatus === 'in_progress' && (
+            <animate attributeName="stroke-opacity" values="0.5;0.9;0.5" dur="2s" repeatCount="indefinite" />
+          )}
+        </path>
+      )}
 
-      {/* Ambient glow for available tasks - "you can do this NOW" */}
-      {computedStatus === 'available' && !isGhosted && (
+      {/* ═══════════════════════════════════════════════════════════════
+          COGNITIVE LOAD GLOW - Visual mental effort indicator
+          Brighter/thicker glow = heavier cognitive load
+          ═══════════════════════════════════════════════════════════════ */}
+      {!isGhosted && (task.cognitiveLoad || 2) >= 2 && (
         <rect
-          x="-8"
-          y="-8"
-          width={LAYOUT.NODE_WIDTH + 16}
-          height={LAYOUT.NODE_HEIGHT + 16}
+          x="-4"
+          y="-4"
+          width={LAYOUT.NODE_WIDTH + 8}
+          height={LAYOUT.NODE_HEIGHT + 8}
           rx="16"
           fill="none"
-          stroke={COLORS.statusAvailable}
-          strokeWidth="3"
-          opacity="0.4"
+          stroke={cognitiveStyle.color}
+          strokeWidth={cognitiveStyle.borderWidth}
+          opacity={cognitiveStyle.glowIntensity}
+          style={{ filter: `blur(${cognitiveStyle.glowIntensity * 4}px)` }}
         >
-          <animate attributeName="stroke-opacity" values="0.2;0.5;0.2" dur="2s" repeatCount="indefinite" />
+          {cognitiveStyle.pulseSpeed > 0 && (
+            <animate attributeName="stroke-opacity" values={`${cognitiveStyle.glowIntensity * 0.5};${cognitiveStyle.glowIntensity};${cognitiveStyle.glowIntensity * 0.5}`} dur={`${cognitiveStyle.pulseSpeed}s`} repeatCount="indefinite" />
+          )}
         </rect>
       )}
 
-      {/* Active pulse for in-progress - "this is alive" */}
-      {computedStatus === 'in_progress' && !isGhosted && (
-        <rect
-          x="-6"
-          y="-6"
-          width={LAYOUT.NODE_WIDTH + 12}
-          height={LAYOUT.NODE_HEIGHT + 12}
-          rx="14"
-          fill="none"
-          stroke={COLORS.statusActive}
-          strokeWidth="3"
-        >
-          <animate attributeName="stroke-opacity" values="0.3;0.7;0.3" dur="2.5s" repeatCount="indefinite" />
+      {/* Status-specific glow */}
+      {computedStatus === 'available' && !isGhosted && (
+        <rect x="-6" y="-6" width={LAYOUT.NODE_WIDTH + 12} height={LAYOUT.NODE_HEIGHT + 12} rx="18" fill="none" stroke={COLORS.statusAvailable} strokeWidth="2" opacity="0.3">
+          <animate attributeName="stroke-opacity" values="0.2;0.4;0.2" dur="2s" repeatCount="indefinite" />
         </rect>
       )}
 
-      {/* Drop shadow when dragging */}
+      {/* Drop shadow */}
       {isDragging && (
-        <rect
-          x="6"
-          y="6"
-          width={LAYOUT.NODE_WIDTH}
-          height={LAYOUT.NODE_HEIGHT}
-          rx="12"
-          fill="rgba(0,0,0,0.4)"
-          style={{ filter: 'blur(6px)' }}
-        />
+        <rect x="5" y="5" width={LAYOUT.NODE_WIDTH} height={LAYOUT.NODE_HEIGHT} rx="12" fill="rgba(0,0,0,0.4)" style={{ filter: 'blur(5px)' }} />
       )}
 
-      {/* ═══ MAIN NODE BODY ═══ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          MAIN NODE BODY
+          ═══════════════════════════════════════════════════════════════ */}
       <rect
         x="0"
         y="0"
         width={LAYOUT.NODE_WIDTH}
         height={LAYOUT.NODE_HEIGHT}
         rx="12"
-        fill={style.bg}
-        stroke={isDragging ? COLORS.accentPrimary : (isSelected ? COLORS.accentSecondary : style.border)}
-        strokeWidth={isSelected || isDragging ? 3 : 2}
+        fill={statusStyle.bg}
+        stroke={isSelected ? COLORS.accentSecondary : statusStyle.border}
+        strokeWidth={isSelected ? 3 : cognitiveStyle.borderWidth}
         opacity={effectiveOpacity}
-        style={{ filter: style.glow !== 'none' ? `drop-shadow(${style.glow})` : 'none' }}
       />
 
-      {/* Progress bar at bottom */}
-      {progressPercent > 0 && (
-        <rect
-          x="4"
-          y={LAYOUT.NODE_HEIGHT - 6}
-          width={Math.max(0, (LAYOUT.NODE_WIDTH - 8) * progressPercent / 100)}
-          height="3"
-          rx="1.5"
-          fill={computedStatus === 'completed' ? COLORS.statusComplete : COLORS.statusActive}
-          opacity={effectiveOpacity * 0.9}
-        />
-      )}
-
-      {/* Quest color stripe */}
+      {/* Quest stripe */}
       {primaryQuest && (
-        <rect
-          x="0"
-          y="0"
-          width="5"
-          height={LAYOUT.NODE_HEIGHT}
-          rx="2"
-          fill={primaryQuest.color}
-          opacity={effectiveOpacity}
-        />
+        <rect x="0" y="0" width="5" height={LAYOUT.NODE_HEIGHT} rx="2" fill={primaryQuest.color} opacity={effectiveOpacity} />
       )}
 
-      {/* ═══ STATUS ICON ═══ */}
-      <foreignObject x="12" y="14" width="22" height="22">
+      {/* ═══════════════════════════════════════════════════════════════
+          COGNITIVE LOAD INDICATOR - Visual dots
+          ◦ = light, ◦◦ = medium, ◦◦◦ = heavy
+          ═══════════════════════════════════════════════════════════════ */}
+      <g
+        transform={`translate(${LAYOUT.NODE_WIDTH - 30}, 14)`}
+        style={{ cursor: 'pointer' }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (computedStatus !== 'locked' && !isGhosted) {
+            // Cycle through loads: 1 → 2 → 3 → 1
+            const newLoad = ((task.cognitiveLoad || 2) % 3) + 1;
+            onUpdate?.({ cognitiveLoad: newLoad });
+          }
+        }}
+      >
+        {[1, 2, 3].map((level) => (
+          <circle
+            key={level}
+            cx={(level - 1) * 8}
+            cy="0"
+            r="3"
+            fill={level <= (task.cognitiveLoad || 2) ? cognitiveStyle.color : 'transparent'}
+            stroke={cognitiveStyle.color}
+            strokeWidth="1"
+            opacity={effectiveOpacity * (level <= (task.cognitiveLoad || 2) ? 1 : 0.3)}
+          />
+        ))}
+      </g>
+
+      {/* Status icon */}
+      <foreignObject x="12" y="20" width="24" height="24">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon size={20} color={style.border} style={{ opacity: effectiveOpacity }} />
+          <StatusIcon size={22} color={statusStyle.border} style={{ opacity: effectiveOpacity }} />
         </div>
       </foreignObject>
 
-      {/* ═══ TITLE (editable) ═══ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          TITLE
+          ═══════════════════════════════════════════════════════════════ */}
       {editingField === 'title' ? (
-        <foreignObject x="38" y="12" width={LAYOUT.NODE_WIDTH - 90} height="26">
+        <foreignObject x="40" y="18" width={LAYOUT.NODE_WIDTH - 80} height="28">
           <input
             ref={titleInputRef}
             type="text"
@@ -363,29 +374,20 @@ export function TaskNode({
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-              width: '100%',
-              height: '100%',
-              padding: '4px 8px',
-              background: COLORS.bgElevated,
-              border: `2px solid ${COLORS.accentPrimary}`,
-              borderRadius: '6px',
-              color: COLORS.textPrimary,
-              fontSize: '14px',
-              fontWeight: 700,
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              boxSizing: 'border-box',
-              outline: 'none',
+              width: '100%', height: '100%', padding: '4px 8px',
+              background: COLORS.bgElevated, border: `2px solid ${COLORS.accentPrimary}`,
+              borderRadius: '6px', color: COLORS.textPrimary,
+              fontSize: '14px', fontWeight: 700, outline: 'none',
             }}
           />
         </foreignObject>
       ) : (
         <text
-          x="40"
-          y="30"
-          fill={style.text}
-          fontSize="14"
+          x="42"
+          y="38"
+          fill={COLORS.textPrimary}
+          fontSize="15"
           fontWeight="700"
-          fontFamily="system-ui, -apple-system, sans-serif"
           opacity={effectiveOpacity}
           style={{ cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit' }}
           onDoubleClick={(e) => {
@@ -393,225 +395,105 @@ export function TaskNode({
             if (computedStatus !== 'locked' && !isGhosted) setEditingField('title');
           }}
         >
-          {task.title.length > 18 ? task.title.slice(0, 16) + '…' : task.title}
+          {task.title.length > 16 ? task.title.slice(0, 14) + '…' : task.title}
         </text>
       )}
 
-      {/* ═══ TIME DISPLAY - THE HERO ═══ */}
-      {/* Time is BIG and PROMINENT - fights ADHD time blindness */}
-      {editingField === 'minutes' ? (
-        <foreignObject x={LAYOUT.NODE_WIDTH - 58} y="8" width="50" height="28">
-          <input
-            ref={minutesInputRef}
-            type="number"
-            value={editMinutes}
-            onChange={(e) => setEditMinutes(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              height: '100%',
-              padding: '4px',
-              background: COLORS.bgElevated,
-              border: `2px solid ${COLORS.accentPrimary}`,
-              borderRadius: '6px',
-              color: COLORS.accentPrimary,
-              fontSize: '16px',
-              fontWeight: 800,
-              textAlign: 'center',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }}
-          />
-        </foreignObject>
-      ) : (
-        <g
-          style={{ cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit' }}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            if (computedStatus !== 'locked' && !isGhosted) setEditingField('minutes');
-          }}
-        >
-          {/* Time background pill */}
-          <rect
-            x={LAYOUT.NODE_WIDTH - 56}
-            y="10"
-            width="48"
-            height="24"
-            rx="12"
-            fill={computedStatus === 'in_progress' ? COLORS.statusActive : COLORS.accentPrimary}
-            fillOpacity={effectiveOpacity * 0.2}
-            stroke={computedStatus === 'in_progress' ? COLORS.statusActive : COLORS.accentPrimary}
-            strokeWidth="1.5"
-            strokeOpacity={effectiveOpacity * 0.5}
-          />
-          {/* Time text - LARGE and BOLD */}
-          <text
-            x={LAYOUT.NODE_WIDTH - 32}
-            y="28"
-            fill={computedStatus === 'in_progress' ? COLORS.statusActive : COLORS.accentPrimary}
-            fontSize="15"
-            fontWeight="800"
-            fontFamily="system-ui, -apple-system, sans-serif"
-            textAnchor="middle"
-            opacity={effectiveOpacity}
-          >
-            {formatTime(task.estimatedMinutes)}
-          </text>
-        </g>
-      )}
-
-      {/* ═══ QUEST BADGES ═══ */}
-      <g transform={`translate(12, ${LAYOUT.NODE_HEIGHT - 26})`}>
-        {taskQuests.map((quest, i) => (
-          <g key={quest.id} transform={`translate(${i * 58}, 0)`}>
+      {/* ═══════════════════════════════════════════════════════════════
+          TIME DISPLAY - Clickable to edit, but arc is the visual hero
+          ═══════════════════════════════════════════════════════════════ */}
+      <g
+        transform={`translate(14, ${LAYOUT.NODE_HEIGHT - 22})`}
+        style={{ cursor: computedStatus !== 'locked' && !isGhosted ? 'pointer' : 'inherit' }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (computedStatus !== 'locked' && !isGhosted) setEditingField('time');
+        }}
+      >
+        {editingField === 'time' ? (
+          <foreignObject x="0" y="-12" width="60" height="24">
+            <input
+              type="number"
+              value={editMinutes}
+              onChange={(e) => setEditMinutes(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              autoFocus
+              style={{
+                width: '50px', height: '100%', padding: '2px 4px',
+                background: COLORS.bgElevated, border: `2px solid ${COLORS.accentPrimary}`,
+                borderRadius: '4px', color: cognitiveStyle.color,
+                fontSize: '14px', fontWeight: 700, textAlign: 'center', outline: 'none',
+              }}
+            />
+          </foreignObject>
+        ) : (
+          <>
+            {/* Time pill */}
             <rect
-              x="0"
-              y="0"
-              width="54"
-              height="18"
-              rx="9"
-              fill={quest.color}
-              fillOpacity={effectiveOpacity * 0.2}
-              stroke={quest.color}
-              strokeWidth="1"
-              strokeOpacity={effectiveOpacity * 0.6}
+              x="0" y="-10" width="50" height="20" rx="10"
+              fill={cognitiveStyle.color} fillOpacity={effectiveOpacity * 0.15}
+              stroke={cognitiveStyle.color} strokeWidth="1.5" strokeOpacity={effectiveOpacity * 0.4}
             />
             <text
-              x="27"
-              y="13"
-              fill={quest.color}
-              fontSize="10"
-              fontWeight="600"
+              x="25" y="5"
+              fill={cognitiveStyle.color}
+              fontSize="13"
+              fontWeight="800"
               textAnchor="middle"
               opacity={effectiveOpacity}
-              style={{ pointerEvents: 'none' }}
             >
-              {quest.title.length > 7 ? quest.title.slice(0, 6) + '…' : quest.title}
+              {task.estimatedMinutes ? `${task.estimatedMinutes}m` : '—'}
             </text>
-          </g>
-        ))}
-        {taskQuests.length === 0 && (
-          <text
-            x="0"
-            y="13"
-            fill={COLORS.textMuted}
-            fontSize="10"
-            fontStyle="italic"
-            opacity={effectiveOpacity * 0.4}
-          >
-            No quest
-          </text>
+          </>
         )}
       </g>
 
-      {/* ═══ ACTUAL TIME (if tracked) ═══ */}
-      {task.actualMinutes > 0 && (
-        <g>
-          <foreignObject x={LAYOUT.NODE_WIDTH - 56} y="36" width="48" height="16">
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '2px',
-              opacity: effectiveOpacity * 0.7,
-            }}>
-              <Clock size={10} color={COLORS.textMuted} />
-              <span style={{
-                color: COLORS.textMuted,
-                fontSize: '10px',
-                fontWeight: 500,
-              }}>
-                {formatTime(task.actualMinutes)}
-              </span>
-            </div>
-          </foreignObject>
+      {/* Quest badge */}
+      {primaryQuest && (
+        <g transform={`translate(70, ${LAYOUT.NODE_HEIGHT - 22})`}>
+          <rect x="0" y="-10" width="60" height="20" rx="10" fill={primaryQuest.color} fillOpacity={effectiveOpacity * 0.2} stroke={primaryQuest.color} strokeWidth="1" strokeOpacity={effectiveOpacity * 0.5} />
+          <text x="30" y="5" fill={primaryQuest.color} fontSize="10" fontWeight="600" textAnchor="middle" opacity={effectiveOpacity}>
+            {primaryQuest.title.length > 8 ? primaryQuest.title.slice(0, 7) + '…' : primaryQuest.title}
+          </text>
         </g>
       )}
 
-      {/* ═══ CONNECTOR HANDLE ═══ */}
+      {/* Connector handle */}
       <g
         onMouseDown={(e) => { e.stopPropagation(); onConnectorDragStart?.(e); }}
         onTouchStart={(e) => { e.stopPropagation(); onConnectorTouchStart?.(e); }}
-        style={{ cursor: 'crosshair', touchAction: 'none' }}
+        style={{ cursor: 'crosshair' }}
       >
-        <circle cx={LAYOUT.NODE_WIDTH} cy={LAYOUT.NODE_HEIGHT / 2} r="20" fill="transparent" />
+        <circle cx={LAYOUT.NODE_WIDTH} cy={LAYOUT.NODE_HEIGHT / 2} r="18" fill="transparent" />
         <circle
-          cx={LAYOUT.NODE_WIDTH}
-          cy={LAYOUT.NODE_HEIGHT / 2}
-          r={isEdgeSource ? 10 : (isSelected ? 8 : 6)}
+          cx={LAYOUT.NODE_WIDTH} cy={LAYOUT.NODE_HEIGHT / 2}
+          r={isEdgeSource ? 10 : (isSelected ? 7 : 5)}
           fill={isEdgeSource ? COLORS.accentSecondary : (isSelected ? COLORS.accentPrimary : COLORS.textMuted)}
-          stroke={COLORS.bgVoid}
-          strokeWidth="2"
-          opacity={isEdgeSource ? 1 : (isSelected ? 0.9 : 0.4)}
-          style={{ transition: 'all 0.15s ease-out' }}
+          stroke={COLORS.bgVoid} strokeWidth="2"
+          opacity={isEdgeSource ? 1 : (isSelected ? 0.8 : 0.4)}
         />
-        {isEdgeSource && (
-          <circle cx={LAYOUT.NODE_WIDTH} cy={LAYOUT.NODE_HEIGHT / 2} r="14" fill="none" stroke={COLORS.accentSecondary} strokeWidth="2" opacity="0.4">
-            <animate attributeName="r" values="10;16;10" dur="1.2s" repeatCount="indefinite" />
-          </circle>
-        )}
       </g>
 
-      {/* Drop zone when creating edge */}
+      {/* Drop zone */}
       {isCreatingEdge && !isEdgeSource && (
-        <rect
-          x="-4"
-          y="-4"
-          width={LAYOUT.NODE_WIDTH + 8}
-          height={LAYOUT.NODE_HEIGHT + 8}
-          rx="16"
-          fill="none"
-          stroke={COLORS.accentSecondary}
-          strokeWidth="2"
-          strokeDasharray="6 3"
-          opacity="0.5"
-        />
+        <rect x="-4" y="-4" width={LAYOUT.NODE_WIDTH + 8} height={LAYOUT.NODE_HEIGHT + 8} rx="16" fill="none" stroke={COLORS.accentSecondary} strokeWidth="2" strokeDasharray="6 3" opacity="0.5" />
       )}
 
-      {/* Selection indicator */}
+      {/* Selection */}
       {isSelected && (
-        <rect
-          x="-3"
-          y="-3"
-          width={LAYOUT.NODE_WIDTH + 6}
-          height={LAYOUT.NODE_HEIGHT + 6}
-          rx="15"
-          fill="none"
-          stroke={COLORS.accentSecondary}
-          strokeWidth="2"
-          strokeOpacity="0.4"
-        />
+        <rect x="-3" y="-3" width={LAYOUT.NODE_WIDTH + 6} height={LAYOUT.NODE_HEIGHT + 6} rx="15" fill="none" stroke={COLORS.accentSecondary} strokeWidth="2" strokeOpacity="0.4" />
       )}
 
-      {/* ═══ CONTEXTUAL ACTIONS ═══ */}
+      {/* Actions */}
       {showActions && actions.length > 0 && (
         <g style={{ opacity: isSelected ? 1 : 0.85 }}>
           {actions.map((action, i) => (
-            <ActionButton
-              key={i}
-              x={actionX}
-              y={actionY + (i - (actions.length - 1) / 2) * 36}
-              icon={action.icon}
-              color={action.color}
-              bgColor={COLORS.bgElevated}
-              onClick={action.onClick}
-              title={action.title}
-              delay={i * 0.03}
-            />
+            <ActionButton key={i} x={actionX} y={actionY + (i - (actions.length - 1) / 2) * 36} icon={action.icon} color={action.color} onClick={action.onClick} title={action.title} delay={i * 0.03} />
           ))}
-          <line
-            x1={LAYOUT.NODE_WIDTH + 4}
-            y1={LAYOUT.NODE_HEIGHT / 2}
-            x2={actionX - 18}
-            y2={LAYOUT.NODE_HEIGHT / 2}
-            stroke={COLORS.accentSecondary}
-            strokeWidth="2"
-            strokeOpacity="0.25"
-            strokeDasharray="4 2"
-          />
+          <line x1={LAYOUT.NODE_WIDTH + 4} y1={LAYOUT.NODE_HEIGHT / 2} x2={actionX - 18} y2={LAYOUT.NODE_HEIGHT / 2} stroke={COLORS.accentSecondary} strokeWidth="2" strokeOpacity="0.2" strokeDasharray="4 2" />
         </g>
       )}
     </g>
