@@ -2,13 +2,14 @@
 // components/tasks/TaskNode.jsx
 // Task node for Micro View - VISUAL ADHD Design
 //
-// NO MORE ABSTRACT NUMBERS - Everything is VISUAL:
+// Features:
 // - TIME → Arc around node (fuller = longer task)
-// - COGNITIVE LOAD → 5 orbs with glow intensity (1-5 scale)
+// - COGNITIVE LOAD → 5 orbs with drag-to-adjust slider UX
 // - HIGH LOAD → Decompose button for Claude to break down
+// - Locked tasks CAN be edited (name, time, difficulty)
 // ═══════════════════════════════════════════════════════════════
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Circle, CheckCircle2, Lock, Play, Trash2, RotateCcw, Sparkles } from 'lucide-react';
 import { COLORS } from '@/constants';
 import { LAYOUT } from '@/utils';
@@ -16,6 +17,9 @@ import { LAYOUT } from '@/utils';
 // Visual constants
 const TIME_ARC_RADIUS = 48;
 const MAX_MINUTES = 120;
+const ORB_RADIUS = 5;        // Bigger orbs
+const ORB_SPACING = 12;      // More spacing
+const ORB_COUNT = 5;
 
 /**
  * Generate SVG arc path
@@ -42,11 +46,11 @@ function describeArc(percentage, radius, cx, cy) {
  */
 function getCognitiveLoadStyle(load) {
   const styles = {
-    1: { color: '#6EE7B7', glowIntensity: 0.15, borderWidth: 2, pulseSpeed: 0, arcWidth: 4 },      // Autopilot - green
-    2: { color: '#22D3EE', glowIntensity: 0.25, borderWidth: 2, pulseSpeed: 0, arcWidth: 5 },      // Light - teal
-    3: { color: '#FBBF24', glowIntensity: 0.4, borderWidth: 2.5, pulseSpeed: 0, arcWidth: 6 },     // Focused - amber
-    4: { color: '#F97316', glowIntensity: 0.6, borderWidth: 3, pulseSpeed: 3, arcWidth: 7 },       // Heavy - orange
-    5: { color: '#EF4444', glowIntensity: 0.8, borderWidth: 3.5, pulseSpeed: 1.5, arcWidth: 8 },   // Maximum - red
+    1: { color: '#6EE7B7', glowIntensity: 0.15, borderWidth: 2, pulseSpeed: 0, arcWidth: 4 },
+    2: { color: '#22D3EE', glowIntensity: 0.25, borderWidth: 2, pulseSpeed: 0, arcWidth: 5 },
+    3: { color: '#FBBF24', glowIntensity: 0.4, borderWidth: 2.5, pulseSpeed: 0, arcWidth: 6 },
+    4: { color: '#F97316', glowIntensity: 0.6, borderWidth: 3, pulseSpeed: 3, arcWidth: 7 },
+    5: { color: '#EF4444', glowIntensity: 0.8, borderWidth: 3.5, pulseSpeed: 1.5, arcWidth: 8 },
   };
   return styles[load] || styles[3];
 }
@@ -57,7 +61,7 @@ function getCognitiveLoadStyle(load) {
 function getStatusStyle(status) {
   switch (status) {
     case 'locked':
-      return { bg: 'rgba(30, 30, 40, 0.7)', border: COLORS.statusLocked, icon: Lock, opacity: 0.5 };
+      return { bg: 'rgba(30, 30, 40, 0.7)', border: COLORS.statusLocked, icon: Lock, opacity: 0.6 };
     case 'available':
       return { bg: 'rgba(40, 45, 60, 0.95)', border: COLORS.statusAvailable, icon: Circle, opacity: 1 };
     case 'in_progress':
@@ -116,7 +120,7 @@ export function TaskNode({
   onReopen,
   onDelete,
   onUpdate,
-  onDecompose, // New: Ask Claude to break down high-load tasks
+  onDecompose,
 }) {
   const statusStyle = getStatusStyle(computedStatus);
   const cognitiveStyle = getCognitiveLoadStyle(task.cognitiveLoad || 3);
@@ -128,6 +132,12 @@ export function TaskNode({
   const [editMinutes, setEditMinutes] = useState(task.estimatedMinutes || 25);
   const [isHovered, setIsHovered] = useState(false);
   const titleInputRef = useRef(null);
+
+  // Orb slider drag state
+  const [isDraggingOrbs, setIsDraggingOrbs] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartLoad, setDragStartLoad] = useState(3);
+  const orbsRef = useRef(null);
 
   useEffect(() => {
     if (!editingField) {
@@ -159,7 +169,7 @@ export function TaskNode({
 
   const getCursor = () => {
     if (isDragging) return 'grabbing';
-    if (computedStatus === 'locked' || isGhosted) return 'not-allowed';
+    if (isGhosted) return 'not-allowed';
     return 'grab';
   };
 
@@ -188,13 +198,55 @@ export function TaskNode({
     }, 150);
   };
 
-  // Cycle cognitive load on double-click
-  const handleCycleLoad = () => {
-    if (computedStatus === 'locked' || isGhosted) return;
-    const currentLoad = task.cognitiveLoad || 3;
-    const newLoad = (currentLoad % 5) + 1; // 1 → 2 → 3 → 4 → 5 → 1
-    onUpdate?.({ cognitiveLoad: newLoad });
-  };
+  // ═══ ORB SLIDER DRAG HANDLERS ═══
+  const handleOrbMouseDown = useCallback((e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsDraggingOrbs(true);
+    setDragStartX(e.clientX);
+    setDragStartLoad(task.cognitiveLoad || 3);
+  }, [task.cognitiveLoad]);
+
+  const handleOrbTouchStart = useCallback((e) => {
+    e.stopPropagation();
+    const touch = e.touches[0];
+    setIsDraggingOrbs(true);
+    setDragStartX(touch.clientX);
+    setDragStartLoad(task.cognitiveLoad || 3);
+  }, [task.cognitiveLoad]);
+
+  useEffect(() => {
+    if (!isDraggingOrbs) return;
+
+    const handleMove = (clientX) => {
+      const deltaX = clientX - dragStartX;
+      const orbsPerDelta = ORB_SPACING; // pixels per orb level
+      const deltaLevels = Math.round(deltaX / orbsPerDelta);
+      const newLoad = Math.max(1, Math.min(5, dragStartLoad + deltaLevels));
+      if (newLoad !== (task.cognitiveLoad || 3)) {
+        onUpdate?.({ cognitiveLoad: newLoad });
+      }
+    };
+
+    const handleMouseMove = (e) => handleMove(e.clientX);
+    const handleTouchMove = (e) => handleMove(e.touches[0].clientX);
+
+    const handleEnd = () => {
+      setIsDraggingOrbs(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDraggingOrbs, dragStartX, dragStartLoad, task.cognitiveLoad, onUpdate]);
 
   // Actions
   const actionX = LAYOUT.NODE_WIDTH + 28;
@@ -216,6 +268,9 @@ export function TaskNode({
 
   const showActions = (isSelected || isHovered) && !editingField && !isDragging && !isGhosted;
 
+  // Calculate orb slider width
+  const orbSliderWidth = (ORB_COUNT - 1) * ORB_SPACING + ORB_RADIUS * 2;
+
   return (
     <g
       transform={`translate(${position.x}, ${position.y})`}
@@ -228,7 +283,6 @@ export function TaskNode({
     >
       {/* ═══════════════════════════════════════════════════════════════
           TIME ARC - Visual duration indicator
-          Fuller arc = longer task. Arc color/width from cognitive load.
           ═══════════════════════════════════════════════════════════════ */}
       {timePercent > 0 && (
         <path
@@ -247,12 +301,11 @@ export function TaskNode({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          COGNITIVE LOAD GLOW - Visual mental effort indicator
+          COGNITIVE LOAD GLOW
           ═══════════════════════════════════════════════════════════════ */}
       {!isGhosted && (task.cognitiveLoad || 3) >= 3 && (
         <rect
-          x="-4"
-          y="-4"
+          x="-4" y="-4"
           width={LAYOUT.NODE_WIDTH + 8}
           height={LAYOUT.NODE_HEIGHT + 8}
           rx="16"
@@ -280,7 +333,7 @@ export function TaskNode({
         </rect>
       )}
 
-      {/* Drop shadow */}
+      {/* Drop shadow when dragging */}
       {isDragging && (
         <rect x="5" y="5" width={LAYOUT.NODE_WIDTH} height={LAYOUT.NODE_HEIGHT} rx="12" fill="rgba(0,0,0,0.4)" style={{ filter: 'blur(5px)' }} />
       )}
@@ -289,8 +342,7 @@ export function TaskNode({
           MAIN NODE BODY
           ═══════════════════════════════════════════════════════════════ */}
       <rect
-        x="0"
-        y="0"
+        x="0" y="0"
         width={LAYOUT.NODE_WIDTH}
         height={LAYOUT.NODE_HEIGHT}
         rx="12"
@@ -306,53 +358,81 @@ export function TaskNode({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          COGNITIVE LOAD INDICATOR - 5 Orbs
-          ◦◦◦◦◦ - Visual representation of mental effort
-          Double-click to cycle through 1-5
+          COGNITIVE LOAD ORBS - Drag left/right to adjust
+          Bigger orbs with slider interaction
           ═══════════════════════════════════════════════════════════════ */}
       <g
-        transform={`translate(${LAYOUT.NODE_WIDTH - 46}, 12)`}
-        style={{ cursor: 'pointer' }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          handleCycleLoad();
-        }}
+        ref={orbsRef}
+        transform={`translate(${LAYOUT.NODE_WIDTH - orbSliderWidth - 8}, 14)`}
+        style={{ cursor: isDraggingOrbs ? 'ew-resize' : 'grab' }}
+        onMouseDown={handleOrbMouseDown}
+        onTouchStart={handleOrbTouchStart}
       >
-        {[1, 2, 3, 4, 5].map((level) => (
-          <circle
-            key={level}
-            cx={(level - 1) * 8}
-            cy="0"
-            r="3"
-            fill={level <= (task.cognitiveLoad || 3) ? cognitiveStyle.color : 'transparent'}
-            stroke={cognitiveStyle.color}
-            strokeWidth="1"
-            opacity={effectiveOpacity * (level <= (task.cognitiveLoad || 3) ? 1 : 0.25)}
+        {/* Slider track background */}
+        <rect
+          x={-4}
+          y={-ORB_RADIUS - 2}
+          width={orbSliderWidth + 8}
+          height={ORB_RADIUS * 2 + 4}
+          rx={ORB_RADIUS + 2}
+          fill={COLORS.bgPanel}
+          fillOpacity={effectiveOpacity * 0.5}
+        />
+        {/* Orbs */}
+        {[1, 2, 3, 4, 5].map((level) => {
+          const isFilled = level <= (task.cognitiveLoad || 3);
+          const levelStyle = getCognitiveLoadStyle(level);
+          return (
+            <circle
+              key={level}
+              cx={(level - 1) * ORB_SPACING}
+              cy="0"
+              r={ORB_RADIUS}
+              fill={isFilled ? levelStyle.color : 'transparent'}
+              stroke={levelStyle.color}
+              strokeWidth="2"
+              opacity={effectiveOpacity * (isFilled ? 1 : 0.3)}
+              style={isFilled ? { filter: `drop-shadow(0 0 4px ${levelStyle.color})` } : {}}
+            >
+              {isFilled && cognitiveStyle.pulseSpeed > 0 && level === (task.cognitiveLoad || 3) && (
+                <animate
+                  attributeName="r"
+                  values={`${ORB_RADIUS};${ORB_RADIUS + 1};${ORB_RADIUS}`}
+                  dur={`${cognitiveStyle.pulseSpeed}s`}
+                  repeatCount="indefinite"
+                />
+              )}
+            </circle>
+          );
+        })}
+        {/* Drag hint on hover */}
+        {isHovered && !isDraggingOrbs && (
+          <text
+            x={orbSliderWidth / 2}
+            y={ORB_RADIUS + 12}
+            fill={COLORS.textMuted}
+            fontSize="8"
+            textAnchor="middle"
+            opacity="0.6"
           >
-            {level <= (task.cognitiveLoad || 3) && cognitiveStyle.pulseSpeed > 0 && (
-              <animate
-                attributeName="fill-opacity"
-                values="0.6;1;0.6"
-                dur={`${cognitiveStyle.pulseSpeed}s`}
-                repeatCount="indefinite"
-              />
-            )}
-          </circle>
-        ))}
+            ← drag →
+          </text>
+        )}
       </g>
 
       {/* Status icon */}
-      <foreignObject x="12" y="18" width="24" height="24">
+      <foreignObject x="12" y="16" width="24" height="24">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <StatusIcon size={22} color={statusStyle.border} style={{ opacity: effectiveOpacity }} />
+          <StatusIcon size={20} color={statusStyle.border} style={{ opacity: effectiveOpacity }} />
         </div>
       </foreignObject>
 
       {/* ═══════════════════════════════════════════════════════════════
-          TITLE
+          TITLE - Can edit even when locked
+          Uses foreignObject for proper text wrapping
           ═══════════════════════════════════════════════════════════════ */}
       {editingField === 'title' ? (
-        <foreignObject x="40" y="16" width={LAYOUT.NODE_WIDTH - 90} height="28">
+        <foreignObject x="40" y="12" width={LAYOUT.NODE_WIDTH - 100} height="32">
           <input
             ref={titleInputRef}
             type="text"
@@ -366,26 +446,43 @@ export function TaskNode({
               width: '100%', height: '100%', padding: '4px 8px',
               background: COLORS.bgElevated, border: `2px solid ${COLORS.accentPrimary}`,
               borderRadius: '6px', color: COLORS.textPrimary,
-              fontSize: '14px', fontWeight: 700, outline: 'none',
+              fontSize: '13px', fontWeight: 700, outline: 'none',
             }}
           />
         </foreignObject>
       ) : (
-        <text
-          x="42"
-          y="36"
-          fill={COLORS.textPrimary}
-          fontSize="15"
-          fontWeight="700"
-          opacity={effectiveOpacity}
-          style={{ cursor: computedStatus !== 'locked' && !isGhosted ? 'text' : 'inherit' }}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            if (computedStatus !== 'locked' && !isGhosted) setEditingField('title');
-          }}
-        >
-          {task.title.length > 16 ? task.title.slice(0, 14) + '…' : task.title}
-        </text>
+        <foreignObject x="38" y="12" width={LAYOUT.NODE_WIDTH - 100} height="32">
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              color: COLORS.textPrimary,
+              fontSize: '13px',
+              fontWeight: 700,
+              opacity: effectiveOpacity,
+              cursor: 'text',
+              overflow: 'hidden',
+              lineHeight: '1.2',
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setEditingField('title');
+            }}
+            title={task.title} // Full title on hover
+          >
+            <span style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+            }}>
+              {task.title}
+            </span>
+          </div>
+        </foreignObject>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
@@ -393,10 +490,10 @@ export function TaskNode({
           ═══════════════════════════════════════════════════════════════ */}
       <g
         transform={`translate(14, ${LAYOUT.NODE_HEIGHT - 22})`}
-        style={{ cursor: computedStatus !== 'locked' && !isGhosted ? 'pointer' : 'inherit' }}
+        style={{ cursor: 'pointer' }}
         onDoubleClick={(e) => {
           e.stopPropagation();
-          if (computedStatus !== 'locked' && !isGhosted) setEditingField('time');
+          setEditingField('time');
         }}
       >
         {editingField === 'time' ? (
@@ -451,7 +548,6 @@ export function TaskNode({
 
       {/* ═══════════════════════════════════════════════════════════════
           DECOMPOSE BUTTON - For high cognitive load (4-5)
-          Appears when selected/hovered on heavy tasks
           ═══════════════════════════════════════════════════════════════ */}
       {isHighLoad && showActions && onDecompose && (
         <g
@@ -460,15 +556,9 @@ export function TaskNode({
           style={{ cursor: 'pointer' }}
         >
           <rect
-            x="-55"
-            y="-12"
-            width="110"
-            height="24"
-            rx="12"
-            fill={cognitiveStyle.color}
-            fillOpacity="0.2"
-            stroke={cognitiveStyle.color}
-            strokeWidth="1.5"
+            x="-55" y="-12" width="110" height="24" rx="12"
+            fill={cognitiveStyle.color} fillOpacity="0.2"
+            stroke={cognitiveStyle.color} strokeWidth="1.5"
           >
             <animate attributeName="stroke-opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite" />
           </rect>
@@ -477,14 +567,7 @@ export function TaskNode({
               <Sparkles size={14} color={cognitiveStyle.color} />
             </div>
           </foreignObject>
-          <text
-            x="5"
-            y="5"
-            fill={cognitiveStyle.color}
-            fontSize="11"
-            fontWeight="600"
-            opacity="0.9"
-          >
+          <text x="5" y="5" fill={cognitiveStyle.color} fontSize="11" fontWeight="600" opacity="0.9">
             Break it down
           </text>
         </g>
