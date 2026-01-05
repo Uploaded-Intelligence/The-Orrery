@@ -20,7 +20,7 @@ export const isTaskLocked = (taskId, state) => {
 };
 
 /**
- * Get computed task status (handles locked state)
+ * Get computed task status (handles locked state and active session)
  * @param {import('@/types').Task} task
  * @param {import('@/types').OrreryState} state
  * @returns {import('@/types').TaskStatus}
@@ -29,6 +29,8 @@ export const getComputedTaskStatus = (task, state) => {
   if (task.status === 'completed') return 'completed';
   if (task.status === 'blocked') return 'blocked';
   if (isTaskLocked(task.id, state)) return 'locked';
+  // Check if this task is the active session - makes Play button work
+  if (state.activeSession?.taskId === task.id) return 'in_progress';
   if (task.status === 'in_progress') return 'in_progress';
   return 'available';
 };
