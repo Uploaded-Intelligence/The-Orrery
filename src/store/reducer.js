@@ -21,6 +21,16 @@ export function orreryReducer(state, action) {
         lastSyncedAt: now,
       };
 
+    case 'LOAD_FROM_TASKNOTES':
+      // Load tasks from TaskNotes API (server-authoritative)
+      // Preserves edges, quests, positions (Orrery-only data)
+      return {
+        ...state,
+        tasks: action.payload.tasks,
+        lastSyncedAt: now,
+        _syncSource: 'tasknotes',
+      };
+
     case 'RESET_STATE':
       return {
         quests: [],

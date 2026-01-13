@@ -9,7 +9,7 @@ import { Eye, EyeOff, Orbit, LayoutGrid, Network } from 'lucide-react';
 // ─── Imports from modules ─────────────────────────────────────────────────────
 import { COLORS, INITIAL_STATE } from '@/constants';
 import { orreryReducer, OrreryContext } from '@/store';
-import { usePersistence } from '@/hooks';
+import { usePersistence, useTaskNotesSync } from '@/hooks';
 
 // ─── View Components ──────────────────────────────────────────────────────────
 import { MicroView } from '@/components/views/MicroView';
@@ -31,8 +31,18 @@ export default function Orrery() {
   const [loadError, setLoadError] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
 
-  // Persistence
+  // Persistence (local storage backup)
   usePersistence(state, dispatch, setLoadError, setSaveStatus);
+
+  // TaskNotes API sync (server-authoritative)
+  const {
+    isConnected: taskNotesConnected,
+    isLoading: taskNotesLoading,
+    syncFromTaskNotes,
+    createTask,
+    updateTask,
+    completeTask,
+  } = useTaskNotesSync(dispatch);
 
   const isMicro = state.preferences.currentView === 'micro';
 
