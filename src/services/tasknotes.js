@@ -25,12 +25,29 @@ class TaskNotesClient {
       ...options.headers,
     };
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    let response;
+    try {
+      response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch (e) {
+      // Network error (CORS, DNS, connection refused, etc.)
+      throw new Error(`Network error: ${e.message}. Is TaskNotes HTTP API running?`);
+    }
 
-    const data = await response.json();
+    // Handle non-JSON responses (e.g., HTML error pages)
+    const contentType = response.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      throw new Error(`TaskNotes returned non-JSON response (${response.status})`);
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      throw new Error(`Failed to parse TaskNotes response: ${e.message}`);
+    }
 
     if (!data.success) {
       throw new Error(data.error || 'TaskNotes API error');
