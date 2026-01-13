@@ -108,6 +108,28 @@
  * @property {string} lastSyncedAt
  */
 
+/**
+ * @typedef {Object} ObsidianTaskNote
+ * @property {string} filename - Filename without .md extension (used as ID)
+ * @property {Object} fm - Frontmatter
+ * @property {string} fm.status - "open" | "completed" | "blocked"
+ * @property {string} fm.priority - "low" | "normal" | "high" | "urgent"
+ * @property {number} [fm.timeEstimate] - Minutes
+ * @property {string[]} [fm.projects] - Quest names
+ * @property {string[]} [fm.blockedBy] - Task filenames this is blocked by
+ * @property {string} [fm.dateCreated]
+ * @property {string} [fm.dateModified]
+ * @property {string} content - Markdown content
+ */
+
+/**
+ * @typedef {Object} SyncManifest
+ * @property {string} generatedAt - ISO timestamp
+ * @property {string} generatedBy - "claude" | "manual"
+ * @property {ObsidianTaskNote[]} tasks
+ * @property {{name: string, color: string}[]} quests - Project → Quest mapping
+ */
+
 // Re-export nothing (types are documentation-only in JS)
 // Import this file for JSDoc type hints:
 // /** @type {import('@/types').Quest} */
