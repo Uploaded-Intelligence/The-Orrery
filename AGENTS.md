@@ -1,5 +1,12 @@
 # Repository Guidelines
 
+## Required Reading
+- `doc/soul-transmission.md`, `doc/the-ultimate-diegetic-rpg.md`, `doc/keystone-master-artifact-v2.1.md`, `doc/orrery-implementation-spec.md`.
+- Treat these as the spec for design, terminology, and architecture decisions.
+
+## Architecture Overview
+- Three-layer model: World (what the player sees), Party (conversational companions), Engine (invisible systems). Place features accordingly.
+
 ## Project Structure & Module Organization
 - `src/` contains the React app. Key areas include `src/components/` (views and UI), `src/store/` (state and reducers), `src/hooks/`, `src/constants/`, and `src/utils/`.
 - `public/` holds static assets; `src/assets/` holds app-specific assets.
@@ -14,7 +21,7 @@
 - `npm run lint` runs ESLint across the project.
 
 ## Coding Style & Naming Conventions
-- React 19 + Vite, ES modules, JSX in `.jsx` files.
+- React 19 + Vite, ES modules, JSDoc-typed JavaScript, JSX in `.jsx` files.
 - Match existing formatting: 2-space indentation, single quotes, and semicolons.
 - Components use `PascalCase.jsx` (e.g., `MacroView.jsx`); hooks use `use*` naming (e.g., `usePersistence.js`).
 - Prefer the `@/` import alias for `src` paths (e.g., `@/components/views/MicroView`).
@@ -28,3 +35,7 @@
 - Commit messages follow Conventional Commits (e.g., `feat:`, `fix:`, `docs:`).
 - PRs should include a concise summary, link relevant issues, and add screenshots/gifs for UI changes.
 - If you introduce new interaction patterns or architecture decisions, update the relevant `doc/` specs and reference them in the PR description.
+
+## Documentation Triggers
+- New interaction pattern, UI terminology decision, or component pattern: update `doc/orrery-implementation-spec.md`.
+- Architecture decisions or multi-session initiatives: add/update a working doc in `doc/`.
