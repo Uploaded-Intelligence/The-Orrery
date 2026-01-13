@@ -13,27 +13,30 @@ import { useOrrery } from '@/store';
  * @param {string|null} props.defaultQuestId - Pre-select this quest
  */
 export function AddTaskForm({ onClose, defaultQuestId }) {
-  const { state, dispatch } = useOrrery();
+  const { state, api } = useOrrery();
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [questIds, setQuestIds] = useState(defaultQuestId ? [defaultQuestId] : []);
   const [estimatedMinutes, setEstimatedMinutes] = useState('');
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!title.trim()) return;
 
-    dispatch({
-      type: 'ADD_TASK',
-      payload: {
+    try {
+      await api.createTask({
         title: title.trim(),
         notes: notes.trim(),
         questIds,
         status: 'available',
         estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null,
         actualMinutes: null,
-      },
-    });
-    onClose();
+      });
+      onClose();
+    } catch (e) {
+      console.error('Failed to create task:', e);
+      // Still close - sync will retry
+      onClose();
+    }
   };
 
   const toggleQuest = (qid) => {
