@@ -48,7 +48,7 @@ const ORACLE_SUGGESTIONS = [
  * ExpandedTaskEditor - Appears below selected task for detailed editing
  */
 export function ExpandedTaskEditor({ task, position, onClose }) {
-  const { dispatch } = useOrrery();
+  const { dispatch, api } = useOrrery();
 
   // Edit state
   const [title, setTitle] = useState(task.title);
@@ -74,13 +74,8 @@ export function ExpandedTaskEditor({ task, position, onClose }) {
   }, [notes]);
 
   const handleSave = () => {
-    dispatch({
-      type: 'UPDATE_TASK',
-      payload: {
-        id: task.id,
-        updates: { title, notes }
-      }
-    });
+    api.updateTask(task.id, { title, notes })
+      .catch(e => console.error('Save failed:', e));
   };
 
   const handleAddBlocker = () => {

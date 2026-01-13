@@ -263,7 +263,7 @@ export function MicroView() {
   }, [selectedTaskId, selectedEdgeId, dispatch, api]);
 
   // Add new task (placed near center of current view, offset from existing)
-  const addTask = useCallback(() => {
+  const addTask = useCallback(async () => {
     const questIds = state.preferences.focusQuestId
       ? [state.preferences.focusQuestId]
       : [];
@@ -290,9 +290,9 @@ export function MicroView() {
       attempts++;
     }
 
-    dispatch({
-      type: 'ADD_TASK',
-      payload: {
+    // Use API (server-authoritative) - creates in TaskNotes, then syncs
+    try {
+      await api.createTask({
         title: 'New Task',
         questIds,
         status: 'available',
@@ -301,9 +301,11 @@ export function MicroView() {
         isRecurring: false,
         notes: '',
         position: { x: centerX, y: centerY },
-      }
-    });
-  }, [state.preferences.focusQuestId, dispatch, pan, zoom, visibleTasks, finalPositions]);
+      });
+    } catch (e) {
+      console.error('Failed to create task:', e);
+    }
+  }, [state.preferences.focusQuestId, api, pan, zoom, visibleTasks, finalPositions]);
 
   // Pan handlers
   const handleMouseDown = useCallback((e) => {
@@ -349,18 +351,13 @@ export function MicroView() {
   }, [isPanning, panStart, edgeSourceId, pan, zoom, draggingTaskId, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
-    // End node dragging - persist position
+    // End node dragging - persist position via API
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
       if (finalPos && dragMovedRef.current) {
-        // Actually moved - persist position
-        dispatch({
-          type: 'UPDATE_TASK',
-          payload: {
-            id: draggingTaskId,
-            updates: { position: finalPos }
-          }
-        });
+        // Actually moved - persist position via API (server-authoritative)
+        api.updateTask(draggingTaskId, { position: finalPos })
+          .catch(e => console.error('Position update failed:', e));
         justDraggedRef.current = true; // Prevent click from selecting
       }
       setDraggingTaskId(null);
@@ -373,7 +370,7 @@ export function MicroView() {
       setIsPanning(false);
       dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
     }
-  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions]);
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, api]);
 
   // Zoom handlers
   const zoomIn = useCallback(() => {
@@ -523,13 +520,9 @@ export function MicroView() {
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
       if (finalPos && dragMovedRef.current) {
-        dispatch({
-          type: 'UPDATE_TASK',
-          payload: {
-            id: draggingTaskId,
-            updates: { position: finalPos }
-          }
-        });
+        // Persist position via API (server-authoritative)
+        api.updateTask(draggingTaskId, { position: finalPos })
+          .catch(e => console.error('Position update failed:', e));
         justDraggedRef.current = true;
       }
       setDraggingTaskId(null);
@@ -541,7 +534,7 @@ export function MicroView() {
       setIsPanning(false);
       dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
     }
-  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, finalPositions]);
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, finalPositions, api]);
 
   // Node touch drag start (called from TaskNode)
   const handleNodeTouchStart = useCallback((taskId, e) => {
@@ -932,15 +925,14 @@ export function MicroView() {
                   payload: { taskId: task.id, plannedMinutes: task.estimatedMinutes || 25 }
                 })}
                 onComplete={() => api.completeTask(task.id).catch(e => console.error('Complete failed:', e))}
-                onReopen={() => dispatch({ type: 'REOPEN_TASK', payload: task.id })}
+                onReopen={() => api.updateTask(task.id, { status: 'available' })
+                  .catch(e => console.error('Reopen failed:', e))}
                 onDelete={() => {
                   api.deleteTask(task.id).catch(e => console.error('Delete failed:', e));
                   setSelectedTaskId(null);
                 }}
-                onUpdate={(updates) => dispatch({
-                  type: 'UPDATE_TASK',
-                  payload: { id: task.id, updates }
-                })}
+                onUpdate={(updates) => api.updateTask(task.id, updates)
+                  .catch(e => console.error('Update failed:', e))}
               />
             );
           })}

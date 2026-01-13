@@ -10,7 +10,9 @@
  * NOTE: We do NOT use TaskNotes NLP API - Claude handles all intelligence
  */
 
-const DEFAULT_BASE_URL = 'http://localhost:8080/api';
+// Use relative URL to go through Vite proxy (avoids CORS)
+// Proxy target configured in vite.config.js
+const DEFAULT_BASE_URL = '/api';
 
 class TaskNotesClient {
   constructor(baseUrl = DEFAULT_BASE_URL, apiKey = null) {

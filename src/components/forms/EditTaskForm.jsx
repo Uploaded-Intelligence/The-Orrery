@@ -13,30 +13,29 @@ import { useOrrery } from '@/store';
  * @param {Function} props.onClose - Called when form should close
  */
 export function EditTaskForm({ task, onClose }) {
-  const { state, dispatch } = useOrrery();
+  const { state, api } = useOrrery();
   const [title, setTitle] = useState(task.title);
   const [notes, setNotes] = useState(task.notes || '');
   const [questIds, setQuestIds] = useState(task.questIds || []);
   const [estimatedMinutes, setEstimatedMinutes] = useState(task.estimatedMinutes?.toString() || '');
   const [taskStatus, setTaskStatus] = useState(task.status);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) return;
 
-    dispatch({
-      type: 'UPDATE_TASK',
-      payload: {
-        id: task.id,
-        updates: {
-          title: title.trim(),
-          notes: notes.trim(),
-          questIds,
-          status: taskStatus,
-          estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null,
-        },
-      },
-    });
-    onClose();
+    try {
+      await api.updateTask(task.id, {
+        title: title.trim(),
+        notes: notes.trim(),
+        questIds,
+        status: taskStatus,
+        estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null,
+      });
+      onClose();
+    } catch (e) {
+      console.error('Save failed:', e);
+      onClose(); // Still close, sync will retry
+    }
   };
 
   const toggleQuest = (qid) => {

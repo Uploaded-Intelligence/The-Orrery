@@ -72,19 +72,18 @@ export function TaskDetailPanel({ taskId, onClose, onStartEdge }) {
 
   if (!task) return null;
 
-  const handleSave = () => {
-    dispatch({
-      type: 'UPDATE_TASK',
-      payload: {
-        id: task.id,
-        updates: {
-          title: editForm.title,
-          estimatedMinutes: parseInt(editForm.estimatedMinutes) || 25,
-          notes: editForm.notes,
-        }
-      }
-    });
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      await api.updateTask(task.id, {
+        title: editForm.title,
+        estimatedMinutes: parseInt(editForm.estimatedMinutes) || 25,
+        notes: editForm.notes,
+      });
+      setIsEditing(false);
+    } catch (e) {
+      console.error('Save failed:', e);
+      setIsEditing(false); // Still close edit mode
+    }
   };
 
   const handleDelete = () => {

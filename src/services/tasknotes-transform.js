@@ -15,13 +15,13 @@ export function taskNotesToOrrery(tnTask) {
     tags: tnTask.tags || [],
     contexts: tnTask.contexts || [],
     dueAt: tnTask.dueDate || null,
-    scheduledAt: tnTask.scheduledDate || null,
-    createdAt: tnTask.createdAt,
-    updatedAt: tnTask.modifiedAt,
+    scheduledAt: tnTask.scheduled || null,
+    createdAt: tnTask.dateCreated,
+    updatedAt: tnTask.dateModified,
     completedAt: tnTask.completedAt || null,
     // TaskNotes-specific
     _taskNotesId: tnTask.id,
-    _filePath: tnTask.filePath,
+    _filePath: tnTask.path,
   };
 }
 
@@ -84,7 +84,13 @@ function mapCognitiveToPriority(cognitive) {
 
 /**
  * Transform all tasks from TaskNotes response
+ * API returns {tasks: [...]} not a flat array
  */
-export function transformTasksFromAPI(tnTasks) {
-  return tnTasks.map(taskNotesToOrrery);
+export function transformTasksFromAPI(response) {
+  const tasks = response?.tasks || response || [];
+  if (!Array.isArray(tasks)) {
+    console.error('[Transform] Expected tasks array, got:', typeof tasks, tasks);
+    return [];
+  }
+  return tasks.map(taskNotesToOrrery);
 }

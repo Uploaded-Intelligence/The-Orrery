@@ -20,12 +20,15 @@ export function useTaskNotesSync(dispatch) {
 
   // Fetch all tasks from TaskNotes and update Orrery state
   const syncFromTaskNotes = useCallback(async () => {
+    console.log('[TaskNotesSync] Starting sync...');
     setIsLoading(true);
     setError(null);
 
     try {
       const tasks = await taskNotesClient.getTasks();
+      console.log('[TaskNotesSync] Raw API response:', tasks);
       const transformed = transformTasksFromAPI(tasks);
+      console.log('[TaskNotesSync] Transformed tasks:', transformed);
 
       dispatch({
         type: 'LOAD_FROM_TASKNOTES',
@@ -34,7 +37,9 @@ export function useTaskNotesSync(dispatch) {
 
       setLastSync(new Date());
       setIsConnected(true);
+      console.log('[TaskNotesSync] ✓ Connected');
     } catch (e) {
+      console.error('[TaskNotesSync] ✗ Error:', e.message);
       setError(e.message);
       setIsConnected(false);
     } finally {
