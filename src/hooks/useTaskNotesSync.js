@@ -1,6 +1,6 @@
 // src/hooks/useTaskNotesSync.js
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { taskNotesClient } from '@/services/tasknotes';
 import { transformTasksFromAPI, orreryToTaskNotes } from '@/services/tasknotes-transform';
 
@@ -18,9 +18,14 @@ export function useTaskNotesSync(dispatch) {
   const [error, setError] = useState(null);
   const [lastSync, setLastSync] = useState(null);
 
+  // Guard to prevent state updates after unmount
+  const isMounted = useRef(true);
+
   // Fetch all tasks from TaskNotes and update Orrery state
   const syncFromTaskNotes = useCallback(async () => {
     console.log('[TaskNotesSync] Starting sync...');
+    if (!isMounted.current) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -29,6 +34,9 @@ export function useTaskNotesSync(dispatch) {
       console.log('[TaskNotesSync] Raw API response:', tasks);
       const transformed = transformTasksFromAPI(tasks);
       console.log('[TaskNotesSync] Transformed tasks:', transformed);
+
+      // Only update state if still mounted
+      if (!isMounted.current) return;
 
       dispatch({
         type: 'LOAD_FROM_TASKNOTES',
@@ -40,10 +48,15 @@ export function useTaskNotesSync(dispatch) {
       console.log('[TaskNotesSync] ✓ Connected');
     } catch (e) {
       console.error('[TaskNotesSync] ✗ Error:', e.message);
+      // Only update state if still mounted
+      if (!isMounted.current) return;
+
       setError(e.message);
       setIsConnected(false);
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   }, [dispatch]);
 
@@ -131,6 +144,13 @@ export function useTaskNotesSync(dispatch) {
     const interval = setInterval(syncFromTaskNotes, 30000);
     return () => clearInterval(interval);
   }, [syncFromTaskNotes]);
+
+  // Cleanup: Mark as unmounted to prevent state updates
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   return {
     isConnected,
