@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { generateId } from '@/utils';
+import { INITIAL_STATE } from '@/constants/initialState';
 
 /**
  * @param {import('@/types').OrreryState} state
@@ -16,37 +17,44 @@ export function orreryReducer(state, action) {
   switch (action.type) {
     // ─── State Management ───────────────────────────────────────────────────
     case 'LOAD_STATE':
+      // Merge loaded state with INITIAL_STATE to prevent schema drift
+      // (ensures new fields added to INITIAL_STATE are present in loaded state)
       return {
+        ...INITIAL_STATE,
         ...action.payload,
+        // Deep merge preferences to handle nested fields
+        preferences: {
+          ...INITIAL_STATE.preferences,
+          ...action.payload.preferences,
+        },
         lastSyncedAt: now,
       };
 
     case 'LOAD_FROM_TASKNOTES':
       // Load tasks from TaskNotes API (server-authoritative)
-      // Preserves edges, quests, positions (Orrery-only data)
+      // Merge with existing Orrery-local data (positions, blockers)
+      const existingById = new Map(state.tasks.map(t => [t.id, t]));
+      const mergedTasks = action.payload.tasks.map(newTask => {
+        const existing = existingById.get(newTask.id);
+        return {
+          ...newTask,
+          // Preserve Orrery-local fields (not in TaskNotes)
+          position: existing?.position || newTask.position,
+          blockers: existing?.blockers || [],
+        };
+      });
+
       return {
         ...state,
-        tasks: action.payload.tasks,
+        tasks: mergedTasks,
         lastSyncedAt: now,
         _syncSource: 'tasknotes',
       };
 
     case 'RESET_STATE':
+      // Reuse INITIAL_STATE to prevent schema drift
       return {
-        quests: [],
-        tasks: [],
-        edges: [],
-        questVines: [],
-        activeSession: null,
-        preferences: {
-          currentView: 'macro',
-          focusQuestId: null,
-          showActualOnly: false,
-          microViewPosition: { x: 0, y: 0 },
-          microViewZoom: 1.0,
-          macroViewPosition: { x: 0, y: 0 },
-          macroViewZoom: 1.0,
-        },
+        ...INITIAL_STATE,
         lastSyncedAt: now,
       };
 

@@ -7,20 +7,14 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Save, X, AlertTriangle, Sparkles, Check, Trash2,
-  Clock, MessageSquare, Zap, Coffee, FlaskConical
+  Clock, MessageSquare, Coffee, FlaskConical
 } from 'lucide-react';
 import { COLORS } from '@/constants';
 import { useOrrery } from '@/store';
 
 // Oracle suggestion types
 const ORACLE_SUGGESTIONS = [
-  {
-    id: 'decompose',
-    icon: Zap,
-    label: 'Break it down',
-    color: '#F59E0B',
-    description: 'This is too big. Let Claude split it into smaller pieces.'
-  },
+  // Note: 'decompose' suggestion removed until Claude API integration is complete
   {
     id: 'experiment',
     icon: FlaskConical,
@@ -107,12 +101,6 @@ export function ExpandedTaskEditor({ task, position, onClose }) {
       }
     });
     setShowOracleSuggestions(null);
-
-    // If decompose, trigger the decompose action
-    if (suggestion.id === 'decompose') {
-      // TODO: Integrate with Claude API to decompose task
-      console.log('TODO: Decompose task with Claude');
-    }
   };
 
   const blockers = task.blockers || [];
