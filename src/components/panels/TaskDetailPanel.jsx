@@ -27,7 +27,7 @@ const STATUS_CONFIG = {
  * @param {Function} props.onStartEdge - Start creating edge from this task
  */
 export function TaskDetailPanel({ taskId, onClose, onStartEdge }) {
-  const { state, dispatch } = useOrrery();
+  const { state, dispatch, api } = useOrrery();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     title: '',
@@ -89,13 +89,13 @@ export function TaskDetailPanel({ taskId, onClose, onStartEdge }) {
 
   const handleDelete = () => {
     if (confirm(`Delete task "${task.title}"?`)) {
-      dispatch({ type: 'DELETE_TASK', payload: task.id });
+      api.deleteTask(task.id).catch(e => console.error('Delete failed:', e));
       onClose();
     }
   };
 
   const handleComplete = () => {
-    dispatch({ type: 'COMPLETE_TASK', payload: task.id });
+    api.completeTask(task.id).catch(e => console.error('Complete failed:', e));
   };
 
   const handleStartSession = () => {
