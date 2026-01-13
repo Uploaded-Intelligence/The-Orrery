@@ -8,6 +8,7 @@ import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff,
 import { useOrrery } from '@/store';
 import { COLORS, QUEST_COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
+import { computeLayout } from '@/utils/forceLayout';
 import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
 import { PartyChatPanel } from '@/components/party';
@@ -37,6 +38,8 @@ export function MicroView() {
   const [draggingTaskId, setDraggingTaskId] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [draggedPositions, setDraggedPositions] = useState(new Map()); // Temp positions during drag
+  const justDraggedRef = useRef(false); // Track if we just finished dragging (prevents click after drag)
+  const dragMovedRef = useRef(false); // Track if actual movement occurred during drag
 
   // Sync local pan/zoom with persisted preferences (e.g., after localStorage load)
   useEffect(() => {
@@ -112,10 +115,31 @@ export function MicroView() {
     return merged;
   }, [basePositions, draggedPositions]);
 
+  // Compute physics-based positions for tasks without manual positions
+  const physicsPositions = useMemo(() => {
+    const unpinnedTasks = visibleTasks.filter(t => !t.position || (t.position.x === 0 && t.position.y === 0));
+    if (unpinnedTasks.length === 0) return new Map();
+
+    // Use container bounds (estimate if not available)
+    const bounds = { width: 800, height: 600 };
+    return computeLayout(visibleTasks, visibleEdges, bounds);
+  }, [visibleTasks, visibleEdges]);
+
+  // Merge physics positions with manual positions
+  const finalPositions = useMemo(() => {
+    const merged = new Map(positions);
+    for (const [id, pos] of physicsPositions) {
+      if (!positions.has(id) || (positions.get(id).x === 0 && positions.get(id).y === 0)) {
+        merged.set(id, pos);
+      }
+    }
+    return merged;
+  }, [positions, physicsPositions]);
+
   // Calculate canvas bounds
   const bounds = useMemo(() =>
-    getCanvasBounds(positions),
-    [positions]
+    getCanvasBounds(finalPositions),
+    [finalPositions]
   );
 
   // Get quest name for header
@@ -131,8 +155,14 @@ export function MicroView() {
     [state.quests]
   );
 
-  // Handle task click - always select (click canvas to deselect)
+  // Handle task click - only select if NOT just dragged
   const handleTaskClick = useCallback((taskId) => {
+    // Skip selection if we just finished dragging
+    if (justDraggedRef.current) {
+      justDraggedRef.current = false;
+      return;
+    }
+
     if (edgeSourceId) {
       // Creating edge - target selected
       if (edgeSourceId !== taskId) {
@@ -143,7 +173,7 @@ export function MicroView() {
       }
       setEdgeSourceId(null);
     } else {
-      // Always select - don't toggle (click canvas to deselect)
+      // Click without drag = select and show editor
       setSelectedTaskId(taskId);
       setSelectedEdgeId(null);
     }
@@ -168,7 +198,7 @@ export function MicroView() {
     if (edgeSourceId) return;
 
     e.stopPropagation();
-    const currentPos = positions.get(taskId);
+    const currentPos = finalPositions.get(taskId);
     if (!currentPos) return;
 
     // Calculate offset from mouse to node origin
@@ -181,9 +211,10 @@ export function MicroView() {
       x: mouseX - currentPos.x,
       y: mouseY - currentPos.y,
     });
-    setSelectedTaskId(taskId);
+    dragMovedRef.current = false; // Reset movement tracking
+    // Don't select here - wait to see if it's a click or drag
     setSelectedEdgeId(null);
-  }, [edgeSourceId, positions, pan, zoom]);
+  }, [edgeSourceId, finalPositions, pan, zoom]);
 
   // Handle connector drag start (for edge creation)
   const handleConnectorDragStart = useCallback((taskId, e) => {
@@ -245,7 +276,7 @@ export function MicroView() {
     let attempts = 0;
     while (attempts < 20) {
       const collision = visibleTasks.some(t => {
-        const taskPos = positions.get(t.id);
+        const taskPos = finalPositions.get(t.id);
         if (!taskPos) return false;
         const dx = Math.abs(taskPos.x - centerX);
         const dy = Math.abs(taskPos.y - centerY);
@@ -271,7 +302,7 @@ export function MicroView() {
         position: { x: centerX, y: centerY },
       }
     });
-  }, [state.preferences.focusQuestId, dispatch, pan, zoom, visibleTasks, positions]);
+  }, [state.preferences.focusQuestId, dispatch, pan, zoom, visibleTasks, finalPositions]);
 
   // Pan handlers
   const handleMouseDown = useCallback((e) => {
@@ -302,6 +333,7 @@ export function MicroView() {
         x: mouseX - dragOffset.x,
         y: mouseY - dragOffset.y,
       };
+      dragMovedRef.current = true; // Movement occurred
       setDraggedPositions(prev => {
         const next = new Map(prev);
         next.set(draggingTaskId, newPos);
@@ -319,7 +351,8 @@ export function MicroView() {
     // End node dragging - persist position
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
-      if (finalPos) {
+      if (finalPos && dragMovedRef.current) {
+        // Actually moved - persist position
         dispatch({
           type: 'UPDATE_TASK',
           payload: {
@@ -327,6 +360,7 @@ export function MicroView() {
             updates: { position: finalPos }
           }
         });
+        justDraggedRef.current = true; // Prevent click from selecting
       }
       setDraggingTaskId(null);
       setDraggedPositions(new Map());
@@ -435,6 +469,7 @@ export function MicroView() {
         x: touchX - dragOffset.x,
         y: touchY - dragOffset.y,
       };
+      dragMovedRef.current = true; // Movement occurred
       setDraggedPositions(prev => {
         const next = new Map(prev);
         next.set(draggingTaskId, newPos);
@@ -460,7 +495,7 @@ export function MicroView() {
 
       // Find task under touch position
       const targetTask = visibleTasks.find(task => {
-        const taskPos = positions.get(task.id);
+        const taskPos = finalPositions.get(task.id);
         if (!taskPos || task.id === edgeSourceId) return false;
 
         // Check if touch is within task bounds (with padding for easier touch)
@@ -486,7 +521,7 @@ export function MicroView() {
     // Handle node drag end
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
-      if (finalPos) {
+      if (finalPos && dragMovedRef.current) {
         dispatch({
           type: 'UPDATE_TASK',
           payload: {
@@ -494,6 +529,7 @@ export function MicroView() {
             updates: { position: finalPos }
           }
         });
+        justDraggedRef.current = true;
       }
       setDraggingTaskId(null);
       setDraggedPositions(new Map());
@@ -504,7 +540,7 @@ export function MicroView() {
       setIsPanning(false);
       dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
     }
-  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, positions]);
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, finalPositions]);
 
   // Node touch drag start (called from TaskNode)
   const handleNodeTouchStart = useCallback((taskId, e) => {
@@ -513,7 +549,7 @@ export function MicroView() {
 
     e.stopPropagation();
     const touch = e.touches[0];
-    const currentPos = positions.get(taskId);
+    const currentPos = finalPositions.get(taskId);
     if (!currentPos) return;
 
     const rect = svgRef.current.getBoundingClientRect();
@@ -525,9 +561,9 @@ export function MicroView() {
       x: touchX - currentPos.x,
       y: touchY - currentPos.y,
     });
-    setSelectedTaskId(taskId);
+    dragMovedRef.current = false; // Reset movement tracking
     setSelectedEdgeId(null);
-  }, [edgeSourceId, positions, pan, zoom]);
+  }, [edgeSourceId, finalPositions, pan, zoom]);
 
   // Connector touch drag start (for edge creation)
   const handleConnectorTouchStart = useCallback((taskId, e) => {
@@ -565,7 +601,7 @@ export function MicroView() {
   }, [handleTouchMove]);
 
   // Get edge preview start position
-  const edgePreviewStart = edgeSourceId ? positions.get(edgeSourceId) : null;
+  const edgePreviewStart = edgeSourceId ? finalPositions.get(edgeSourceId) : null;
   const previewStartPos = edgePreviewStart ? {
     x: edgePreviewStart.x + LAYOUT.NODE_WIDTH,
     y: edgePreviewStart.y + LAYOUT.NODE_HEIGHT / 2
@@ -839,8 +875,8 @@ export function MicroView() {
         <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
           {/* Edges layer (behind nodes) */}
           {visibleEdges.map(edge => {
-            const sourcePos = positions.get(edge.source);
-            const targetPos = positions.get(edge.target);
+            const sourcePos = finalPositions.get(edge.source);
+            const targetPos = finalPositions.get(edge.target);
             if (!sourcePos || !targetPos) return null;
 
             return (
@@ -863,7 +899,7 @@ export function MicroView() {
 
           {/* Nodes layer */}
           {visibleTasks.map(task => {
-            const pos = positions.get(task.id);
+            const pos = finalPositions.get(task.id);
             if (!pos) return null;
 
             const computedStatus = getComputedTaskStatus(task, state);
@@ -949,7 +985,7 @@ export function MicroView() {
       {/* Expanded Task Editor - appears when task is selected */}
       {selectedTaskId && (() => {
         const selectedTask = state.tasks.find(t => t.id === selectedTaskId);
-        const taskPos = positions.get(selectedTaskId);
+        const taskPos = finalPositions.get(selectedTaskId);
         if (!selectedTask || !taskPos) return null;
 
         // Convert SVG coordinates to screen coordinates
