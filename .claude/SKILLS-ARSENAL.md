@@ -22,7 +22,7 @@ Skills are markdown files that teach Claude specialized workflows. They trigger 
 
 ---
 
-## The Arsenal (26 Skills)
+## The Arsenal (49 Skills)
 
 ### Core Development Workflow (obra/superpowers)
 
@@ -95,15 +95,11 @@ Use **when-stuck** first - it dispatches to the right technique:
 | **web-artifacts-builder** | Complex multi-component artifacts | React + Tailwind + shadcn/ui |
 | **webapp-testing** | UI verification | Playwright automation |
 
-### Documents (Available When Needed)
+### Documentation
 
-| Skill | When It Triggers |
-|-------|------------------|
-| **docx** | Word documents with tracked changes |
-| **pdf** | PDF extraction, creation, forms |
-| **pptx** | PowerPoint presentations |
-| **xlsx** | Excel with formulas |
-| **doc-coauthoring** | Structured documentation workflow |
+| Skill | When It Triggers | What It Does |
+|-------|------------------|--------------|
+| **doc-coauthoring** | Writing docs, proposals, specs | Structured documentation workflow |
 
 ### Research & Architecture
 
@@ -122,16 +118,18 @@ Use **when-stuck** first - it dispatches to the right technique:
 | **writing-skills** | Creating new skills | TDD for process documentation |
 | **testing-skills-with-subagents** | Validating skills | RED-GREEN-REFACTOR for skills |
 | **sharing-skills** | Contributing upstream | Branch and PR workflow |
+| **gardening-skills-wiki** | Maintaining skills | Check links, naming, coverage |
+| **pulling-updates-from-skills-repository** | Updating skills | Sync with upstream obra/superpowers-skills |
 
 ### Tools & Utilities
 
-| Skill | When It Triggers |
-|-------|------------------|
-| **mcp-builder** | Building MCP servers |
-| **mcp-cli** | Using MCP servers on-demand |
-| **using-tmux-for-interactive-commands** | Interactive CLI tools (vim, repl) |
-| **session-start-hook** | Setting up Claude Code hooks |
-| **feature-planning** | Breaking down feature requests |
+| Skill | When It Triggers | What It Does |
+|-------|------------------|--------------|
+| **mcp-builder** | Building MCP servers | Guide for creating MCP servers |
+| **mcp-cli** | Using MCP servers on-demand | Discover tools without polluting context |
+| **using-tmux-for-interactive-commands** | Interactive CLI tools (vim, repl) | Run interactive commands in tmux |
+| **ux-researcher-designer** | UX research tasks | Persona generation, user research |
+| **theme-factory** | Need consistent styling | Theme/styling generation toolkit |
 
 ---
 
@@ -195,3 +193,44 @@ This project is a React 19 + Vite visual operating system with:
 - [obra/superpowers-skills](https://github.com/obra/superpowers-skills) - Extended techniques
 - [anthropics/skills](https://github.com/anthropics/skills) - Official Anthropic skills
 - [chrisvoncsefalvay/claude-d3js-skill](https://github.com/chrisvoncsefalvay/claude-d3js-skill) - D3.js visualization
+
+---
+
+## Excluded Skills (and Why)
+
+These were intentionally NOT included:
+
+| Skill | Reason |
+|-------|--------|
+| **docx, pdf, pptx, xlsx** | Document processing - not relevant for The-Orrery |
+| **brand-guidelines** | Anthropic-specific branding |
+| **internal-comms** | Enterprise communications templates |
+| **slack-gif-creator** | Not relevant |
+| **vibe-coding** | Philosophy without actionable workflow |
+| **feature-planning** | Redundant with `brainstorming` + `writing-plans` chain |
+| **session-start-hook** | Environment-specific, not portable |
+
+---
+
+## Skill Overlap Analysis
+
+These skill groups are **complementary, not duplicates**:
+
+### Frontend Skills (3 skills, different focus)
+- **frontend-design**: Visual aesthetics, bold design choices
+- **senior-frontend**: Technical tooling, scripts, performance
+- **senior-fullstack**: Full stack including backend
+
+### Debugging Skills (3 skills, workflow stages)
+- **systematic-debugging**: Overall 4-phase framework
+- **root-cause-tracing**: Trace backward to source
+- **defense-in-depth**: Post-fix validation layers
+
+### Planning Skills (2 skills, sequential)
+- **brainstorming**: Requirements → Design spec
+- **writing-plans**: Design → Detailed implementation tasks
+
+### Visualization Skills (3 skills, different outputs)
+- **d3js-visualization**: Data visualizations (charts, DAGs)
+- **algorithmic-art**: Generative art (p5.js)
+- **canvas-design**: Static art (posters, PDFs)
