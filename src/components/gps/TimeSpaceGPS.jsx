@@ -19,7 +19,7 @@ import { useOrrery } from '@/store';
  * - I can see I'm not alone (allies)
  */
 export function TimeSpaceGPS() {
-  const { state, dispatch } = useOrrery();
+  const { state, dispatch, api } = useOrrery();
   const [now, setNow] = useState(new Date());
 
   // Update time every second
@@ -116,7 +116,7 @@ export function TimeSpaceGPS() {
 
   const handleCompleteTask = () => {
     if (currentTask) {
-      dispatch({ type: 'COMPLETE_TASK', payload: currentTask.id });
+      api.completeTask(currentTask.id).catch(e => console.error('Complete failed:', e));
     }
   };
 
