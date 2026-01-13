@@ -26,3 +26,7 @@ npm run dev
 ```
 
 React Compiler is not enabled by default. For details on enabling it, refer to [the React documentation](https://react.dev/learn/react-compiler/installation).
+
+---
+
+<!-- Testing automated code review workflow -->
