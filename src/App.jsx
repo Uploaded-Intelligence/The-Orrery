@@ -19,6 +19,7 @@ import { TimeSpaceGPS } from '@/components/gps';
 // ─── UI Components ────────────────────────────────────────────────────────────
 import { SyncButton } from '@/components/ui/SyncButton';
 import { ExportButton } from '@/components/ui/ExportButton';
+import { ExportToObsidianButton } from '@/components/ui/ExportToObsidianButton';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ROOT COMPONENT
@@ -163,6 +164,7 @@ export default function Orrery() {
             {/* Obsidian Sync Buttons */}
             <SyncButton dispatch={dispatch} />
             <ExportButton state={state} />
+            <ExportToObsidianButton />
 
             <ImportExportControls />
           </div>
