@@ -13,6 +13,7 @@ import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
 import { PartyChatPanel } from '@/components/party';
 import { ExpandedTaskEditor } from '@/components/panels';
+import { ResetLayoutButton } from '@/components/ui/ResetLayoutButton';
 
 /**
  * MicroView - Task DAG visualization
@@ -726,6 +727,30 @@ export function MicroView() {
           Task
         </button>
 
+        {/* Party Chat button */}
+        <button
+          onClick={() => setPartyChatOpen(!partyChatOpen)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            background: partyChatOpen ? COLORS.accentWarning + '20' : COLORS.bgElevated,
+            border: `1px solid ${partyChatOpen ? COLORS.accentWarning : COLORS.textMuted}40`,
+            borderRadius: '6px',
+            color: partyChatOpen ? COLORS.accentWarning : COLORS.textSecondary,
+            fontSize: '13px',
+            cursor: 'pointer',
+          }}
+          title="Open Party Chat"
+        >
+          <MessageSquare size={16} />
+          Party
+        </button>
+
+        {/* Layout reset */}
+        <ResetLayoutButton />
+
         {selectedTaskId && !edgeSourceId && (
           <button
             onClick={startEdgeCreation}
@@ -768,27 +793,6 @@ export function MicroView() {
             Delete
           </button>
         )}
-
-        {/* Party Chat button */}
-        <button
-          onClick={() => setPartyChatOpen(!partyChatOpen)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 12px',
-            background: partyChatOpen ? COLORS.accentPrimary + '20' : COLORS.bgElevated,
-            border: `1px solid ${partyChatOpen ? COLORS.accentPrimary : COLORS.textMuted}40`,
-            borderRadius: '6px',
-            color: partyChatOpen ? COLORS.accentPrimary : COLORS.textSecondary,
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-          title="Talk to your Party"
-        >
-          <MessageSquare size={16} />
-          Party
-        </button>
 
         {/* Zoom controls */}
         <div style={{

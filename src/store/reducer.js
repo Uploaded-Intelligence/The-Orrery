@@ -478,6 +478,32 @@ export function orreryReducer(state, action) {
         lastSyncedAt: now,
       };
 
+    // ─── Layout Actions ──────────────────────────────────────────────────────
+    case 'RESET_LAYOUT':
+      // Store current positions for undo, then clear all positions
+      return {
+        ...state,
+        _previousTaskPositions: state.tasks.reduce((acc, t) => {
+          if (t.position) acc[t.id] = t.position;
+          return acc;
+        }, {}),
+        tasks: state.tasks.map(t => ({ ...t, position: null })),
+        lastSyncedAt: now,
+      };
+
+    case 'UNDO_LAYOUT':
+      // Restore previous positions if available
+      if (!state._previousTaskPositions) return state;
+      return {
+        ...state,
+        tasks: state.tasks.map(t => ({
+          ...t,
+          position: state._previousTaskPositions[t.id] || t.position,
+        })),
+        _previousTaskPositions: null,
+        lastSyncedAt: now,
+      };
+
     default:
       return state;
   }
