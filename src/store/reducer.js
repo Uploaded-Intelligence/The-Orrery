@@ -23,10 +23,21 @@ export function orreryReducer(state, action) {
 
     case 'LOAD_FROM_TASKNOTES':
       // Load tasks from TaskNotes API (server-authoritative)
-      // Preserves edges, quests, positions (Orrery-only data)
+      // Merge with existing Orrery-local data (positions, blockers)
+      const existingById = new Map(state.tasks.map(t => [t.id, t]));
+      const mergedTasks = action.payload.tasks.map(newTask => {
+        const existing = existingById.get(newTask.id);
+        return {
+          ...newTask,
+          // Preserve Orrery-local fields (not in TaskNotes)
+          position: existing?.position || newTask.position,
+          blockers: existing?.blockers || [],
+        };
+      });
+
       return {
         ...state,
-        tasks: action.payload.tasks,
+        tasks: mergedTasks,
         lastSyncedAt: now,
         _syncSource: 'tasknotes',
       };

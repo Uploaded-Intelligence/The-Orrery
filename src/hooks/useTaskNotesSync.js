@@ -47,32 +47,72 @@ export function useTaskNotesSync(dispatch) {
     }
   }, [dispatch]);
 
-  // Create task via API, then update local state
+  // Create task via API (optimistic - no immediate sync)
   const createTask = useCallback(async (task) => {
     const tnTask = orreryToTaskNotes(task);
     const created = await taskNotesClient.createTask(tnTask);
-    await syncFromTaskNotes(); // Re-sync to get server state
+    // Don't sync immediately - let polling handle it
+    // This prevents race condition with Orrery-local data (like position)
     return created;
-  }, [syncFromTaskNotes]);
+  }, []);
 
-  // Update task via API
+  // Update task via API (optimistic updates pattern)
   const updateTask = useCallback(async (id, updates) => {
-    const tnUpdates = orreryToTaskNotes(updates);
-    await taskNotesClient.updateTask(id, tnUpdates);
-    await syncFromTaskNotes();
-  }, [syncFromTaskNotes]);
+    // 1. Optimistically update local state immediately
+    dispatch({
+      type: 'UPDATE_TASK',
+      payload: { id, updates }
+    });
 
-  // Complete task via API
+    // 2. Send to server in background
+    try {
+      const tnUpdates = orreryToTaskNotes(updates);
+      await taskNotesClient.updateTask(id, tnUpdates);
+      // Don't sync - let polling handle it
+    } catch (e) {
+      // 3. On failure, revert optimistic update
+      console.error('[TaskNotesSync] Update failed, reverting:', e);
+      await syncFromTaskNotes(); // Only sync on error to revert
+    }
+  }, [dispatch, syncFromTaskNotes]);
+
+  // Complete task via API (optimistic updates pattern)
   const completeTask = useCallback(async (id) => {
-    await taskNotesClient.toggleTaskStatus(id);
-    await syncFromTaskNotes();
-  }, [syncFromTaskNotes]);
+    // 1. Optimistically update local state
+    dispatch({
+      type: 'COMPLETE_TASK',
+      payload: id
+    });
 
-  // Delete task via API
+    // 2. Send to server in background
+    try {
+      await taskNotesClient.toggleTaskStatus(id);
+      // Don't sync - let polling handle it
+    } catch (e) {
+      // 3. On failure, revert optimistic update
+      console.error('[TaskNotesSync] Complete failed, reverting:', e);
+      await syncFromTaskNotes();
+    }
+  }, [dispatch, syncFromTaskNotes]);
+
+  // Delete task via API (optimistic updates pattern)
   const deleteTask = useCallback(async (id) => {
-    await taskNotesClient.deleteTask(id);
-    await syncFromTaskNotes();
-  }, [syncFromTaskNotes]);
+    // 1. Optimistically update local state
+    dispatch({
+      type: 'DELETE_TASK',
+      payload: id
+    });
+
+    // 2. Send to server in background
+    try {
+      await taskNotesClient.deleteTask(id);
+      // Don't sync - let polling handle it
+    } catch (e) {
+      // 3. On failure, revert optimistic update
+      console.error('[TaskNotesSync] Delete failed, reverting:', e);
+      await syncFromTaskNotes();
+    }
+  }, [dispatch, syncFromTaskNotes]);
 
   // Initial sync on mount
   useEffect(() => {

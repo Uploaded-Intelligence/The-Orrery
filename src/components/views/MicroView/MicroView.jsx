@@ -290,9 +290,9 @@ export function MicroView() {
       attempts++;
     }
 
-    // Use API (server-authoritative) - creates in TaskNotes, then syncs
+    // Create task via API (server-authoritative)
     try {
-      await api.createTask({
+      const created = await api.createTask({
         title: 'New Task',
         questIds,
         status: 'available',
@@ -300,12 +300,19 @@ export function MicroView() {
         actualMinutes: null,
         isRecurring: false,
         notes: '',
-        position: { x: centerX, y: centerY },
       });
+
+      // Position is Orrery-local data - set after creation
+      if (created?.id) {
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: { id: created.id, updates: { position: { x: centerX, y: centerY } } }
+        });
+      }
     } catch (e) {
       console.error('Failed to create task:', e);
     }
-  }, [state.preferences.focusQuestId, api, pan, zoom, visibleTasks, finalPositions]);
+  }, [state.preferences.focusQuestId, api, dispatch, pan, zoom, visibleTasks, finalPositions]);
 
   // Pan handlers
   const handleMouseDown = useCallback((e) => {
@@ -351,13 +358,15 @@ export function MicroView() {
   }, [isPanning, panStart, edgeSourceId, pan, zoom, draggingTaskId, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
-    // End node dragging - persist position via API
+    // End node dragging - persist position locally (Orrery-only data)
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
       if (finalPos && dragMovedRef.current) {
-        // Actually moved - persist position via API (server-authoritative)
-        api.updateTask(draggingTaskId, { position: finalPos })
-          .catch(e => console.error('Position update failed:', e));
+        // Position is view state, not task data - keep in local state only
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: { id: draggingTaskId, updates: { position: finalPos } }
+        });
         justDraggedRef.current = true; // Prevent click from selecting
       }
       setDraggingTaskId(null);
@@ -520,9 +529,11 @@ export function MicroView() {
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
       if (finalPos && dragMovedRef.current) {
-        // Persist position via API (server-authoritative)
-        api.updateTask(draggingTaskId, { position: finalPos })
-          .catch(e => console.error('Position update failed:', e));
+        // Position is view state, not task data - keep in local state only
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: { id: draggingTaskId, updates: { position: finalPos } }
+        });
         justDraggedRef.current = true;
       }
       setDraggingTaskId(null);
