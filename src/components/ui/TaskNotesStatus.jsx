@@ -1,31 +1,23 @@
 // src/components/ui/TaskNotesStatus.jsx
 
-import { useState, useEffect } from 'react';
-import { testConnection } from '@/services/tasknotes';
 import { COLORS } from '@/constants';
+import { useOrrery } from '@/store';
 
 /**
  * Connection status indicator for TaskNotes API
  * Shows green when connected, red when disconnected
+ *
+ * Uses shared api state from context to avoid duplicate polling
+ * (useTaskNotesSync already polls every 30s)
  */
 export function TaskNotesStatus() {
-  const [status, setStatus] = useState({ connected: null, error: null });
+  const { api } = useOrrery();
+  const isConnected = api?.isConnected ?? null;
+  const isLoading = api?.isLoading ?? false;
 
-  useEffect(() => {
-    checkConnection();
-    // Check every 30 seconds
-    const interval = setInterval(checkConnection, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const checkConnection = async () => {
-    const result = await testConnection();
-    setStatus(result);
-  };
-
-  const color = status.connected === null
+  const color = isConnected === null || isLoading
     ? COLORS.textMuted
-    : status.connected
+    : isConnected
       ? COLORS.accentSuccess
       : COLORS.accentDanger;
 
@@ -41,7 +33,7 @@ export function TaskNotesStatus() {
         fontSize: '11px',
         color,
       }}
-      title={status.error || 'Connected to TaskNotes'}
+      title={isConnected ? 'Connected to TaskNotes' : 'Disconnected from TaskNotes'}
     >
       <div style={{
         width: '8px',
