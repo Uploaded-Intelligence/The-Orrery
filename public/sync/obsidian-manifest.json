@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2026-01-13T18:30:00.000Z",
+  "generatedBy": "claude",
+  "quests": [
+    {"name": "orrery", "color": "#8b5cf6"},
+    {"name": "chronicle-automation", "color": "#f59e0b"},
+    {"name": "living-codex", "color": "#10b981"},
+    {"name": "unified-ai-context", "color": "#3b82f6"}
+  ],
+  "tasks": [
+    {
+      "filename": "Build Orrery macro view",
+      "fm": {
+        "status": "open",
+        "priority": "normal",
+        "timeEstimate": 60,
+        "projects": ["orrery"],
+        "blockedBy": [],
+        "dateCreated": "2026-01-13T07:00:00.000Z",
+        "dateModified": "2026-01-13T07:00:00.000Z"
+      },
+      "content": "Create the quest constellation view in the Orrery — a visual map of all active quests and their relationships.\n\n## Subtasks\n- [ ] Design constellation layout\n- [ ] Map quest dependencies\n- [ ] Add visual status indicators\n- [ ] Test navigation UX"
+    },
+    {
+      "filename": "Chronicle automation prototype",
+      "fm": {
+        "status": "blocked",
+        "priority": "normal",
+        "timeEstimate": 90,
+        "projects": ["chronicle-automation"],
+        "blockedBy": ["Configure git layer for vault", "Test handoff with another AI"],
+        "dateCreated": "2026-01-13T07:00:00.000Z",
+        "dateModified": "2026-01-13T07:00:00.000Z"
+      },
+      "content": "Auto-generate daily/weekly chronicles from session data and git commits.\n\n## Blocked by\n- Git layer (source of commit data)\n- AI handoff tested (ensures session data flows properly)\n\n## This unlocks\n- Moon phase chronicles\n- Quarterly reviews"
+    },
+    {
+      "filename": "Configure git layer for vault",
+      "fm": {
+        "status": "open",
+        "priority": "high",
+        "timeEstimate": 30,
+        "projects": ["living-codex"],
+        "blockedBy": [],
+        "dateCreated": "2026-01-13T07:00:00.000Z",
+        "dateModified": "2026-01-13T07:00:00.000Z"
+      },
+      "content": "Set up git version control for the Living Codex vault to enable chronicle automation and history tracking.\n\n## Subtasks\n- [ ] Initialize git repo\n- [ ] Configure .gitignore for Obsidian\n- [ ] Set up commit hooks\n- [ ] Test basic workflow"
+    },
+    {
+      "filename": "Implement Orrery isometric diorama",
+      "fm": {
+        "status": "open",
+        "priority": "high",
+        "timeEstimate": null,
+        "projects": ["orrery"],
+        "blockedBy": [],
+        "dateCreated": "2026-01-13T00:00:00.000Z",
+        "dateModified": "2026-01-13T00:00:00.000Z"
+      },
+      "content": "Apply the isometric diorama design direction to Orrery Phase 1.\n\n**From quest:** Build-Orrery-Phase-1"
+    },
+    {
+      "filename": "Initialize git in vault",
+      "fm": {
+        "status": "open",
+        "priority": "high",
+        "timeEstimate": null,
+        "projects": ["living-codex"],
+        "blockedBy": [],
+        "dateCreated": "2026-01-13T00:00:00.000Z",
+        "dateModified": "2026-01-13T00:00:00.000Z"
+      },
+      "content": "Set up git tracking for the Living Codex vault.\n\n**From quest:** Establish-Living-Codex"
+    },
+    {
+      "filename": "Set up TaskNotes integration with Claude",
+      "fm": {
+        "status": "completed",
+        "priority": "high",
+        "timeEstimate": 15,
+        "projects": [],
+        "blockedBy": [],
+        "dateCreated": "2026-01-13T06:30:00.000Z",
+        "dateModified": "2026-01-13T06:32:00.000Z"
+      },
+      "content": "Validate that Claude can create tasks via file operations and TaskNotes indexes them properly.\n\n## Success Criteria\n- [x] Task appears in TaskNotes views\n- [x] Calendar shows it scheduled for today\n- [x] Can update status from Claude"
+    },
+    {
+      "filename": "Test handoff with Gemini or GPT",
+      "fm": {
+        "status": "open",
+        "priority": "high",
+        "timeEstimate": null,
+        "projects": ["living-codex", "unified-ai-context"],
+        "blockedBy": ["Initialize git in vault"],
+        "dateCreated": "2026-01-13T00:00:00.000Z",
+        "dateModified": "2026-01-13T00:00:00.000Z"
+      },
+      "content": "Validate that the Protocol/Briefing/Handoff system works with non-Claude AIs.\n\n**From quest:** Establish-Living-Codex"
+    },
+    {
+      "filename": "Test handoff with another AI",
+      "fm": {
+        "status": "blocked",
+        "priority": "high",
+        "timeEstimate": 45,
+        "projects": ["unified-ai-context"],
+        "blockedBy": ["Configure git layer for vault"],
+        "dateCreated": "2026-01-13T07:00:00.000Z",
+        "dateModified": "2026-01-13T07:00:00.000Z"
+      },
+      "content": "Validate the Protocol/Briefing/Handoff system by testing with Gemini or GPT.\n\n## Blocked by\n- Git layer must be configured first (for proper handoff state)\n\n## Success Criteria\n- [ ] Another AI can read the handoff\n- [ ] Context transfers accurately\n- [ ] No critical information lost"
+    },
+    {
+      "filename": "Test out TaskNotes",
+      "fm": {
+        "status": "open",
+        "priority": "normal",
+        "timeEstimate": 5,
+        "projects": [],
+        "blockedBy": [],
+        "dateCreated": "2026-01-13T06:14:07.449Z",
+        "dateModified": "2026-01-13T06:14:07.449Z"
+      },
+      "content": "Quick test to understand how TaskNotes works."
+    }
+  ]
+}
