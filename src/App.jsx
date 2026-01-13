@@ -16,6 +16,10 @@ import { MicroView } from '@/components/views/MicroView';
 import { MacroView, ImportExportControls } from '@/components/macro';
 import { TimeSpaceGPS } from '@/components/gps';
 
+// ─── UI Components ────────────────────────────────────────────────────────────
+import { SyncButton } from '@/components/ui/SyncButton';
+import { ExportButton } from '@/components/ui/ExportButton';
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ROOT COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -155,6 +159,10 @@ export default function Orrery() {
                 Micro
               </button>
             </div>
+
+            {/* Obsidian Sync Buttons */}
+            <SyncButton dispatch={dispatch} />
+            <ExportButton state={state} />
 
             <ImportExportControls />
           </div>
