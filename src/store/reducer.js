@@ -372,6 +372,51 @@ export function orreryReducer(state, action) {
         lastSyncedAt: now,
       };
 
+    case 'IMPORT_FROM_OBSIDIAN': {
+      // payload: { tasks, quests, edges } from manifestToState()
+      const { tasks: newTasks, quests: newQuests, edges: newEdges } = action.payload;
+
+      // Merge strategy: Add new, update existing (by ID), preserve positions
+      const existingTaskMap = new Map(state.tasks.map(t => [t.id, t]));
+      const existingQuestMap = new Map(state.quests.map(q => [q.id, q]));
+
+      const mergedTasks = newTasks.map(newTask => {
+        const existing = existingTaskMap.get(newTask.id);
+        if (existing) {
+          // Preserve position and actual minutes, update content
+          return {
+            ...newTask,
+            position: existing.position,
+            actualMinutes: existing.actualMinutes,
+          };
+        }
+        return newTask;
+      });
+
+      const mergedQuests = newQuests.map(newQuest => {
+        const existing = existingQuestMap.get(newQuest.id);
+        if (existing) {
+          return { ...newQuest, position: existing.position };
+        }
+        return newQuest;
+      });
+
+      // Merge edges (add new, keep existing)
+      const existingEdgeIds = new Set(state.edges.map(e => e.id));
+      const mergedEdges = [
+        ...state.edges,
+        ...newEdges.filter(e => !existingEdgeIds.has(e.id)),
+      ];
+
+      return {
+        ...state,
+        tasks: mergedTasks,
+        quests: mergedQuests,
+        edges: mergedEdges,
+        lastSyncedAt: new Date().toISOString(),
+      };
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // BLOCKER ACTIONS
     // ═══════════════════════════════════════════════════════════════
