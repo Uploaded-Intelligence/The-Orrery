@@ -28,6 +28,7 @@ export function MicroView() {
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [edgeSourceId, setEdgeSourceId] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [toast, setToast] = useState(null); // { message, type } or null
 
   // View transform
   const [pan, setPan] = useState(state.preferences.microViewPosition);
@@ -125,7 +126,10 @@ export function MicroView() {
 
     // Use container bounds (estimate if not available)
     const bounds = { width: 800, height: 600 };
-    const result = computeLayout(visibleTasks, visibleEdges, bounds);
+
+    // BUG FIX: Pass ONLY unpinned tasks, not all visible tasks
+    // This prevents physics from overriding manually positioned tasks
+    const result = computeLayout(unpinnedTasks, visibleEdges, bounds);
     console.log(`[MicroView] Physics simulation generated ${result.size} positions`);
     return result;
   }, [visibleTasks, visibleEdges]);
@@ -179,10 +183,27 @@ export function MicroView() {
     if (edgeSourceId) {
       // Creating edge - target selected
       if (edgeSourceId !== taskId) {
+        const sourceTask = state.tasks.find(t => t.id === edgeSourceId);
+        const targetTask = state.tasks.find(t => t.id === taskId);
+
+        // Check if this will lock the target task in "Actual" view
+        const willLockTarget = sourceTask && targetTask &&
+          sourceTask.status !== 'completed' &&
+          state.preferences.showActualOnly;
+
         dispatch({
           type: 'ADD_EDGE',
           payload: { source: edgeSourceId, target: taskId }
         });
+
+        // Show toast if task will be hidden in Actual view
+        if (willLockTarget) {
+          setToast({
+            message: `"${targetTask.title}" is now locked and hidden in Actual view (dependency not completed)`,
+            type: 'info'
+          });
+          setTimeout(() => setToast(null), 4000);
+        }
       }
       setEdgeSourceId(null);
     } else {
@@ -861,6 +882,27 @@ export function MicroView() {
           </button>
         </div>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          background: COLORS.bgElevated,
+          border: `1px solid ${COLORS.accentSecondary}`,
+          color: COLORS.textPrimary,
+          fontSize: '13px',
+          maxWidth: '500px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          zIndex: 1000,
+        }}>
+          {toast.message}
+        </div>
+      )}
 
       {/* Canvas */}
       <svg

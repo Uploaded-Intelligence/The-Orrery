@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { taskNotesClient } from '@/services/tasknotes';
-import { transformTasksFromAPI, orreryToTaskNotes } from '@/services/tasknotes-transform';
+import { transformTasksFromAPI, orreryToTaskNotes, taskNotesToOrrery } from '@/services/tasknotes-transform';
 
 /**
  * Hook for syncing Orrery state with TaskNotes API
@@ -60,14 +60,37 @@ export function useTaskNotesSync(dispatch) {
     }
   }, [dispatch]);
 
-  // Create task via API (optimistic - no immediate sync)
+  // Create task via API (server-first pattern)
   const createTask = useCallback(async (task) => {
-    const tnTask = orreryToTaskNotes(task);
-    const created = await taskNotesClient.createTask(tnTask);
-    // Don't sync immediately - let polling handle it
-    // This prevents race condition with Orrery-local data (like position)
-    return created;
-  }, []);
+    // PATTERN: Server assigns ID, so we MUST wait for response
+    // Cannot do optimistic updates when server is source of truth for IDs
+
+    try {
+      // 1. Send to server FIRST
+      const tnTask = orreryToTaskNotes({
+        cognitiveLoad: 3, // Default to focused attention
+        status: 'available',
+        ...task,
+      });
+      const created = await taskNotesClient.createTask(tnTask);
+
+      // 2. Transform server response to Orrery format (includes SERVER ID)
+      const orreryTask = taskNotesToOrrery(created);
+
+      // 3. Dispatch with SERVER ID
+      dispatch({
+        type: 'ADD_TASK',
+        payload: orreryTask
+      });
+
+      console.log('[TaskNotesSync] ✓ Created task with server ID:', orreryTask.id);
+      return orreryTask;
+
+    } catch (e) {
+      console.error('[TaskNotesSync] ✗ Create failed:', e);
+      throw e; // UI can show error
+    }
+  }, [dispatch]);
 
   // Update task via API (optimistic updates pattern)
   const updateTask = useCallback(async (id, updates) => {
