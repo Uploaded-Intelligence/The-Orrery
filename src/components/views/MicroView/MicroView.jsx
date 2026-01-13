@@ -119,23 +119,35 @@ export function MicroView() {
   // Compute physics-based positions for tasks without manual positions
   const physicsPositions = useMemo(() => {
     const unpinnedTasks = visibleTasks.filter(t => !t.position || (t.position.x === 0 && t.position.y === 0));
+    console.log(`[MicroView] Computing physics for ${unpinnedTasks.length} unpinned tasks out of ${visibleTasks.length} total`);
+
     if (unpinnedTasks.length === 0) return new Map();
 
     // Use container bounds (estimate if not available)
     const bounds = { width: 800, height: 600 };
-    return computeLayout(visibleTasks, visibleEdges, bounds);
+    const result = computeLayout(visibleTasks, visibleEdges, bounds);
+    console.log(`[MicroView] Physics simulation generated ${result.size} positions`);
+    return result;
   }, [visibleTasks, visibleEdges]);
 
   // Merge physics positions with manual positions
   const finalPositions = useMemo(() => {
     const merged = new Map(positions);
+
+    // Create task lookup map
+    const taskById = new Map(visibleTasks.map(t => [t.id, t]));
+
     for (const [id, pos] of physicsPositions) {
-      if (!positions.has(id) || (positions.get(id).x === 0 && positions.get(id).y === 0)) {
+      const task = taskById.get(id);
+      // Use physics position if task has no manual position or position is {0,0}
+      if (task && (!task.position || (task.position.x === 0 && task.position.y === 0))) {
         merged.set(id, pos);
+        console.log(`[MicroView] Using physics position for ${task.title}:`, pos);
       }
     }
+
     return merged;
-  }, [positions, physicsPositions]);
+  }, [positions, physicsPositions, visibleTasks]);
 
   // Calculate canvas bounds
   const bounds = useMemo(() =>
