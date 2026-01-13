@@ -1,10 +1,11 @@
 // src/utils/forceLayout.js
-// Simple force-directed layout for tasks without manual positions
+// DAG-aware force-directed layout for tasks
 
-const REPULSION = 5000;    // Node repulsion strength
-const ATTRACTION = 0.01;   // Edge attraction (spring constant)
-const DAMPING = 0.8;       // Velocity damping
-const MIN_DISTANCE = 100;  // Minimum node separation
+const REPULSION = 5000;      // Node repulsion strength
+const ATTRACTION = 0.01;     // Edge attraction (spring constant)
+const DAMPING = 0.8;         // Velocity damping
+const MIN_DISTANCE = 100;    // Minimum node separation
+const LAYER_ATTRACTION = 0.05; // Horizontal layer constraint strength
 
 /**
  * @typedef {Object} LayoutNode
@@ -17,26 +18,126 @@ const MIN_DISTANCE = 100;  // Minimum node separation
  */
 
 /**
- * Initialize nodes for layout
+ * Compute DAG layers using topological sort
+ * Layer 0 = tasks with no dependencies (roots)
+ * Layer N = tasks whose dependencies are all in layers < N
+ *
  * @param {import('@/types').Task[]} tasks
+ * @param {import('@/types').Edge[]} edges
+ * @returns {Map<string, number>} taskId → layer number
+ */
+export function computeLayers(tasks, edges) {
+  const layers = new Map();
+  const taskIds = new Set(tasks.map(t => t.id));
+
+  // Build adjacency: for each task, what does it depend on?
+  const dependsOn = new Map();
+  for (const task of tasks) {
+    dependsOn.set(task.id, []);
+  }
+  for (const edge of edges) {
+    if (taskIds.has(edge.source) && taskIds.has(edge.target)) {
+      // edge.source must complete before edge.target
+      // So target depends on source
+      dependsOn.get(edge.target)?.push(edge.source);
+    }
+  }
+
+  // Iteratively assign layers
+  let remaining = new Set(taskIds);
+  let currentLayer = 0;
+
+  while (remaining.size > 0) {
+    const thisLayer = [];
+
+    for (const taskId of remaining) {
+      const deps = dependsOn.get(taskId) || [];
+      // Can be placed in this layer if all dependencies already have layers
+      const allDepsLayered = deps.every(depId => layers.has(depId));
+
+      if (allDepsLayered) {
+        thisLayer.push(taskId);
+      }
+    }
+
+    // Handle cycles: if no progress, force remaining into current layer
+    if (thisLayer.length === 0) {
+      for (const taskId of remaining) {
+        layers.set(taskId, currentLayer);
+      }
+      break;
+    }
+
+    for (const taskId of thisLayer) {
+      layers.set(taskId, currentLayer);
+      remaining.delete(taskId);
+    }
+
+    currentLayer++;
+  }
+
+  return layers;
+}
+
+/**
+ * Initialize nodes for layout with layer-aware positioning
+ * @param {import('@/types').Task[]} tasks
+ * @param {import('@/types').Edge[]} edges
  * @param {{width: number, height: number}} bounds
  * @returns {Map<string, LayoutNode>}
  */
-export function initializeNodes(tasks, bounds) {
+export function initializeNodes(tasks, edges, bounds) {
   const nodes = new Map();
-  const centerX = bounds.width / 2;
-  const centerY = bounds.height / 2;
+  const layers = computeLayers(tasks, edges);
 
-  tasks.forEach((task, i) => {
+  // Count tasks per layer for vertical distribution
+  const layerCounts = new Map();
+  const layerIndices = new Map();
+
+  for (const [taskId, layer] of layers) {
+    const count = layerCounts.get(layer) || 0;
+    layerIndices.set(taskId, count);
+    layerCounts.set(layer, count + 1);
+  }
+
+  const maxLayer = Math.max(0, ...layers.values());
+  const layerWidth = bounds.width / (maxLayer + 2); // +2 for padding
+
+  tasks.forEach((task) => {
     const hasPosition = task.position && (task.position.x !== 0 || task.position.y !== 0);
-    nodes.set(task.id, {
-      id: task.id,
-      x: hasPosition ? task.position.x : centerX + (Math.random() - 0.5) * 200,
-      y: hasPosition ? task.position.y : centerY + (Math.random() - 0.5) * 200,
-      vx: 0,
-      vy: 0,
-      pinned: hasPosition,
-    });
+
+    if (hasPosition) {
+      // Use stored position
+      nodes.set(task.id, {
+        id: task.id,
+        x: task.position.x,
+        y: task.position.y,
+        vx: 0,
+        vy: 0,
+        pinned: true,
+      });
+    } else {
+      // Position based on layer
+      const layer = layers.get(task.id) || 0;
+      const indexInLayer = layerIndices.get(task.id) || 0;
+      const countInLayer = layerCounts.get(layer) || 1;
+
+      // X based on layer (left to right)
+      const x = layerWidth * (layer + 1);
+
+      // Y distributed within layer (with small random offset)
+      const layerHeight = bounds.height / (countInLayer + 1);
+      const y = layerHeight * (indexInLayer + 1) + (Math.random() - 0.5) * 30;
+
+      nodes.set(task.id, {
+        id: task.id,
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+        pinned: false,
+      });
+    }
   });
 
   return nodes;
@@ -46,9 +147,11 @@ export function initializeNodes(tasks, bounds) {
  * Run one iteration of force-directed layout
  * @param {Map<string, LayoutNode>} nodes
  * @param {import('@/types').Edge[]} edges
+ * @param {Map<string, number>} layers - taskId → layer number (optional)
+ * @param {number} layerWidth - pixels per layer
  * @returns {boolean} True if still moving significantly
  */
-export function stepLayout(nodes, edges) {
+export function stepLayout(nodes, edges, layers = null, layerWidth = 150) {
   const nodesArray = Array.from(nodes.values());
   let totalMovement = 0;
 
@@ -79,7 +182,7 @@ export function stepLayout(nodes, edges) {
 
     const dx = target.x - source.x;
     const dy = target.y - source.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
     const force = dist * ATTRACTION;
     const fx = (dx / dist) * force;
@@ -87,6 +190,19 @@ export function stepLayout(nodes, edges) {
 
     if (!source.pinned) { source.vx += fx; source.vy += fy; }
     if (!target.pinned) { target.vx -= fx; target.vy -= fy; }
+  }
+
+  // Layer constraint force (gently pull toward layer X)
+  if (layers) {
+    for (const node of nodesArray) {
+      if (node.pinned) continue;
+      const layer = layers.get(node.id);
+      if (layer !== undefined) {
+        const targetX = layerWidth * (layer + 1);
+        const dx = targetX - node.x;
+        node.vx += dx * LAYER_ATTRACTION;
+      }
+    }
   }
 
   // Apply velocities and damping
@@ -113,10 +229,13 @@ export function stepLayout(nodes, edges) {
  * @returns {Map<string, {x: number, y: number}>} Final positions
  */
 export function computeLayout(tasks, edges, bounds, maxIterations = 100) {
-  const nodes = initializeNodes(tasks, bounds);
+  const nodes = initializeNodes(tasks, edges, bounds);
+  const layers = computeLayers(tasks, edges);
+  const maxLayer = Math.max(0, ...layers.values());
+  const layerWidth = bounds.width / (maxLayer + 2);
 
   for (let i = 0; i < maxIterations; i++) {
-    const stillMoving = stepLayout(nodes, edges);
+    const stillMoving = stepLayout(nodes, edges, layers, layerWidth);
     if (!stillMoving) break;
   }
 
