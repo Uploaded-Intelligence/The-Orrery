@@ -20,7 +20,7 @@ import { ResetLayoutButton } from '@/components/ui/ResetLayoutButton';
  * Shows tasks for the focused quest with dependency edges
  */
 export function MicroView() {
-  const { state, dispatch } = useOrrery();
+  const { state, dispatch, api } = useOrrery();
   const svgRef = useRef(null);
 
   // Local UI state
@@ -189,9 +189,9 @@ export function MicroView() {
         payload: { taskId: task.id, plannedMinutes: task.estimatedMinutes || 25 }
       });
     } else if (computedStatus === 'in_progress') {
-      dispatch({ type: 'COMPLETE_TASK', payload: task.id });
+      api.completeTask(task.id).catch(e => console.error('Complete failed:', e));
     }
-  }, [state, dispatch]);
+  }, [state, dispatch, api]);
 
   // Handle node drag start
   const handleNodeDragStart = useCallback((taskId, e) => {
@@ -257,10 +257,10 @@ export function MicroView() {
       dispatch({ type: 'DELETE_EDGE', payload: selectedEdgeId });
       setSelectedEdgeId(null);
     } else if (selectedTaskId) {
-      dispatch({ type: 'DELETE_TASK', payload: selectedTaskId });
+      api.deleteTask(selectedTaskId).catch(e => console.error('Delete failed:', e));
       setSelectedTaskId(null);
     }
-  }, [selectedTaskId, selectedEdgeId, dispatch]);
+  }, [selectedTaskId, selectedEdgeId, dispatch, api]);
 
   // Add new task (placed near center of current view, offset from existing)
   const addTask = useCallback(() => {
@@ -931,10 +931,10 @@ export function MicroView() {
                   type: 'START_SESSION',
                   payload: { taskId: task.id, plannedMinutes: task.estimatedMinutes || 25 }
                 })}
-                onComplete={() => dispatch({ type: 'COMPLETE_TASK', payload: task.id })}
+                onComplete={() => api.completeTask(task.id).catch(e => console.error('Complete failed:', e))}
                 onReopen={() => dispatch({ type: 'REOPEN_TASK', payload: task.id })}
                 onDelete={() => {
-                  dispatch({ type: 'DELETE_TASK', payload: task.id });
+                  api.deleteTask(task.id).catch(e => console.error('Delete failed:', e));
                   setSelectedTaskId(null);
                 }}
                 onUpdate={(updates) => dispatch({
