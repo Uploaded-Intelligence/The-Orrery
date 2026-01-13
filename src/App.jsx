@@ -39,12 +39,24 @@ export default function Orrery() {
     createTask,
     updateTask,
     completeTask,
+    deleteTask,
   } = useTaskNotesSync(dispatch);
+
+  // API functions for components to use (server-authoritative)
+  const api = {
+    createTask,
+    updateTask,
+    completeTask,
+    deleteTask,
+    syncFromTaskNotes,
+    isConnected: taskNotesConnected,
+    isLoading: taskNotesLoading,
+  };
 
   const isMicro = state.preferences.currentView === 'micro';
 
   return (
-    <OrreryContext.Provider value={{ state, dispatch }}>
+    <OrreryContext.Provider value={{ state, dispatch, api }}>
       <div style={{
         minHeight: '100vh',
         height: '100vh',
