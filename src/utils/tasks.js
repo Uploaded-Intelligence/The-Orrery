@@ -27,7 +27,9 @@ export const isTaskLocked = (taskId, state) => {
  */
 export const getComputedTaskStatus = (task, state) => {
   if (task.status === 'completed') return 'completed';
-  if (task.status === 'blocked') return 'blocked';
+  // NOTE: We deliberately ignore task.status === 'blocked' here.
+  // Blockedness is computed DYNAMICALLY from edges, not from static status.
+  // This allows tasks to auto-unlock when dependencies complete.
   if (isTaskLocked(task.id, state)) return 'locked';
   // Check if this task is the active session - makes Play button work
   if (state.activeSession?.taskId === task.id) return 'in_progress';
