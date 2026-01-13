@@ -3,7 +3,7 @@
 // Persistence hook for window.storage sync
 // ═══════════════════════════════════════════════════════════════
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { STORAGE_KEY } from '@/constants';
 
 /**
@@ -14,6 +14,9 @@ import { STORAGE_KEY } from '@/constants';
  * @param {Function} setSaveStatus
  */
 export function usePersistence(state, dispatch, setLoadError, setSaveStatus) {
+  // Guard to prevent saving before initial load completes
+  const hasLoaded = useRef(false);
+
   // Load on mount
   useEffect(() => {
     const loadState = async () => {
@@ -26,6 +29,9 @@ export function usePersistence(state, dispatch, setLoadError, setSaveStatus) {
       } catch (e) {
         console.error('Failed to load state:', e);
         setLoadError(e.message);
+      } finally {
+        // Mark as loaded even if load fails (to allow saves after)
+        hasLoaded.current = true;
       }
     };
     loadState();
@@ -33,6 +39,11 @@ export function usePersistence(state, dispatch, setLoadError, setSaveStatus) {
 
   // Save on change (debounced)
   useEffect(() => {
+    // Don't save until initial load completes
+    if (!hasLoaded.current) {
+      return;
+    }
+
     const saveState = async () => {
       try {
         setSaveStatus('saving');

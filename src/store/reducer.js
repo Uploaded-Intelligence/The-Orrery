@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { generateId } from '@/utils';
+import { INITIAL_STATE } from '@/constants/initialState';
 
 /**
  * @param {import('@/types').OrreryState} state
@@ -16,8 +17,16 @@ export function orreryReducer(state, action) {
   switch (action.type) {
     // ─── State Management ───────────────────────────────────────────────────
     case 'LOAD_STATE':
+      // Merge loaded state with INITIAL_STATE to prevent schema drift
+      // (ensures new fields added to INITIAL_STATE are present in loaded state)
       return {
+        ...INITIAL_STATE,
         ...action.payload,
+        // Deep merge preferences to handle nested fields
+        preferences: {
+          ...INITIAL_STATE.preferences,
+          ...action.payload.preferences,
+        },
         lastSyncedAt: now,
       };
 
@@ -43,21 +52,9 @@ export function orreryReducer(state, action) {
       };
 
     case 'RESET_STATE':
+      // Reuse INITIAL_STATE to prevent schema drift
       return {
-        quests: [],
-        tasks: [],
-        edges: [],
-        questVines: [],
-        activeSession: null,
-        preferences: {
-          currentView: 'macro',
-          focusQuestId: null,
-          showActualOnly: false,
-          microViewPosition: { x: 0, y: 0 },
-          microViewZoom: 1.0,
-          macroViewPosition: { x: 0, y: 0 },
-          macroViewZoom: 1.0,
-        },
+        ...INITIAL_STATE,
         lastSyncedAt: now,
       };
 
