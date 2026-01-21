@@ -1,8 +1,8 @@
 // src/hooks/useTaskNotesSync.js
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { taskNotesClient } from '@/services/tasknotes';
-import { transformTasksFromAPI, orreryToTaskNotes } from '@/services/tasknotes-transform';
+import { transformTasksFromAPI, orreryToTaskNotes, taskNotesToOrrery } from '@/services/tasknotes-transform';
 
 /**
  * Hook for syncing Orrery state with TaskNotes API
@@ -18,9 +18,14 @@ export function useTaskNotesSync(dispatch) {
   const [error, setError] = useState(null);
   const [lastSync, setLastSync] = useState(null);
 
+  // Guard to prevent state updates after unmount
+  const isMounted = useRef(true);
+
   // Fetch all tasks from TaskNotes and update Orrery state
   const syncFromTaskNotes = useCallback(async () => {
     console.log('[TaskNotesSync] Starting sync...');
+    if (!isMounted.current) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -29,6 +34,17 @@ export function useTaskNotesSync(dispatch) {
       console.log('[TaskNotesSync] Raw API response:', tasks);
       const transformed = transformTasksFromAPI(tasks);
       console.log('[TaskNotesSync] Transformed tasks:', transformed);
+
+      // Only update state if still mounted
+      if (!isMounted.current) return;
+
+      // SAFETY: Don't wipe tasks if API returns empty
+      // This prevents data loss when API is down or misconfigured
+      if (transformed.length === 0) {
+        console.warn('[TaskNotesSync] ⚠ API returned 0 tasks - skipping sync to prevent data loss');
+        setIsConnected(true); // API responded, just empty
+        return;
+      }
 
       dispatch({
         type: 'LOAD_FROM_TASKNOTES',
@@ -40,39 +56,107 @@ export function useTaskNotesSync(dispatch) {
       console.log('[TaskNotesSync] ✓ Connected');
     } catch (e) {
       console.error('[TaskNotesSync] ✗ Error:', e.message);
+      // Only update state if still mounted
+      if (!isMounted.current) return;
+
       setError(e.message);
       setIsConnected(false);
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   }, [dispatch]);
 
-  // Create task via API, then update local state
+  // Create task via API (server-first pattern)
   const createTask = useCallback(async (task) => {
-    const tnTask = orreryToTaskNotes(task);
-    const created = await taskNotesClient.createTask(tnTask);
-    await syncFromTaskNotes(); // Re-sync to get server state
-    return created;
-  }, [syncFromTaskNotes]);
+    // PATTERN: Server assigns ID, so we MUST wait for response
+    // Cannot do optimistic updates when server is source of truth for IDs
 
-  // Update task via API
+    try {
+      // 1. Send to server FIRST
+      const tnTask = orreryToTaskNotes({
+        cognitiveLoad: 3, // Default to focused attention
+        status: 'available',
+        ...task,
+      });
+      const created = await taskNotesClient.createTask(tnTask);
+
+      // 2. Transform server response to Orrery format (includes SERVER ID)
+      const orreryTask = taskNotesToOrrery(created);
+
+      // 3. Dispatch with SERVER ID
+      dispatch({
+        type: 'ADD_TASK',
+        payload: orreryTask
+      });
+
+      console.log('[TaskNotesSync] ✓ Created task with server ID:', orreryTask.id);
+      return orreryTask;
+
+    } catch (e) {
+      console.error('[TaskNotesSync] ✗ Create failed:', e);
+      throw e; // UI can show error
+    }
+  }, [dispatch]);
+
+  // Update task via API (optimistic updates pattern)
   const updateTask = useCallback(async (id, updates) => {
-    const tnUpdates = orreryToTaskNotes(updates);
-    await taskNotesClient.updateTask(id, tnUpdates);
-    await syncFromTaskNotes();
-  }, [syncFromTaskNotes]);
+    // 1. Optimistically update local state immediately
+    dispatch({
+      type: 'UPDATE_TASK',
+      payload: { id, updates }
+    });
 
-  // Complete task via API
+    // 2. Send to server in background
+    try {
+      const tnUpdates = orreryToTaskNotes(updates);
+      await taskNotesClient.updateTask(id, tnUpdates);
+      // Don't sync - let polling handle it
+    } catch (e) {
+      // 3. On failure, revert optimistic update
+      console.error('[TaskNotesSync] Update failed, reverting:', e);
+      await syncFromTaskNotes(); // Only sync on error to revert
+    }
+  }, [dispatch, syncFromTaskNotes]);
+
+  // Complete task via API (optimistic updates pattern)
   const completeTask = useCallback(async (id) => {
-    await taskNotesClient.toggleTaskStatus(id);
-    await syncFromTaskNotes();
-  }, [syncFromTaskNotes]);
+    // 1. Optimistically update local state
+    dispatch({
+      type: 'COMPLETE_TASK',
+      payload: id
+    });
 
-  // Delete task via API
+    // 2. Send to server in background
+    try {
+      await taskNotesClient.toggleTaskStatus(id);
+      // Don't sync - let polling handle it
+    } catch (e) {
+      // 3. On failure, revert optimistic update
+      console.error('[TaskNotesSync] Complete failed, reverting:', e);
+      await syncFromTaskNotes();
+    }
+  }, [dispatch, syncFromTaskNotes]);
+
+  // Delete task via API (optimistic updates pattern)
   const deleteTask = useCallback(async (id) => {
-    await taskNotesClient.deleteTask(id);
-    await syncFromTaskNotes();
-  }, [syncFromTaskNotes]);
+    // 1. Optimistically update local state
+    dispatch({
+      type: 'DELETE_TASK',
+      payload: id
+    });
+
+    // 2. Send to server in background
+    try {
+      await taskNotesClient.deleteTask(id);
+      // Don't sync - let polling handle it
+    } catch (e) {
+      // 3. On failure, revert optimistic update
+      console.error('[TaskNotesSync] Delete failed, reverting:', e);
+      await syncFromTaskNotes();
+    }
+  }, [dispatch, syncFromTaskNotes]);
 
   // Initial sync on mount
   useEffect(() => {
@@ -91,6 +175,13 @@ export function useTaskNotesSync(dispatch) {
     const interval = setInterval(syncFromTaskNotes, 30000);
     return () => clearInterval(interval);
   }, [syncFromTaskNotes]);
+
+  // Cleanup: Mark as unmounted to prevent state updates
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   return {
     isConnected,

@@ -193,14 +193,18 @@ export function stepLayout(nodes, edges, layers = null, layerWidth = 150) {
   }
 
   // Layer constraint force (gently pull toward layer X)
+  // Only apply if tasks span multiple layers - otherwise allow natural spreading
   if (layers) {
-    for (const node of nodesArray) {
-      if (node.pinned) continue;
-      const layer = layers.get(node.id);
-      if (layer !== undefined) {
-        const targetX = layerWidth * (layer + 1);
-        const dx = targetX - node.x;
-        node.vx += dx * LAYER_ATTRACTION;
+    const maxLayer = Math.max(0, ...layers.values());
+    if (maxLayer > 0) {
+      for (const node of nodesArray) {
+        if (node.pinned) continue;
+        const layer = layers.get(node.id);
+        if (layer !== undefined) {
+          const targetX = layerWidth * (layer + 1);
+          const dx = targetX - node.x;
+          node.vx += dx * LAYER_ATTRACTION;
+        }
       }
     }
   }
@@ -233,6 +237,17 @@ export function computeLayout(tasks, edges, bounds, maxIterations = 100) {
   const layers = computeLayers(tasks, edges);
   const maxLayer = Math.max(0, ...layers.values());
   const layerWidth = bounds.width / (maxLayer + 2);
+
+  // Debug: Log layer distribution
+  const layerCounts = new Map();
+  for (const [taskId, layer] of layers) {
+    layerCounts.set(layer, (layerCounts.get(layer) || 0) + 1);
+  }
+  console.log(
+    `[forceLayout] ${edges.length} edges, ${maxLayer + 1} layers` +
+    ` (${Array.from(layerCounts.entries()).map(([l, c]) => `L${l}:${c}`).join(', ')})` +
+    ` → layer constraint ${maxLayer > 0 ? 'ON' : 'OFF'}`
+  );
 
   for (let i = 0; i < maxIterations; i++) {
     const stillMoving = stepLayout(nodes, edges, layers, layerWidth);

@@ -21,6 +21,13 @@ export function TaskNotesStatus() {
       ? COLORS.accentSuccess
       : COLORS.accentDanger;
 
+  // Build tooltip with error details if available
+  const tooltip = isConnected === null
+    ? 'Connecting to TaskNotes...'
+    : isConnected
+      ? 'Connected to TaskNotes'
+      : `Disconnected from TaskNotes${api?.error ? `\n\nError: ${api.error}` : ''}`;
+
   return (
     <div
       style={{
@@ -33,7 +40,7 @@ export function TaskNotesStatus() {
         fontSize: '11px',
         color,
       }}
-      title={isConnected ? 'Connected to TaskNotes' : 'Disconnected from TaskNotes'}
+      title={tooltip}
     >
       <div style={{
         width: '8px',

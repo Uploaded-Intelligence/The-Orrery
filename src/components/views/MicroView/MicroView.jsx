@@ -28,6 +28,7 @@ export function MicroView() {
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [edgeSourceId, setEdgeSourceId] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [toast, setToast] = useState(null); // { message, type } or null
 
   // View transform
   const [pan, setPan] = useState(state.preferences.microViewPosition);
@@ -119,23 +120,39 @@ export function MicroView() {
   // Compute physics-based positions for tasks without manual positions
   const physicsPositions = useMemo(() => {
     const unpinnedTasks = visibleTasks.filter(t => !t.position || (t.position.x === 0 && t.position.y === 0));
+    console.log(`[MicroView] Computing physics for ${unpinnedTasks.length} unpinned tasks out of ${visibleTasks.length} total`);
+
     if (unpinnedTasks.length === 0) return new Map();
 
     // Use container bounds (estimate if not available)
     const bounds = { width: 800, height: 600 };
-    return computeLayout(visibleTasks, visibleEdges, bounds);
+
+    // Pass ALL tasks - forceLayout marks positioned tasks as "pinned"
+    // Pinned tasks contribute to repulsion but don't move themselves
+    // This is correct: unpinned tasks need to repel from pinned ones
+    const result = computeLayout(visibleTasks, visibleEdges, bounds);
+    console.log(`[MicroView] Physics simulation generated ${result.size} positions`);
+    return result;
   }, [visibleTasks, visibleEdges]);
 
   // Merge physics positions with manual positions
   const finalPositions = useMemo(() => {
     const merged = new Map(positions);
+
+    // Create task lookup map
+    const taskById = new Map(visibleTasks.map(t => [t.id, t]));
+
     for (const [id, pos] of physicsPositions) {
-      if (!positions.has(id) || (positions.get(id).x === 0 && positions.get(id).y === 0)) {
+      const task = taskById.get(id);
+      // Use physics position if task has no manual position or position is {0,0}
+      if (task && (!task.position || (task.position.x === 0 && task.position.y === 0))) {
         merged.set(id, pos);
+        console.log(`[MicroView] Using physics position for ${task.title}:`, pos);
       }
     }
+
     return merged;
-  }, [positions, physicsPositions]);
+  }, [positions, physicsPositions, visibleTasks]);
 
   // Calculate canvas bounds
   const bounds = useMemo(() =>
@@ -167,10 +184,27 @@ export function MicroView() {
     if (edgeSourceId) {
       // Creating edge - target selected
       if (edgeSourceId !== taskId) {
+        const sourceTask = state.tasks.find(t => t.id === edgeSourceId);
+        const targetTask = state.tasks.find(t => t.id === taskId);
+
+        // Check if this will lock the target task in "Actual" view
+        const willLockTarget = sourceTask && targetTask &&
+          sourceTask.status !== 'completed' &&
+          state.preferences.showActualOnly;
+
         dispatch({
           type: 'ADD_EDGE',
           payload: { source: edgeSourceId, target: taskId }
         });
+
+        // Show toast if task will be hidden in Actual view
+        if (willLockTarget) {
+          setToast({
+            message: `"${targetTask.title}" is now locked and hidden in Actual view (dependency not completed)`,
+            type: 'info'
+          });
+          setTimeout(() => setToast(null), 4000);
+        }
       }
       setEdgeSourceId(null);
     } else {
@@ -290,9 +324,9 @@ export function MicroView() {
       attempts++;
     }
 
-    // Use API (server-authoritative) - creates in TaskNotes, then syncs
+    // Create task via API (server-authoritative)
     try {
-      await api.createTask({
+      const created = await api.createTask({
         title: 'New Task',
         questIds,
         status: 'available',
@@ -300,12 +334,19 @@ export function MicroView() {
         actualMinutes: null,
         isRecurring: false,
         notes: '',
-        position: { x: centerX, y: centerY },
       });
+
+      // Position is Orrery-local data - set after creation
+      if (created?.id) {
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: { id: created.id, updates: { position: { x: centerX, y: centerY } } }
+        });
+      }
     } catch (e) {
       console.error('Failed to create task:', e);
     }
-  }, [state.preferences.focusQuestId, api, pan, zoom, visibleTasks, finalPositions]);
+  }, [state.preferences.focusQuestId, api, dispatch, pan, zoom, visibleTasks, finalPositions]);
 
   // Pan handlers
   const handleMouseDown = useCallback((e) => {
@@ -351,13 +392,15 @@ export function MicroView() {
   }, [isPanning, panStart, edgeSourceId, pan, zoom, draggingTaskId, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
-    // End node dragging - persist position via API
+    // End node dragging - persist position locally (Orrery-only data)
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
       if (finalPos && dragMovedRef.current) {
-        // Actually moved - persist position via API (server-authoritative)
-        api.updateTask(draggingTaskId, { position: finalPos })
-          .catch(e => console.error('Position update failed:', e));
+        // Position is view state, not task data - keep in local state only
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: { id: draggingTaskId, updates: { position: finalPos } }
+        });
         justDraggedRef.current = true; // Prevent click from selecting
       }
       setDraggingTaskId(null);
@@ -520,9 +563,11 @@ export function MicroView() {
     if (draggingTaskId) {
       const finalPos = draggedPositions.get(draggingTaskId);
       if (finalPos && dragMovedRef.current) {
-        // Persist position via API (server-authoritative)
-        api.updateTask(draggingTaskId, { position: finalPos })
-          .catch(e => console.error('Position update failed:', e));
+        // Position is view state, not task data - keep in local state only
+        dispatch({
+          type: 'UPDATE_TASK',
+          payload: { id: draggingTaskId, updates: { position: finalPos } }
+        });
         justDraggedRef.current = true;
       }
       setDraggingTaskId(null);
@@ -838,6 +883,27 @@ export function MicroView() {
           </button>
         </div>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          background: COLORS.bgElevated,
+          border: `1px solid ${COLORS.accentSecondary}`,
+          color: COLORS.textPrimary,
+          fontSize: '13px',
+          maxWidth: '500px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          zIndex: 1000,
+        }}>
+          {toast.message}
+        </div>
+      )}
 
       {/* Canvas */}
       <svg
