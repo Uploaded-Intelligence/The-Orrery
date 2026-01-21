@@ -51,6 +51,42 @@ export function orreryReducer(state, action) {
         _syncSource: 'tasknotes',
       };
 
+    case 'LOAD_FROM_API': {
+      // Load from LifeRPG API (Experiments ontology)
+      // Server is authoritative, but preserve Orrery-local fields
+      const existingTaskMap = new Map(state.tasks.map(t => [t.id, t]));
+      const existingQuestMap = new Map(state.quests.map(q => [q.id, q]));
+
+      const apiTasks = action.payload.tasks.map(newTask => {
+        const existing = existingTaskMap.get(newTask.id);
+        return {
+          ...newTask,
+          // Preserve Orrery-local fields
+          position: existing?.position || newTask.position,
+          blockers: existing?.blockers || [],
+        };
+      });
+
+      const apiQuests = action.payload.quests.map(newQuest => {
+        const existing = existingQuestMap.get(newQuest.id);
+        return {
+          ...newQuest,
+          // Preserve Orrery-local fields
+          position: existing?.position || newQuest.position,
+        };
+      });
+
+      return {
+        ...state,
+        tasks: apiTasks,
+        quests: apiQuests,
+        edges: action.payload.edges,
+        questVines: action.payload.questVines || [],
+        lastSyncedAt: now,
+        _syncSource: 'liferpg-api',
+      };
+    }
+
     case 'RESET_STATE':
       // Reuse INITIAL_STATE to prevent schema drift
       return {

@@ -9,7 +9,7 @@ import { Eye, EyeOff, Orbit, LayoutGrid, Network } from 'lucide-react';
 // ─── Imports from modules ─────────────────────────────────────────────────────
 import { COLORS, INITIAL_STATE } from '@/constants';
 import { orreryReducer, OrreryContext } from '@/store';
-import { usePersistence, useTaskNotesSync } from '@/hooks';
+import { usePersistence, useLifeRPG } from '@/hooks';
 
 // ─── View Components ──────────────────────────────────────────────────────────
 import { MicroView } from '@/components/views/MicroView';
@@ -31,26 +31,62 @@ export default function Orrery() {
   // Persistence (local storage backup)
   usePersistence(state, dispatch, setLoadError, setSaveStatus);
 
-  // TaskNotes API sync (server-authoritative)
+  // LifeRPG API sync (server-authoritative)
+  // Uses Experiments ontology but provides backward-compatible API
   const {
-    isConnected: taskNotesConnected,
-    isLoading: taskNotesLoading,
-    syncFromTaskNotes,
+    isConnected,
+    isLoading,
+    sync,
+    // Legacy task operations (map to experiments)
     createTask,
     updateTask,
     completeTask,
     deleteTask,
-  } = useTaskNotesSync(dispatch);
+    // Legacy quest operations (map to inquiries)
+    createQuest,
+    updateQuest,
+    deleteQuest,
+    // New Experiments ontology operations
+    createExperiment,
+    updateExperiment,
+    concludeExperiment,
+    createInquiry,
+    updateInquiry,
+    integrateInquiry,
+    // Edges and Vines
+    createEdge,
+    deleteEdge,
+    createVine,
+    deleteVine,
+  } = useLifeRPG(dispatch);
 
   // API functions for components to use (server-authoritative)
   const api = {
+    // Legacy (backward compatible)
     createTask,
     updateTask,
     completeTask,
     deleteTask,
-    syncFromTaskNotes,
-    isConnected: taskNotesConnected,
-    isLoading: taskNotesLoading,
+    syncFromTaskNotes: sync,
+    isConnected,
+    isLoading,
+    // Quest operations
+    createQuest,
+    updateQuest,
+    deleteQuest,
+    // Experiments ontology
+    createExperiment,
+    updateExperiment,
+    concludeExperiment,
+    createInquiry,
+    updateInquiry,
+    integrateInquiry,
+    // Graph operations
+    createEdge,
+    deleteEdge,
+    createVine,
+    deleteVine,
+    sync,
   };
 
   const isMicro = state.preferences.currentView === 'micro';
