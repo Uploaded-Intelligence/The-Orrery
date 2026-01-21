@@ -18,6 +18,7 @@ import { TimeSpaceGPS } from '@/components/gps';
 
 // ─── UI Components ────────────────────────────────────────────────────────────
 import { TaskNotesStatus } from '@/components/ui/TaskNotesStatus';
+import { OracleButton } from '@/components/oracle';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ROOT COMPONENT
@@ -217,7 +218,10 @@ export default function Orrery() {
               </button>
             </div>
 
-            {/* TaskNotes Connection Status */}
+            {/* Oracle Consultation Button */}
+            <OracleButton />
+
+            {/* API Connection Status */}
             <TaskNotesStatus />
 
             <ImportExportControls />
