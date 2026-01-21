@@ -1,16 +1,13 @@
-// src/components/ui/TaskNotesStatus.jsx
+// src/components/ui/APIStatus.jsx
 
 import { COLORS } from '@/constants';
 import { useOrrery } from '@/store';
 
 /**
- * Connection status indicator for TaskNotes API
+ * Connection status indicator for LifeRPG API
  * Shows green when connected, red when disconnected
- *
- * Uses shared api state from context to avoid duplicate polling
- * (useTaskNotesSync already polls every 30s)
  */
-export function TaskNotesStatus() {
+export function APIStatus() {
   const { api } = useOrrery();
   const isConnected = api?.isConnected ?? null;
   const isLoading = api?.isLoading ?? false;
@@ -21,12 +18,11 @@ export function TaskNotesStatus() {
       ? COLORS.accentSuccess
       : COLORS.accentDanger;
 
-  // Build tooltip with error details if available
   const tooltip = isConnected === null
-    ? 'Connecting to TaskNotes...'
+    ? 'Connecting...'
     : isConnected
-      ? 'Connected to TaskNotes'
-      : `Disconnected from TaskNotes${api?.error ? `\n\nError: ${api.error}` : ''}`;
+      ? 'API Connected'
+      : `API Disconnected${api?.error ? `\n\nError: ${api.error}` : ''}`;
 
   return (
     <div
@@ -48,7 +44,7 @@ export function TaskNotesStatus() {
         borderRadius: '50%',
         background: color,
       }} />
-      TaskNotes
+      API
     </div>
   );
 }

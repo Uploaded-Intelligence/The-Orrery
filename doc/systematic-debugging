@@ -1,0 +1,115 @@
+[TaskNotesSync] Starting sync... useTaskNotesSync.js:23:13
+Content limit: 612032839.68 content_script.js:7523:13
+content-script-dev: downloader-gv-firefox content_script.js:40477:9
+[vite] connecting... client:733:9
+[vite] connected. client:827:12
+check services content_script.js:40328:11
+[TaskNotesSync] Starting sync... useTaskNotesSync.js:23:13
+[TaskNotesSync] Starting sync... <anonymous code>:1:150327
+[MicroView] state.edges count: 0 MicroView.jsx:102:13
+[MicroView] Task IDs: 
+Array(5) [ "TaskNotes/Tasks/test.md", "TaskNotes/Tasks/TEST TASK FROM ORRERY -\uf03e OBSIDIAN.md", "TaskNotes/Tasks/test out wtf is TaskNotes.md", "TaskNotes/Tasks/Test out TaskNotes.md", "TaskNotes/Tasks/Test handoff with Gemini or GPT.md" ]
+MicroView.jsx:103:13
+[MicroView] Visible edges after filter: 0 MicroView.jsx:111:13
+[MicroView] state.edges count: 0 <anonymous code>:1:150327
+[MicroView] Task IDs:  
+Array(5) [ "TaskNotes/Tasks/test.md", "TaskNotes/Tasks/TEST TASK FROM ORRERY -\uf03e OBSIDIAN.md", "TaskNotes/Tasks/test out wtf is TaskNotes.md", "TaskNotes/Tasks/Test out TaskNotes.md", "TaskNotes/Tasks/Test handoff with Gemini or GPT.md" ]
+<anonymous code>:1:150327
+[MicroView] Visible edges after filter: 0 <anonymous code>:1:150327
+[MicroView] Computing physics for 11 unpinned tasks out of 15 total MicroView.jsx:133:13
+[forceLayout] 0 edges, 1 layers (L0:15) → layer constraint OFF forceLayout.js:246:11
+[MicroView] Physics simulation generated 15 positions MicroView.jsx:144:13
+[MicroView] Computing physics for 11 unpinned tasks out of 15 total <anonymous code>:1:150327
+[forceLayout] 0 edges, 1 layers (L0:15) → layer constraint OFF <anonymous code>:1:150327
+[MicroView] Physics simulation generated 15 positions <anonymous code>:1:150327
+[MicroView] Using physics position for test: 
+Object { x: 393.69857787581367, y: -316.5682735234126 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for TEST TASK FROM ORRERY - OBSIDIAN: 
+Object { x: 388.8898453845779, y: -159.15688811415504 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for test out wtf is TaskNotes: 
+Object { x: 412.3407255197636, y: -22.56844195917325 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for Test out TaskNotes: 
+Object { x: 438.90414274137873, y: 125.86866245776176 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for Test handoff with Gemini or GPT: 
+Object { x: 459.9914468193875, y: 176.29178285415918 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for New Task-2: 
+Object { x: 461.8450304123047, y: 339.65420192540734 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for Initialize git in vault: 
+Object { x: 421.4944200084477, y: 399.408538979022 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for Implement Orrery isometric diorama: 
+Object { x: 396.5453545585097, y: 528.1982009305617 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for Configure git layer for vault: 
+Object { x: 388.5647159287838, y: 650.2561299411462 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for Chronicle automation prototype: 
+Object { x: 395.4591012689797, y: 779.5284897428305 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for Build Orrery macro view: 
+Object { x: 396.6204571055998, y: 929.6466700785444 }
+MicroView.jsx:160:17
+[MicroView] Using physics position for test:  
+Object { x: 393.69857787581367, y: -316.5682735234126 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for TEST TASK FROM ORRERY - OBSIDIAN:  
+Object { x: 388.8898453845779, y: -159.15688811415504 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for test out wtf is TaskNotes:  
+Object { x: 412.3407255197636, y: -22.56844195917325 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for Test out TaskNotes:  
+Object { x: 438.90414274137873, y: 125.86866245776176 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for Test handoff with Gemini or GPT:  
+Object { x: 459.9914468193875, y: 176.29178285415918 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for New Task-2:  
+Object { x: 461.8450304123047, y: 339.65420192540734 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for Initialize git in vault:  
+Object { x: 421.4944200084477, y: 399.408538979022 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for Implement Orrery isometric diorama:  
+Object { x: 396.5453545585097, y: 528.1982009305617 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for Configure git layer for vault:  
+Object { x: 388.5647159287838, y: 650.2561299411462 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for Chronicle automation prototype:  
+Object { x: 395.4591012689797, y: 779.5284897428305 }
+<anonymous code>:1:150327
+[MicroView] Using physics position for Build Orrery macro view:  
+Object { x: 396.6204571055998, y: 929.6466700785444 }
+<anonymous code>:1:150327
+[TaskNotesSync] Raw API response: 
+Object { tasks: (15) […], pagination: {…}, vault: {…}, note: "For filtering and advanced queries, use POST /api/tasks/query" }
+useTaskNotesSync.js:29:15
+[Transform] Sample task fields: 
+Array(15) [ "path", "title", "status", "priority", "scheduled", "dateCreated", "dateModified", "tags", "archived", "id", … ]
+tasknotes-transform.js:98:13
+[TaskNotesSync] Transformed tasks: 
+Array(15) [ {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, … ]
+useTaskNotesSync.js:31:15
+[TaskNotesSync] ✓ Connected useTaskNotesSync.js:40:15
+[TaskNotesSync] Raw API response: 
+Object { tasks: (15) […], pagination: {…}, vault: {…}, note: "For filtering and advanced queries, use POST /api/tasks/query" }
+useTaskNotesSync.js:29:15
+[Transform] Sample task fields: 
+Array(15) [ "path", "title", "status", "priority", "scheduled", "dateCreated", "dateModified", "tags", "archived", "id", … ]
+tasknotes-transform.js:98:13
+[TaskNotesSync] Transformed tasks: 
+Array(15) [ {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, … ]
+useTaskNotesSync.js:31:15
+[TaskNotesSync] ✓ Connected useTaskNotesSync.js:40:15
+[MicroView] state.edges count: 0 MicroView.jsx:102:13
+[MicroView] Task IDs: 
+Array(5) [ "TaskNotes/Tasks/test.md", "TaskNotes/Tasks/TEST TASK FROM ORRERY -\uf03e OBSIDIAN.md", "TaskNotes/Tasks/test out wtf is TaskNotes.md", "TaskNotes/Tasks/Test out TaskNotes.md", "TaskNotes/Tasks/Test handoff with Gemini or GPT.md" ]
+MicroView.jsx:103:13
+[MicroView] Visible edges after filter: 0 MicroView.jsx:111:13

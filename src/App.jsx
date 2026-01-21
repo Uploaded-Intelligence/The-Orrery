@@ -17,7 +17,7 @@ import { MacroView, ImportExportControls } from '@/components/macro';
 import { TimeSpaceGPS } from '@/components/gps';
 
 // ─── UI Components ────────────────────────────────────────────────────────────
-import { TaskNotesStatus } from '@/components/ui/TaskNotesStatus';
+import { APIStatus } from '@/components/ui/APIStatus';
 import { OracleButton } from '@/components/oracle';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -222,7 +222,7 @@ export default function Orrery() {
             <OracleButton />
 
             {/* API Connection Status */}
-            <TaskNotesStatus />
+            <APIStatus />
 
             <ImportExportControls />
           </div>
