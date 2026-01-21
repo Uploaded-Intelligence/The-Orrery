@@ -18,7 +18,7 @@ import { TimeSpaceGPS } from '@/components/gps';
 
 // ─── UI Components ────────────────────────────────────────────────────────────
 import { APIStatus } from '@/components/ui/APIStatus';
-import { OracleButton } from '@/components/oracle';
+import { OracleButton, QuickOracle } from '@/components/oracle';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ROOT COMPONENT
@@ -256,6 +256,9 @@ export default function Orrery() {
 
       {/* Time-Space GPS - THE FOUNDATIONAL MICRO LOOP */}
       <TimeSpaceGPS />
+
+      {/* Quick Oracle - Gemini-powered instant guidance */}
+      <QuickOracle />
 
       <style>{`
         @keyframes spin {
