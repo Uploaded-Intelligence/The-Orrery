@@ -8,7 +8,8 @@ import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff,
 import { useOrrery } from '@/store';
 import { COLORS, QUEST_COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
-import { computeLayout } from '@/utils/forceLayout';
+import { computeLayout, physicsStep, isPhysicsSettled } from '@/utils/forceLayout';
+import { useAnimationFrame } from '@/hooks';
 import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
 import { PartyChatPanel } from '@/components/party';
@@ -116,38 +117,84 @@ export function MicroView() {
     return merged;
   }, [basePositions, draggedPositions]);
 
-  // Compute physics-based positions for tasks without manual positions
-  const physicsPositions = useMemo(() => {
-    const unpinnedTasks = visibleTasks.filter(t => !t.position || (t.position.x === 0 && t.position.y === 0));
-    console.log(`[MicroView] Computing physics for ${unpinnedTasks.length} unpinned tasks out of ${visibleTasks.length} total`);
+  // ═══════════════════════════════════════════════════════════════
+  // CONTINUOUS PHYSICS SIMULATION (60fps game-like)
+  // ═══════════════════════════════════════════════════════════════
 
-    if (unpinnedTasks.length === 0) return new Map();
+  // Physics node state (positions + velocities)
+  const [physicsNodes, setPhysicsNodes] = useState([]);
+  const [physicsSettled, setPhysicsSettled] = useState(false);
 
-    // Use container bounds (estimate if not available)
+  // Initialize physics nodes when tasks change
+  useEffect(() => {
     const bounds = { width: 800, height: 600 };
-    const result = computeLayout(visibleTasks, visibleEdges, bounds);
-    console.log(`[MicroView] Physics simulation generated ${result.size} positions`);
-    return result;
-  }, [visibleTasks, visibleEdges]);
+    const initialLayout = computeLayout(visibleTasks, visibleEdges, bounds);
 
-  // Merge physics positions with manual positions
+    const nodes = visibleTasks.map(task => {
+      const hasManualPos = task.position && (task.position.x !== 0 || task.position.y !== 0);
+      const physicsPos = initialLayout.get(task.id) || { x: bounds.width / 2, y: bounds.height / 2 };
+
+      return {
+        id: task.id,
+        x: hasManualPos ? task.position.x : physicsPos.x,
+        y: hasManualPos ? task.position.y : physicsPos.y,
+        vx: 0,
+        vy: 0,
+        pinned: hasManualPos, // Pinned if has manual position
+      };
+    });
+
+    setPhysicsNodes(nodes);
+    setPhysicsSettled(false);
+  }, [visibleTasks.length, visibleEdges.length]); // Re-init when task/edge count changes
+
+  // Run continuous physics simulation
+  useAnimationFrame(() => {
+    if (physicsSettled || draggingTaskId || physicsNodes.length === 0) return;
+
+    // Run physics step
+    const updatedNodes = physicsStep([...physicsNodes], visibleEdges, {
+      repulsion: 800,
+      attraction: 0.08,
+      damping: 0.85,
+      centerGravity: 0.005,
+    });
+
+    // Check if settled
+    if (isPhysicsSettled(updatedNodes, 0.3)) {
+      setPhysicsSettled(true);
+    }
+
+    setPhysicsNodes(updatedNodes);
+  }, !physicsSettled && !draggingTaskId);
+
+  // Convert physics nodes to positions Map
+  const physicsPositions = useMemo(() => {
+    const map = new Map();
+    for (const node of physicsNodes) {
+      map.set(node.id, { x: node.x, y: node.y });
+    }
+    return map;
+  }, [physicsNodes]);
+
+  // Merge physics positions with manual positions and drag positions
   const finalPositions = useMemo(() => {
     const merged = new Map(positions);
 
-    // Create task lookup map
-    const taskById = new Map(visibleTasks.map(t => [t.id, t]));
-
-    for (const [id, pos] of physicsPositions) {
-      const task = taskById.get(id);
-      // Use physics position if task has no manual position or position is {0,0}
-      if (task && (!task.position || (task.position.x === 0 && task.position.y === 0))) {
-        merged.set(id, pos);
-        console.log(`[MicroView] Using physics position for ${task.title}:`, pos);
+    // Overlay physics positions for unpinned tasks
+    for (const node of physicsNodes) {
+      if (!node.pinned) {
+        merged.set(node.id, { x: node.x, y: node.y });
       }
     }
 
+    // Overlay any active drag positions
+    draggedPositions.forEach((pos, taskId) => {
+      merged.set(taskId, pos);
+    });
+
     return merged;
-  }, [positions, physicsPositions, visibleTasks]);
+  }, [positions, physicsNodes, draggedPositions]);
 
   // Calculate canvas bounds
   const bounds = useMemo(() =>
