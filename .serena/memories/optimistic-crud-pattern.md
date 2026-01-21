@@ -53,27 +53,29 @@ const createTask = useCallback(async (task) => {
 - Small delay (~100-300ms) but ensures consistency
 - No ID mismatch → UPDATE/DELETE work correctly
 
-### Bug 2: Physics Layout Passes Wrong Tasks
+### Bug 2: Physics Layout - Understanding Force Simulation
 
-**Symptom:** All tasks collapsed to top-left corner in messy pile.
+**Initial Misdiagnosis:** Thought passing all tasks to physics was wrong.
 
-**Root Cause:** `MicroView.jsx` filtered for `unpinnedTasks` but passed ALL `visibleTasks` to physics layout:
+**Actual Architecture (forceLayout.js):**
+- `initializeNodes()` marks tasks with positions as `pinned: true`
+- `stepLayout()` calculates forces between ALL node pairs
+- Pinned nodes **contribute to repulsion** but **don't move themselves**
+- This is correct: unpinned tasks need to repel FROM pinned ones
 
 ```javascript
-// ❌ BROKEN
-const unpinnedTasks = visibleTasks.filter(...);  // Filter to 13 tasks
-const result = computeLayout(visibleTasks, ...); // Pass ALL 16 tasks!
+// ✅ CORRECT - Pass ALL tasks, forceLayout handles pinned internally
+const result = computeLayout(visibleTasks, visibleEdges, bounds);
 ```
 
-**Result:** Physics overrode manually positioned tasks, generating negative Y coordinates.
-
-**The Fix:**
-
 ```javascript
-// ✅ CORRECT - Pass ONLY unpinned tasks
-const unpinnedTasks = visibleTasks.filter(...);
+// ❌ WRONG - Passing only unpinned breaks repulsion calculation
 const result = computeLayout(unpinnedTasks, visibleEdges, bounds);
+// Unpinned tasks have nothing to repel from → cluster together
 ```
+
+**Key Insight:** Force-directed layouts need ALL nodes for proper repulsion.
+The `pinned` flag controls movement, not inclusion in force calculation.
 
 ### Bug 3: Title Editor Lag (Symptom of Bug 1)
 

@@ -127,9 +127,10 @@ export function MicroView() {
     // Use container bounds (estimate if not available)
     const bounds = { width: 800, height: 600 };
 
-    // BUG FIX: Pass ONLY unpinned tasks, not all visible tasks
-    // This prevents physics from overriding manually positioned tasks
-    const result = computeLayout(unpinnedTasks, visibleEdges, bounds);
+    // Pass ALL tasks - forceLayout marks positioned tasks as "pinned"
+    // Pinned tasks contribute to repulsion but don't move themselves
+    // This is correct: unpinned tasks need to repel from pinned ones
+    const result = computeLayout(visibleTasks, visibleEdges, bounds);
     console.log(`[MicroView] Physics simulation generated ${result.size} positions`);
     return result;
   }, [visibleTasks, visibleEdges]);
