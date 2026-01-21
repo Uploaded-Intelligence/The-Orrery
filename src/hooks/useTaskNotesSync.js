@@ -38,6 +38,14 @@ export function useTaskNotesSync(dispatch) {
       // Only update state if still mounted
       if (!isMounted.current) return;
 
+      // SAFETY: Don't wipe tasks if API returns empty
+      // This prevents data loss when API is down or misconfigured
+      if (transformed.length === 0) {
+        console.warn('[TaskNotesSync] ⚠ API returned 0 tasks - skipping sync to prevent data loss');
+        setIsConnected(true); // API responded, just empty
+        return;
+      }
+
       dispatch({
         type: 'LOAD_FROM_TASKNOTES',
         payload: { tasks: transformed }
