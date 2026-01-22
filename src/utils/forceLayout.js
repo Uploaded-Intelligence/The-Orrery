@@ -5,7 +5,7 @@ const REPULSION = 5000;      // Node repulsion strength
 const ATTRACTION = 0.01;     // Edge attraction (spring constant)
 const DAMPING = 0.8;         // Velocity damping
 const MIN_DISTANCE = 100;    // Minimum node separation
-const LAYER_ATTRACTION = 0.05; // Horizontal layer constraint strength
+// LAYER_ATTRACTION removed - organic physics, no layer enforcement
 
 /**
  * @typedef {Object} LayoutNode
@@ -80,7 +80,8 @@ export function computeLayers(tasks, edges) {
 }
 
 /**
- * Initialize nodes for layout with layer-aware positioning
+ * Initialize nodes for layout with ORGANIC positioning
+ * Position emerges from physics, not forced layers
  * @param {import('@/types').Task[]} tasks
  * @param {import('@/types').Edge[]} edges
  * @param {{width: number, height: number}} bounds
@@ -88,20 +89,8 @@ export function computeLayers(tasks, edges) {
  */
 export function initializeNodes(tasks, edges, bounds) {
   const nodes = new Map();
-  const layers = computeLayers(tasks, edges);
-
-  // Count tasks per layer for vertical distribution
-  const layerCounts = new Map();
-  const layerIndices = new Map();
-
-  for (const [taskId, layer] of layers) {
-    const count = layerCounts.get(layer) || 0;
-    layerIndices.set(taskId, count);
-    layerCounts.set(layer, count + 1);
-  }
-
-  const maxLayer = Math.max(0, ...layers.values());
-  const layerWidth = bounds.width / (maxLayer + 2); // +2 for padding
+  // Note: computeLayers() still used by computeLayout() for DAG analysis,
+  // but no longer used for initial positioning
 
   tasks.forEach((task) => {
     const hasPosition = task.position && (task.position.x !== 0 || task.position.y !== 0);
@@ -117,17 +106,10 @@ export function initializeNodes(tasks, edges, bounds) {
         pinned: true,
       });
     } else {
-      // Position based on layer
-      const layer = layers.get(task.id) || 0;
-      const indexInLayer = layerIndices.get(task.id) || 0;
-      const countInLayer = layerCounts.get(layer) || 1;
-
-      // X based on layer (left to right)
-      const x = layerWidth * (layer + 1);
-
-      // Y distributed within layer (with small random offset)
-      const layerHeight = bounds.height / (countInLayer + 1);
-      const y = layerHeight * (indexInLayer + 1) + (Math.random() - 0.5) * 30;
+      // ORGANIC BLOOM: Random position within bounds
+      // Physics will organize nodes based on connections, not forced layers
+      const x = bounds.width * 0.2 + Math.random() * bounds.width * 0.6;
+      const y = bounds.height * 0.2 + Math.random() * bounds.height * 0.6;
 
       nodes.set(task.id, {
         id: task.id,
@@ -192,18 +174,7 @@ export function stepLayout(nodes, edges, layers = null, layerWidth = 150) {
     if (!target.pinned) { target.vx -= fx; target.vy -= fy; }
   }
 
-  // Layer constraint force (gently pull toward layer X)
-  if (layers) {
-    for (const node of nodesArray) {
-      if (node.pinned) continue;
-      const layer = layers.get(node.id);
-      if (layer !== undefined) {
-        const targetX = layerWidth * (layer + 1);
-        const dx = targetX - node.x;
-        node.vx += dx * LAYER_ATTRACTION;
-      }
-    }
-  }
+  // Layer constraint force REMOVED - organic physics, position emerges from connections
 
   // Apply velocities and damping
   for (const node of nodesArray) {
