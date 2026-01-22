@@ -245,3 +245,108 @@ export function computeLayout(tasks, edges, bounds, maxIterations = 100) {
   }
   return positions;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTINUOUS PHYSICS SIMULATION
+// For real-time 60fps animation (game-like physics)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Single physics step for continuous animation
+ * Call this every frame in requestAnimationFrame
+ *
+ * @param {Array} nodes - Array of {id, x, y, vx, vy, pinned}
+ * @param {Array} edges - Array of {source, target}
+ * @param {Object} config - Physics configuration
+ * @returns {Array} Updated nodes array (mutates in place and returns)
+ */
+export function physicsStep(nodes, edges, config = {}) {
+  const {
+    repulsion = 800,       // Node repulsion (higher = more spread)
+    attraction = 0.08,     // Edge spring constant
+    damping = 0.85,        // Velocity damping (0.85 = smooth, 0.95 = sluggish)
+    centerGravity = 0.005, // Pull toward center (keeps nodes on screen)
+    minDistance = 80,      // Minimum separation before strong repulsion
+  } = config;
+
+  // Initialize velocities if needed
+  for (const node of nodes) {
+    if (node.vx === undefined) node.vx = 0;
+    if (node.vy === undefined) node.vy = 0;
+  }
+
+  // Repulsion between all nodes (O(n²) - fine for <100 nodes)
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i];
+      const b = nodes[j];
+
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+      // Stronger repulsion when close
+      const force = repulsion / (dist * dist);
+      const clampedForce = Math.min(force, 50); // Prevent explosion
+
+      const fx = (dx / dist) * clampedForce;
+      const fy = (dy / dist) * clampedForce;
+
+      if (!a.pinned) { a.vx -= fx; a.vy -= fy; }
+      if (!b.pinned) { b.vx += fx; b.vy += fy; }
+    }
+  }
+
+  // Attraction along edges (spring force)
+  for (const edge of edges) {
+    const source = nodes.find(n => n.id === edge.source);
+    const target = nodes.find(n => n.id === edge.target);
+    if (!source || !target) continue;
+
+    const dx = target.x - source.x;
+    const dy = target.y - source.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    // Spring force proportional to distance
+    const fx = dx * attraction;
+    const fy = dy * attraction;
+
+    if (!source.pinned) { source.vx += fx; source.vy += fy; }
+    if (!target.pinned) { target.vx -= fx; target.vy -= fy; }
+  }
+
+  // Center gravity (keeps the graph on screen)
+  for (const node of nodes) {
+    if (node.pinned) continue;
+    node.vx -= node.x * centerGravity;
+    node.vy -= node.y * centerGravity;
+  }
+
+  // Apply velocities with damping
+  for (const node of nodes) {
+    if (node.pinned) continue;
+
+    node.vx *= damping;
+    node.vy *= damping;
+    node.x += node.vx;
+    node.y += node.vy;
+  }
+
+  return nodes;
+}
+
+/**
+ * Check if physics has settled (low total velocity)
+ * @param {Array} nodes
+ * @param {number} threshold - Movement threshold (default 0.5)
+ * @returns {boolean} True if settled
+ */
+export function isPhysicsSettled(nodes, threshold = 0.5) {
+  let totalVelocity = 0;
+  for (const node of nodes) {
+    if (!node.pinned) {
+      totalVelocity += Math.abs(node.vx || 0) + Math.abs(node.vy || 0);
+    }
+  }
+  return totalVelocity < threshold;
+}
