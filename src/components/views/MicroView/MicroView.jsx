@@ -8,7 +8,14 @@ import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff,
 import { useOrrery } from '@/store';
 import { COLORS, QUEST_COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
-import { computeLayout, computeLayers, physicsStep, isPhysicsSettled } from '@/utils/forceLayout';
+import { computeLayers } from '@/utils/forceLayout';
+import {
+  createSimulation,
+  applyDrag,
+  releaseDrag,
+  isSettled,
+  getPositions,
+} from '@/utils/d3PhysicsEngine';
 import { useAnimationFrame } from '@/hooks';
 import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
@@ -118,11 +125,13 @@ export function MicroView() {
   }, [basePositions, draggedPositions]);
 
   // ═══════════════════════════════════════════════════════════════
-  // CONTINUOUS PHYSICS SIMULATION (60fps game-like)
+  // CONTINUOUS PHYSICS SIMULATION (d3-force - same as Obsidian)
   // ═══════════════════════════════════════════════════════════════
 
-  // Physics node state (positions + velocities)
-  const [physicsNodes, setPhysicsNodes] = useState([]);
+  // d3 simulation ref (doesn't trigger re-renders on internal state changes)
+  const simulationRef = useRef(null);
+  // Physics positions extracted from simulation for rendering
+  const [physicsPositions, setPhysicsPositions] = useState(new Map());
   const [physicsSettled, setPhysicsSettled] = useState(false);
 
   // Count tasks with manual positions (changes when Reset clears positions)
@@ -138,121 +147,114 @@ export function MicroView() {
     [visibleTasks, visibleEdges]
   );
 
-  // Initialize physics nodes when tasks change OR positions are reset
+  // Initialize d3-force simulation when tasks change OR positions are reset
   useEffect(() => {
-    const bounds = { width: 800, height: 600 };
+    // Stop any existing simulation
+    if (simulationRef.current) {
+      simulationRef.current.stop();
+    }
 
-    // For organic layout: random positions with small jitter, let physics settle
+    // Convert tasks to d3 nodes with layer-aware initial positioning
     const nodes = visibleTasks.map(task => {
       const hasManualPos = task.position && (task.position.x !== 0 || task.position.y !== 0);
+      const layer = dagLayers.get(task.id) || 0;
 
       if (hasManualPos) {
         return {
           id: task.id,
           x: task.position.x,
           y: task.position.y,
-          vx: 0,
-          vy: 0,
+          layer,
           pinned: true,
         };
       } else {
-        // LAYER-AWARE INITIALIZATION: Seed nodes near their target radius
-        // This gives physics a better starting point for radial bloom
-        const layer = dagLayers.get(task.id) || 0;
-        const baseRadius = 80;
-        const layerSpacing = 200;
+        // Seed nodes near their target radius for faster convergence
+        const baseRadius = 100;
+        const layerSpacing = 150;
         const targetRadius = baseRadius + layer * layerSpacing;
         const angle = Math.random() * Math.PI * 2;
-        const jitter = (Math.random() - 0.5) * 60; // Small position jitter
+        const jitter = (Math.random() - 0.5) * 80;
 
         return {
           id: task.id,
           x: Math.cos(angle) * (targetRadius + jitter),
           y: Math.sin(angle) * (targetRadius + jitter),
-          vx: (Math.random() - 0.5) * 2, // Small initial velocity for movement
-          vy: (Math.random() - 0.5) * 2,
+          layer,
           pinned: false,
         };
       }
     });
 
-    setPhysicsNodes(nodes);
-    setPhysicsSettled(false);
-  }, [visibleTasks.length, visibleEdges.length, pinnedTaskCount, dagLayers]); // Re-init when count, positions, OR layers change
+    // Convert edges to d3 links
+    const links = visibleEdges.map(edge => ({
+      source: edge.source,
+      target: edge.target,
+    }));
 
-  // Run continuous physics simulation
-  // KEY: Physics keeps running during drag - dragged node is pinned, others react
-  useAnimationFrame(() => {
-    if (physicsNodes.length === 0) return;
-
-    // If settled and not dragging, skip physics
-    if (physicsSettled && !draggingTaskId) return;
-
-    // Create working copy of nodes
-    let workingNodes = [...physicsNodes];
-
-    // If dragging, update the dragged node's position and ensure it's pinned
-    if (draggingTaskId) {
-      const dragPos = draggedPositions.get(draggingTaskId);
-      if (dragPos) {
-        workingNodes = workingNodes.map(node =>
-          node.id === draggingTaskId
-            ? { ...node, x: dragPos.x, y: dragPos.y, vx: 0, vy: 0, pinned: true }
-            : node
-        );
-      }
-    }
-
-    // Run physics step - other nodes react to dragged node's position
-    // Mycelium tree: organic physics + DAG radial bloom
-    const updatedNodes = physicsStep(workingNodes, visibleEdges, {
-      repulsion: 3000,        // Strong push-apart (increased for better separation)
-      attraction: 0.03,       // Gentle spring for connected nodes
-      damping: 0.88,          // Slightly higher = physics runs longer before settling
-      centerGravity: 0.002,   // Gentle centering
-      collisionRadius: 130,   // Node width (~200) / 2 + padding
-      linkDistance: 200,      // Ideal distance for connected nodes
-      // DAG tree structure (mycelium radial bloom)
-      dagLayers: dagLayers,   // Map<nodeId, layer> - roots center, downstream radiate out
-      layerSpacing: 200,      // Radial spacing between layers (tighter for viewport)
-      layerStrength: 0.12,    // Strong pull toward layer radius - BLOOM MUST DOMINATE
+    // Create d3-force simulation
+    simulationRef.current = createSimulation(nodes, links, {
+      repulsionStrength: -2500,   // Strong push-apart
+      linkDistance: 200,          // Ideal connected node distance
+      linkStrength: 0.4,          // Spring strength
+      collisionRadius: 85,        // Node width/2 + padding (~200/2 + 15)
+      collisionIterations: 3,     // Multiple passes for solid collision
+      radialStrength: 0.04,       // WEAK - just a DAG layer hint
+      layerSpacing: 150,          // Radial spacing between layers
+      baseRadius: 100,            // Minimum radius for roots
+      centerStrength: 0.02,       // Gentle pull toward center
     });
 
+    setPhysicsSettled(false);
+
+    // Cleanup on unmount or re-init
+    return () => {
+      if (simulationRef.current) {
+        simulationRef.current.stop();
+      }
+    };
+  }, [visibleTasks.length, visibleEdges.length, pinnedTaskCount, dagLayers]); // Re-init when count, positions, OR layers change
+
+  // Run d3-force simulation tick
+  // d3-force handles all physics internally - we just tick and extract positions
+  useAnimationFrame(() => {
+    if (!simulationRef.current) return;
+
+    // If settled and not dragging, skip
+    if (physicsSettled && !draggingTaskId) return;
+
+    // Tick the simulation (d3 handles all force calculations)
+    simulationRef.current.tick();
+
+    // Extract positions for rendering
+    setPhysicsPositions(getPositions(simulationRef.current));
+
     // Check if settled (only when not dragging)
-    if (!draggingTaskId && isPhysicsSettled(updatedNodes, 0.3)) {
+    if (!draggingTaskId && isSettled(simulationRef.current)) {
       setPhysicsSettled(true);
     }
-
-    setPhysicsNodes(updatedNodes);
   }, !physicsSettled || draggingTaskId); // Run when not settled OR when dragging
-
-  // Convert physics nodes to positions Map
-  const physicsPositions = useMemo(() => {
-    const map = new Map();
-    for (const node of physicsNodes) {
-      map.set(node.id, { x: node.x, y: node.y });
-    }
-    return map;
-  }, [physicsNodes]);
 
   // Merge physics positions with manual positions and drag positions
   const finalPositions = useMemo(() => {
     const merged = new Map(positions);
 
-    // Overlay physics positions for unpinned tasks
-    for (const node of physicsNodes) {
-      if (!node.pinned) {
-        merged.set(node.id, { x: node.x, y: node.y });
+    // Overlay physics positions (from d3-force simulation)
+    physicsPositions.forEach((pos, taskId) => {
+      // Only use physics position if task doesn't have manual position
+      const task = visibleTasks.find(t => t.id === taskId);
+      const hasManualPos = task?.position && (task.position.x !== 0 || task.position.y !== 0);
+      if (!hasManualPos) {
+        merged.set(taskId, pos);
       }
-    }
+    });
 
-    // Overlay any active drag positions
+    // Overlay any active drag positions (highest priority)
     draggedPositions.forEach((pos, taskId) => {
       merged.set(taskId, pos);
     });
 
     return merged;
-  }, [positions, physicsNodes, draggedPositions]);
+  }, [positions, physicsPositions, draggedPositions, visibleTasks]);
 
   // Calculate canvas bounds
   const bounds = useMemo(() =>
@@ -331,7 +333,10 @@ export function MicroView() {
     });
     dragMovedRef.current = false; // Reset movement tracking
 
-    // Wake up physics so other nodes react to the drag
+    // Pin node in d3 simulation and wake up physics
+    if (simulationRef.current) {
+      applyDrag(simulationRef.current, taskId, currentPos.x, currentPos.y);
+    }
     setPhysicsSettled(false);
 
     // Don't select here - wait to see if it's a click or drag
@@ -465,6 +470,12 @@ export function MicroView() {
         y: mouseY - dragOffset.y,
       };
       dragMovedRef.current = true; // Movement occurred
+
+      // Update d3 simulation - other nodes react in real-time
+      if (simulationRef.current) {
+        applyDrag(simulationRef.current, draggingTaskId, newPos.x, newPos.y);
+      }
+
       setDraggedPositions(prev => {
         const next = new Map(prev);
         next.set(draggingTaskId, newPos);
@@ -489,6 +500,16 @@ export function MicroView() {
           payload: { id: draggingTaskId, updates: { position: finalPos } }
         });
         justDraggedRef.current = true; // Prevent click from selecting
+
+        // Keep pinned in d3 simulation since user placed it manually
+        if (simulationRef.current) {
+          releaseDrag(simulationRef.current, draggingTaskId, true);
+        }
+      } else {
+        // Didn't move significantly - release to physics
+        if (simulationRef.current) {
+          releaseDrag(simulationRef.current, draggingTaskId, false);
+        }
       }
       setDraggingTaskId(null);
       setDraggedPositions(new Map());
@@ -500,7 +521,7 @@ export function MicroView() {
       setIsPanning(false);
       dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
     }
-  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, api]);
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions]);
 
   // Zoom handlers
   const zoomIn = useCallback(() => {
@@ -598,6 +619,12 @@ export function MicroView() {
         y: touchY - dragOffset.y,
       };
       dragMovedRef.current = true; // Movement occurred
+
+      // Update d3 simulation - other nodes react in real-time
+      if (simulationRef.current) {
+        applyDrag(simulationRef.current, draggingTaskId, newPos.x, newPos.y);
+      }
+
       setDraggedPositions(prev => {
         const next = new Map(prev);
         next.set(draggingTaskId, newPos);
@@ -656,6 +683,16 @@ export function MicroView() {
           payload: { id: draggingTaskId, updates: { position: finalPos } }
         });
         justDraggedRef.current = true;
+
+        // Keep pinned in d3 simulation since user placed it manually
+        if (simulationRef.current) {
+          releaseDrag(simulationRef.current, draggingTaskId, true);
+        }
+      } else {
+        // Didn't move significantly - release to physics
+        if (simulationRef.current) {
+          releaseDrag(simulationRef.current, draggingTaskId, false);
+        }
       }
       setDraggingTaskId(null);
       setDraggedPositions(new Map());
@@ -666,7 +703,7 @@ export function MicroView() {
       setIsPanning(false);
       dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
     }
-  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, finalPositions, api]);
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, finalPositions]);
 
   // Node touch drag start (called from TaskNode)
   const handleNodeTouchStart = useCallback((taskId, e) => {
@@ -689,7 +726,10 @@ export function MicroView() {
     });
     dragMovedRef.current = false; // Reset movement tracking
 
-    // Wake up physics so other nodes react to the drag
+    // Pin node in d3 simulation and wake up physics
+    if (simulationRef.current) {
+      applyDrag(simulationRef.current, taskId, currentPos.x, currentPos.y);
+    }
     setPhysicsSettled(false);
 
     setSelectedEdgeId(null);
