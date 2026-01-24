@@ -156,11 +156,19 @@ export function MicroView() {
           pinned: true,
         };
       } else {
-        // ORGANIC: Random position within bounds, physics will organize
+        // LAYER-AWARE INITIALIZATION: Seed nodes near their target radius
+        // This gives physics a better starting point for radial bloom
+        const layer = dagLayers.get(task.id) || 0;
+        const baseRadius = 80;
+        const layerSpacing = 200;
+        const targetRadius = baseRadius + layer * layerSpacing;
+        const angle = Math.random() * Math.PI * 2;
+        const jitter = (Math.random() - 0.5) * 60; // Small position jitter
+
         return {
           id: task.id,
-          x: bounds.width * 0.2 + Math.random() * bounds.width * 0.6,
-          y: bounds.height * 0.2 + Math.random() * bounds.height * 0.6,
+          x: Math.cos(angle) * (targetRadius + jitter),
+          y: Math.sin(angle) * (targetRadius + jitter),
           vx: (Math.random() - 0.5) * 2, // Small initial velocity for movement
           vy: (Math.random() - 0.5) * 2,
           pinned: false,
@@ -170,7 +178,7 @@ export function MicroView() {
 
     setPhysicsNodes(nodes);
     setPhysicsSettled(false);
-  }, [visibleTasks.length, visibleEdges.length, pinnedTaskCount]); // Re-init when count OR positions change
+  }, [visibleTasks.length, visibleEdges.length, pinnedTaskCount, dagLayers]); // Re-init when count, positions, OR layers change
 
   // Run continuous physics simulation
   // KEY: Physics keeps running during drag - dragged node is pinned, others react
@@ -196,18 +204,18 @@ export function MicroView() {
     }
 
     // Run physics step - other nodes react to dragged node's position
-    // Mycelium tree: organic physics + gentle DAG layer bias
+    // Mycelium tree: organic physics + DAG radial bloom
     const updatedNodes = physicsStep(workingNodes, visibleEdges, {
-      repulsion: 2000,        // Strong push-apart
+      repulsion: 3000,        // Strong push-apart (increased for better separation)
       attraction: 0.03,       // Gentle spring for connected nodes
-      damping: 0.85,          // Smooth movement
-      centerGravity: 0.002,   // Gentle centering (Y only when DAG active)
+      damping: 0.88,          // Slightly higher = physics runs longer before settling
+      centerGravity: 0.002,   // Gentle centering
       collisionRadius: 130,   // Node width (~200) / 2 + padding
       linkDistance: 200,      // Ideal distance for connected nodes
-      // DAG tree structure (mycelium)
-      dagLayers: dagLayers,   // Map<nodeId, layer> - roots left, downstream right
-      layerSpacing: 250,      // Horizontal spacing between dependency layers
-      layerStrength: 0.02,    // Soft pull toward layer X position
+      // DAG tree structure (mycelium radial bloom)
+      dagLayers: dagLayers,   // Map<nodeId, layer> - roots center, downstream radiate out
+      layerSpacing: 200,      // Radial spacing between layers (tighter for viewport)
+      layerStrength: 0.12,    // Strong pull toward layer radius - BLOOM MUST DOMINATE
     });
 
     // Check if settled (only when not dragging)
