@@ -138,10 +138,25 @@ export function useLifeRPG(dispatch) {
       await sync(); // Refresh state
       return experiment;
     } catch (e) {
-      setError(e.message);
-      throw e;
+      // OFFLINE FALLBACK: Create locally when API unavailable
+      console.log('[LifeRPG] API unavailable, creating locally:', e.message);
+      const localExperiment = {
+        id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title: data.title || data.hypothesis || 'New Experiment',
+        hypothesis: data.title || data.hypothesis || 'New Experiment',
+        status: data.status || 'available',
+        questIds: data.questIds || [],
+        estimatedMinutes: data.estimatedMinutes || data.timeboxed || 25,
+        actualMinutes: null,
+        notes: data.notes || '',
+        position: data.position || { x: 0, y: 0 },
+        isRecurring: false,
+        createdAt: new Date().toISOString(),
+      };
+      dispatch({ type: 'ADD_TASK', payload: localExperiment });
+      return localExperiment;
     }
-  }, [sync]);
+  }, [sync, dispatch]);
 
   const updateExperiment = useCallback(async (id, updates) => {
     try {

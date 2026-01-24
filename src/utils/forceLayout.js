@@ -233,11 +233,16 @@ export function computeLayout(tasks, edges, bounds, maxIterations = 100) {
  */
 export function physicsStep(nodes, edges, config = {}) {
   const {
-    repulsion = 800,       // Node repulsion (higher = more spread)
-    attraction = 0.08,     // Edge spring constant
-    damping = 0.85,        // Velocity damping (0.85 = smooth, 0.95 = sluggish)
-    centerGravity = 0.005, // Pull toward center (keeps nodes on screen)
-    minDistance = 80,      // Minimum separation before strong repulsion
+    repulsion = 2000,       // Node repulsion strength (Obsidian-like: strong)
+    attraction = 0.03,      // Edge spring constant (gentler)
+    damping = 0.85,         // Velocity damping
+    centerGravity = 0.002,  // Pull toward center (gentler)
+    collisionRadius = 120,  // Hard collision radius (node width + padding)
+    linkDistance = 180,     // Ideal distance for connected nodes
+    // DAG tree structure (mycelium)
+    dagLayers = null,       // Map<nodeId, layerNumber> - pass to enable tree layout
+    layerSpacing = 250,     // Horizontal spacing between layers
+    layerStrength = 0.02,   // How strongly nodes are pulled to their layer (soft)
   } = config;
 
   // Initialize velocities if needed
@@ -246,7 +251,42 @@ export function physicsStep(nodes, edges, config = {}) {
     if (node.vy === undefined) node.vy = 0;
   }
 
-  // Repulsion between all nodes (O(n²) - fine for <100 nodes)
+  // ═══════════════════════════════════════════════════════════════
+  // REPULSION: All nodes push each other apart (many-body force)
+  // Uses linear falloff for close nodes, inverse for far
+  // ═══════════════════════════════════════════════════════════════
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i];
+      const b = nodes[j];
+
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+
+      // Prevent division by zero - nudge apart if exactly overlapping
+      if (dist < 1) {
+        dx = (Math.random() - 0.5) * 2;
+        dy = (Math.random() - 0.5) * 2;
+        dist = 1;
+      }
+
+      // Force calculation: stronger when close, falls off with distance
+      // But doesn't fall off as fast as inverse-square
+      const force = repulsion / (dist * dist * 0.5 + 100);
+
+      const fx = (dx / dist) * force;
+      const fy = (dy / dist) * force;
+
+      if (!a.pinned) { a.vx -= fx; a.vy -= fy; }
+      if (!b.pinned) { b.vx += fx; b.vy += fy; }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // COLLISION: Hard constraint - nodes cannot overlap
+  // This is what Obsidian has that makes nodes "bounce" apart
+  // ═══════════════════════════════════════════════════════════════
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i];
@@ -256,19 +296,22 @@ export function physicsStep(nodes, edges, config = {}) {
       const dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-      // Stronger repulsion when close
-      const force = repulsion / (dist * dist);
-      const clampedForce = Math.min(force, 50); // Prevent explosion
+      if (dist < collisionRadius) {
+        // Nodes are overlapping - push them apart
+        const overlap = collisionRadius - dist;
+        const pushX = (dx / dist) * overlap * 0.5;
+        const pushY = (dy / dist) * overlap * 0.5;
 
-      const fx = (dx / dist) * clampedForce;
-      const fy = (dy / dist) * clampedForce;
-
-      if (!a.pinned) { a.vx -= fx; a.vy -= fy; }
-      if (!b.pinned) { b.vx += fx; b.vy += fy; }
+        if (!a.pinned) { a.x -= pushX; a.y -= pushY; }
+        if (!b.pinned) { b.x += pushX; b.y += pushY; }
+      }
     }
   }
 
-  // Attraction along edges (spring force)
+  // ═══════════════════════════════════════════════════════════════
+  // ATTRACTION: Connected nodes have an ideal distance
+  // Pull together if too far, push apart if too close
+  // ═══════════════════════════════════════════════════════════════
   for (const edge of edges) {
     const source = nodes.find(n => n.id === edge.source);
     const target = nodes.find(n => n.id === edge.target);
@@ -278,22 +321,98 @@ export function physicsStep(nodes, edges, config = {}) {
     const dy = target.y - source.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-    // Spring force proportional to distance
-    const fx = dx * attraction;
-    const fy = dy * attraction;
+    // Spring force: pull toward linkDistance
+    const displacement = dist - linkDistance;
+    const force = displacement * attraction;
+
+    const fx = (dx / dist) * force;
+    const fy = (dy / dist) * force;
 
     if (!source.pinned) { source.vx += fx; source.vy += fy; }
     if (!target.pinned) { target.vx -= fx; target.vy -= fy; }
   }
 
-  // Center gravity (keeps the graph on screen)
+  // ═══════════════════════════════════════════════════════════════
+  // RADIAL BLOOM: Flowering DAG layout
+  // Layer 0 (roots) at center, downstream layers radiate outward
+  // Like a blooming flower or mycelium from center
+  // ═══════════════════════════════════════════════════════════════
+  if (dagLayers) {
+    const maxLayer = Math.max(0, ...dagLayers.values());
+
+    // Group nodes by layer for angular distribution
+    const layerNodes = new Map();
+    for (const node of nodes) {
+      const layer = dagLayers.get(node.id);
+      if (layer !== undefined) {
+        if (!layerNodes.has(layer)) layerNodes.set(layer, []);
+        layerNodes.get(layer).push(node);
+      }
+    }
+
+    for (const node of nodes) {
+      if (node.pinned) continue;
+      const layer = dagLayers.get(node.id);
+      if (layer === undefined) continue;
+
+      // Radius: roots at center (small radius), outer layers further out
+      const baseRadius = 80;  // Minimum radius for roots
+      const targetRadius = baseRadius + layer * layerSpacing;
+
+      // Calculate current radius from center (0,0)
+      const currentRadius = Math.sqrt(node.x * node.x + node.y * node.y) || 1;
+
+      // Pull toward target radius (radial force)
+      const radialDiff = targetRadius - currentRadius;
+      const radialForce = radialDiff * layerStrength;
+
+      // Apply radial force (outward/inward from center)
+      const nx = node.x / currentRadius;  // normalized direction
+      const ny = node.y / currentRadius;
+      node.vx += nx * radialForce;
+      node.vy += ny * radialForce;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // EDGE DIRECTION BIAS: Ensure target is further from center
+  // This reinforces the radial bloom flow direction
+  // ═══════════════════════════════════════════════════════════════
+  if (dagLayers) {
+    for (const edge of edges) {
+      const source = nodes.find(n => n.id === edge.source);
+      const target = nodes.find(n => n.id === edge.target);
+      if (!source || !target) continue;
+
+      const sourceRadius = Math.sqrt(source.x * source.x + source.y * source.y);
+      const targetRadius = Math.sqrt(target.x * target.x + target.y * target.y);
+
+      // If target is closer to center than source, nudge them apart radially
+      if (targetRadius < sourceRadius) {
+        const nudge = 0.3;
+        const sn = sourceRadius > 1 ? { x: source.x / sourceRadius, y: source.y / sourceRadius } : { x: 0, y: 0 };
+        const tn = targetRadius > 1 ? { x: target.x / targetRadius, y: target.y / targetRadius } : { x: 1, y: 0 };
+
+        if (!source.pinned) { source.vx -= sn.x * nudge; source.vy -= sn.y * nudge; }
+        if (!target.pinned) { target.vx += tn.x * nudge; target.vy += tn.y * nudge; }
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CENTER GRAVITY: Gentle pull toward center
+  // For radial bloom, this keeps the whole structure centered
+  // ═══════════════════════════════════════════════════════════════
   for (const node of nodes) {
     if (node.pinned) continue;
+    // Pull both X and Y toward center (0,0 in physics space)
     node.vx -= node.x * centerGravity;
     node.vy -= node.y * centerGravity;
   }
 
-  // Apply velocities with damping
+  // ═══════════════════════════════════════════════════════════════
+  // APPLY VELOCITIES with damping
+  // ═══════════════════════════════════════════════════════════════
   for (const node of nodes) {
     if (node.pinned) continue;
 

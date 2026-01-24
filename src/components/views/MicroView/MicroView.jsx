@@ -8,7 +8,7 @@ import { Plus, Trash2, Link2, Link2Off, ZoomIn, ZoomOut, Maximize2, Eye, EyeOff,
 import { useOrrery } from '@/store';
 import { COLORS, QUEST_COLORS } from '@/constants';
 import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } from '@/utils';
-import { computeLayout, physicsStep, isPhysicsSettled } from '@/utils/forceLayout';
+import { computeLayout, computeLayers, physicsStep, isPhysicsSettled } from '@/utils/forceLayout';
 import { useAnimationFrame } from '@/hooks';
 import { TaskNode } from '@/components/tasks';
 import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
@@ -125,48 +125,98 @@ export function MicroView() {
   const [physicsNodes, setPhysicsNodes] = useState([]);
   const [physicsSettled, setPhysicsSettled] = useState(false);
 
-  // Initialize physics nodes when tasks change
+  // Count tasks with manual positions (changes when Reset clears positions)
+  const pinnedTaskCount = useMemo(() =>
+    visibleTasks.filter(t => t.position && (t.position.x !== 0 || t.position.y !== 0)).length,
+    [visibleTasks]
+  );
+
+  // Compute DAG layers for mycelium tree layout
+  // Layer 0 = roots (no dependencies), higher layers = further downstream
+  const dagLayers = useMemo(() =>
+    computeLayers(visibleTasks, visibleEdges),
+    [visibleTasks, visibleEdges]
+  );
+
+  // Initialize physics nodes when tasks change OR positions are reset
   useEffect(() => {
     const bounds = { width: 800, height: 600 };
-    const initialLayout = computeLayout(visibleTasks, visibleEdges, bounds);
 
+    // For organic layout: random positions with small jitter, let physics settle
     const nodes = visibleTasks.map(task => {
       const hasManualPos = task.position && (task.position.x !== 0 || task.position.y !== 0);
-      const physicsPos = initialLayout.get(task.id) || { x: bounds.width / 2, y: bounds.height / 2 };
 
-      return {
-        id: task.id,
-        x: hasManualPos ? task.position.x : physicsPos.x,
-        y: hasManualPos ? task.position.y : physicsPos.y,
-        vx: 0,
-        vy: 0,
-        pinned: hasManualPos, // Pinned if has manual position
-      };
+      if (hasManualPos) {
+        return {
+          id: task.id,
+          x: task.position.x,
+          y: task.position.y,
+          vx: 0,
+          vy: 0,
+          pinned: true,
+        };
+      } else {
+        // ORGANIC: Random position within bounds, physics will organize
+        return {
+          id: task.id,
+          x: bounds.width * 0.2 + Math.random() * bounds.width * 0.6,
+          y: bounds.height * 0.2 + Math.random() * bounds.height * 0.6,
+          vx: (Math.random() - 0.5) * 2, // Small initial velocity for movement
+          vy: (Math.random() - 0.5) * 2,
+          pinned: false,
+        };
+      }
     });
 
     setPhysicsNodes(nodes);
     setPhysicsSettled(false);
-  }, [visibleTasks.length, visibleEdges.length]); // Re-init when task/edge count changes
+  }, [visibleTasks.length, visibleEdges.length, pinnedTaskCount]); // Re-init when count OR positions change
 
   // Run continuous physics simulation
+  // KEY: Physics keeps running during drag - dragged node is pinned, others react
   useAnimationFrame(() => {
-    if (physicsSettled || draggingTaskId || physicsNodes.length === 0) return;
+    if (physicsNodes.length === 0) return;
 
-    // Run physics step
-    const updatedNodes = physicsStep([...physicsNodes], visibleEdges, {
-      repulsion: 800,
-      attraction: 0.08,
-      damping: 0.85,
-      centerGravity: 0.005,
+    // If settled and not dragging, skip physics
+    if (physicsSettled && !draggingTaskId) return;
+
+    // Create working copy of nodes
+    let workingNodes = [...physicsNodes];
+
+    // If dragging, update the dragged node's position and ensure it's pinned
+    if (draggingTaskId) {
+      const dragPos = draggedPositions.get(draggingTaskId);
+      if (dragPos) {
+        workingNodes = workingNodes.map(node =>
+          node.id === draggingTaskId
+            ? { ...node, x: dragPos.x, y: dragPos.y, vx: 0, vy: 0, pinned: true }
+            : node
+        );
+      }
+    }
+
+    // Run physics step - other nodes react to dragged node's position
+    // Mycelium tree: organic physics + gentle DAG layer bias
+    const updatedNodes = physicsStep(workingNodes, visibleEdges, {
+      repulsion: 2000,        // Strong push-apart
+      attraction: 0.03,       // Gentle spring for connected nodes
+      damping: 0.85,          // Smooth movement
+      centerGravity: 0.002,   // Gentle centering (Y only when DAG active)
+      collisionRadius: 130,   // Node width (~200) / 2 + padding
+      linkDistance: 200,      // Ideal distance for connected nodes
+      // DAG tree structure (mycelium)
+      dagLayers: dagLayers,   // Map<nodeId, layer> - roots left, downstream right
+      layerSpacing: 250,      // Horizontal spacing between dependency layers
+      layerStrength: 0.02,    // Soft pull toward layer X position
     });
 
-    // Check if settled
-    if (isPhysicsSettled(updatedNodes, 0.3)) {
+    // Check if settled (only when not dragging)
+    if (!draggingTaskId && isPhysicsSettled(updatedNodes, 0.3)) {
       setPhysicsSettled(true);
     }
 
     setPhysicsNodes(updatedNodes);
-  }, !physicsSettled && !draggingTaskId);
+  }, !physicsSettled || draggingTaskId); // Run when not settled OR when dragging
 
   // Convert physics nodes to positions Map
   const physicsPositions = useMemo(() => {
@@ -272,6 +322,10 @@ export function MicroView() {
       y: mouseY - currentPos.y,
     });
     dragMovedRef.current = false; // Reset movement tracking
+
+    // Wake up physics so other nodes react to the drag
+    setPhysicsSettled(false);
+
     // Don't select here - wait to see if it's a click or drag
     setSelectedEdgeId(null);
   }, [edgeSourceId, finalPositions, pan, zoom]);
@@ -352,7 +406,7 @@ export function MicroView() {
     // Create task via API (server-authoritative)
     try {
       const created = await api.createTask({
-        title: 'New Task',
+        title: 'New Experiment',
         questIds,
         status: 'available',
         estimatedMinutes: 25,
@@ -626,6 +680,10 @@ export function MicroView() {
       y: touchY - currentPos.y,
     });
     dragMovedRef.current = false; // Reset movement tracking
+
+    // Wake up physics so other nodes react to the drag
+    setPhysicsSettled(false);
+
     setSelectedEdgeId(null);
   }, [edgeSourceId, finalPositions, pan, zoom]);
 
@@ -787,7 +845,7 @@ export function MicroView() {
           }}
         >
           <Plus size={16} />
-          Task
+          Experiment
         </button>
 
         {/* Party Chat button */}
@@ -1019,7 +1077,7 @@ export function MicroView() {
           textAlign: 'center',
           color: COLORS.textMuted,
         }}>
-          <p style={{ fontSize: '16px', marginBottom: '12px' }}>No tasks yet</p>
+          <p style={{ fontSize: '16px', marginBottom: '12px' }}>No experiments yet</p>
           <button
             onClick={addTask}
             style={{
@@ -1036,7 +1094,7 @@ export function MicroView() {
             }}
           >
             <Plus size={18} />
-            Add First Task
+            Add First Experiment
           </button>
         </div>
       )}
