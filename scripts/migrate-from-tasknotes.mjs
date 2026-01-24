@@ -8,6 +8,7 @@
 // Options:
 //   --dry-run    Preview migration without writing to API
 //   --verbose    Show detailed output
+//   --edges-only Only create edges from blockedBy relationships (skip experiment migration)
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -18,6 +19,7 @@ const VAULT_PATH = process.env.VAULT_PATH;
 const API_URL = process.env.API_URL || 'http://localhost:3000';
 const DRY_RUN = process.argv.includes('--dry-run');
 const VERBOSE = process.argv.includes('--verbose');
+const EDGES_ONLY = process.argv.includes('--edges-only');
 
 // Directories relative to vault
 const TASKS_DIR = 'TaskNotes/Tasks';
@@ -151,6 +153,144 @@ async function readMarkdownFiles(dirPath) {
 }
 
 /**
+ * GET data from API
+ */
+async function getFromApi(endpoint) {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API error ${res.status}: ${text}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Normalize a string for matching (lowercase, spaces to dashes)
+ */
+function normalize(str) {
+  return str.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+}
+
+/**
+ * Create edges from blockedBy relationships
+ * Uses existing experiments from API to resolve names to IDs
+ */
+async function createEdgesFromBlockedBy(parsedTasks) {
+  console.log('--- Creating Edges from blockedBy ---');
+
+  // Fetch existing experiments to get their IDs
+  let existingExperiments;
+  try {
+    const response = await getFromApi('/api/experiments');
+    existingExperiments = response.experiments || response || [];
+    console.log(`Found ${existingExperiments.length} existing experiments in API`);
+  } catch (err) {
+    console.error('Failed to fetch existing experiments:', err.message);
+    return 0;
+  }
+
+  // Build lookup maps: normalized hypothesis/title → experiment ID
+  const nameToId = new Map();
+  for (const exp of existingExperiments) {
+    const hypothesis = exp.hypothesis || exp.title || '';
+    nameToId.set(normalize(hypothesis), exp.id);
+    nameToId.set(hypothesis.toLowerCase(), exp.id);
+    // Also map by ID itself for direct references
+    nameToId.set(exp.id, exp.id);
+  }
+
+  if (VERBOSE) {
+    console.log('Name lookup map has', nameToId.size, 'entries');
+  }
+
+  // Track edges to avoid duplicates
+  const createdEdges = new Set();
+  let edgesCreated = 0;
+  let edgesSkipped = 0;
+  let edgesNotFound = 0;
+
+  // Process each parsed task's blockedBy
+  for (const task of parsedTasks) {
+    const blockers = task.blockedBy || [];
+    if (blockers.length === 0) continue;
+
+    // Find target experiment ID
+    const targetId = nameToId.get(normalize(task.hypothesis)) ||
+                     nameToId.get(task.hypothesis.toLowerCase()) ||
+                     nameToId.get(task.id);
+
+    if (!targetId) {
+      if (VERBOSE) {
+        console.log(`  Target not found in API: "${task.hypothesis}"`);
+      }
+      continue;
+    }
+
+    for (const blockerName of blockers) {
+      // Resolve blocker to ID
+      const sourceId = nameToId.get(normalize(blockerName)) ||
+                       nameToId.get(blockerName.toLowerCase());
+
+      if (!sourceId) {
+        if (VERBOSE) {
+          console.log(`  Blocker not found: "${blockerName}" (blocking "${task.hypothesis}")`);
+        }
+        edgesNotFound++;
+        continue;
+      }
+
+      if (sourceId === targetId) {
+        if (VERBOSE) {
+          console.log(`  Skipping self-reference: "${blockerName}"`);
+        }
+        continue;
+      }
+
+      // Create unique edge key
+      const edgeKey = `${sourceId}→${targetId}`;
+      if (createdEdges.has(edgeKey)) {
+        edgesSkipped++;
+        continue;
+      }
+
+      // Create the edge
+      const edgeData = {
+        source: sourceId,
+        target: targetId,
+        condition: `Requires: ${blockerName}`,
+      };
+
+      try {
+        await postToApi('/api/edges', edgeData);
+        createdEdges.add(edgeKey);
+        edgesCreated++;
+        if (VERBOSE) {
+          console.log(`  ✓ Edge: "${blockerName}" → "${task.hypothesis}"`);
+        }
+      } catch (err) {
+        // Edge might already exist (API returns conflict)
+        if (err.message.includes('409') || err.message.includes('already exists')) {
+          edgesSkipped++;
+          if (VERBOSE) {
+            console.log(`  - Edge exists: "${blockerName}" → "${task.hypothesis}"`);
+          }
+        } else {
+          console.error(`  ✗ Edge failed: ${err.message}`);
+        }
+      }
+    }
+  }
+
+  console.log(`Edges: ${edgesCreated} created, ${edgesSkipped} skipped, ${edgesNotFound} blockers not found`);
+  return edgesCreated;
+}
+
+/**
  * POST data to API
  */
 async function postToApi(endpoint, data) {
@@ -184,7 +324,7 @@ async function migrate() {
   console.log('='.repeat(60));
   console.log(`Vault: ${VAULT_PATH}`);
   console.log(`API: ${API_URL}`);
-  console.log(`Mode: ${DRY_RUN ? 'DRY RUN (no changes)' : 'LIVE'}`);
+  console.log(`Mode: ${DRY_RUN ? 'DRY RUN (no changes)' : 'LIVE'}${EDGES_ONLY ? ' (EDGES ONLY)' : ''}`);
   console.log('');
 
   if (!VAULT_PATH) {
@@ -193,64 +333,81 @@ async function migrate() {
     process.exit(1);
   }
 
-  // Migrate Tasks → Experiments
-  console.log('--- Migrating Tasks/Experiments ---');
+  // Parse task files (needed for both full migration and edges-only)
   const tasksDir = path.join(VAULT_PATH, TASKS_DIR);
   const taskFiles = await readMarkdownFiles(tasksDir);
   console.log(`Found ${taskFiles.length} task files`);
 
+  // Parse all tasks to extract blockedBy relationships
+  const parsedTasks = [];
+  for (const { filename, content } of taskFiles) {
+    const task = parseTaskFile(content, filename);
+    parsedTasks.push(task);
+  }
+
   let tasksMigrated = 0;
   let tasksErrors = 0;
-
-  for (const { filename, content } of taskFiles) {
-    try {
-      const task = parseTaskFile(content, filename);
-      if (VERBOSE) {
-        console.log(`  Migrating: ${filename} → ${task.hypothesis}`);
-      }
-      await postToApi('/api/experiments', task);
-      tasksMigrated++;
-    } catch (err) {
-      console.error(`  ERROR: ${filename}: ${err.message}`);
-      tasksErrors++;
-    }
-  }
-
-  console.log(`Tasks: ${tasksMigrated} migrated, ${tasksErrors} errors`);
-  console.log('');
-
-  // Migrate Quests → Inquiries
-  console.log('--- Migrating Quests/Inquiries ---');
-  const questsDir = path.join(VAULT_PATH, QUESTS_DIR);
-  const questFiles = await readMarkdownFiles(questsDir);
-  console.log(`Found ${questFiles.length} quest files`);
-
   let questsMigrated = 0;
   let questsErrors = 0;
+  let edgesCreated = 0;
 
-  for (const { filename, content } of questFiles) {
-    try {
-      const quest = parseQuestFile(content, filename);
-      if (VERBOSE) {
-        console.log(`  Migrating: ${filename} → ${quest.question || quest.title}`);
+  if (!EDGES_ONLY) {
+    // Migrate Tasks → Experiments
+    console.log('--- Migrating Tasks/Experiments ---');
+
+    for (const task of parsedTasks) {
+      try {
+        if (VERBOSE) {
+          console.log(`  Migrating: ${task.hypothesis}`);
+        }
+        await postToApi('/api/experiments', task);
+        tasksMigrated++;
+      } catch (err) {
+        console.error(`  ERROR: ${task.hypothesis}: ${err.message}`);
+        tasksErrors++;
       }
-      await postToApi('/api/inquiries', quest);
-      questsMigrated++;
-    } catch (err) {
-      console.error(`  ERROR: ${filename}: ${err.message}`);
-      questsErrors++;
     }
+
+    console.log(`Tasks: ${tasksMigrated} migrated, ${tasksErrors} errors`);
+    console.log('');
+
+    // Migrate Quests → Inquiries
+    console.log('--- Migrating Quests/Inquiries ---');
+    const questsDir = path.join(VAULT_PATH, QUESTS_DIR);
+    const questFiles = await readMarkdownFiles(questsDir);
+    console.log(`Found ${questFiles.length} quest files`);
+
+    for (const { filename, content } of questFiles) {
+      try {
+        const quest = parseQuestFile(content, filename);
+        if (VERBOSE) {
+          console.log(`  Migrating: ${filename} → ${quest.question || quest.title}`);
+        }
+        await postToApi('/api/inquiries', quest);
+        questsMigrated++;
+      } catch (err) {
+        console.error(`  ERROR: ${filename}: ${err.message}`);
+        questsErrors++;
+      }
+    }
+
+    console.log(`Quests: ${questsMigrated} migrated, ${questsErrors} errors`);
+    console.log('');
   }
 
-  console.log(`Quests: ${questsMigrated} migrated, ${questsErrors} errors`);
+  // Create edges from blockedBy relationships
+  edgesCreated = await createEdgesFromBlockedBy(parsedTasks);
   console.log('');
 
   // Summary
   console.log('='.repeat(60));
   console.log('Migration Complete');
   console.log('='.repeat(60));
-  console.log(`Tasks/Experiments: ${tasksMigrated}/${taskFiles.length}`);
-  console.log(`Quests/Inquiries: ${questsMigrated}/${questFiles.length}`);
+  if (!EDGES_ONLY) {
+    console.log(`Tasks/Experiments: ${tasksMigrated}/${taskFiles.length}`);
+    console.log(`Quests/Inquiries: ${questsMigrated}/${questsMigrated + questsErrors || 0}`);
+  }
+  console.log(`Edges created: ${edgesCreated}`);
 
   if (DRY_RUN) {
     console.log('');
