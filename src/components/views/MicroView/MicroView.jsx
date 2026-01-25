@@ -141,6 +141,9 @@ export function MicroView() {
     [visibleTasks]
   );
 
+  // Track previous pinnedTaskCount to detect Reset vs manual placement
+  const prevPinnedCountRef = useRef(pinnedTaskCount);
+
   // Compute DAG layers for mycelium tree layout
   // Layer 0 = roots (no dependencies), higher layers = further downstream
   const dagLayers = useMemo(() =>
@@ -169,8 +172,21 @@ export function MicroView() {
 
   // Initialize d3-force simulation when tasks change OR positions are reset
   useEffect(() => {
+    // Skip re-init if only change was a node being manually placed (pinnedCount increased)
+    // This prevents the entire simulation from being destroyed on drag release
+    // Only re-init when: tasks change, edges change, OR Reset clears positions (pinnedCount decreases)
+    const prevPinned = prevPinnedCountRef.current;
+    const pinnedIncreased = pinnedTaskCount > prevPinned;
+    prevPinnedCountRef.current = pinnedTaskCount;
+
+    if (pinnedIncreased && simulationRef.current) {
+      // Node was manually placed - update its pin in existing simulation instead of recreating
+      // The simulation already has the correct positions from drag
+      return;
+    }
+
     // CRITICAL: Capture positions BEFORE destroying simulation
-    // This preserves physics positions when re-init triggers (e.g., after drag)
+    // This preserves physics positions when re-init triggers (e.g., Reset Layout)
     const currentPositions = new Map();
     if (simulationRef.current) {
       simulationRef.current.nodes().forEach(node => {
