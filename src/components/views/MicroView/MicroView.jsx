@@ -217,20 +217,28 @@ export function MicroView() {
   // Run d3-force simulation tick
   // d3-force handles all physics internally - we just tick and extract positions
   useAnimationFrame(() => {
+    // Safety check - simulation may not exist yet
     if (!simulationRef.current) return;
 
     // If settled and not dragging, skip
     if (physicsSettled && !draggingTaskId) return;
 
-    // Tick the simulation (d3 handles all force calculations)
-    simulationRef.current.tick();
+    try {
+      // Tick the simulation (d3 handles all force calculations)
+      simulationRef.current.tick();
 
-    // Extract positions for rendering
-    setPhysicsPositions(getPositions(simulationRef.current));
+      // Extract positions for rendering
+      const newPositions = getPositions(simulationRef.current);
+      if (newPositions && newPositions.size > 0) {
+        setPhysicsPositions(newPositions);
+      }
 
-    // Check if settled (only when not dragging)
-    if (!draggingTaskId && isSettled(simulationRef.current)) {
-      setPhysicsSettled(true);
+      // Check if settled (only when not dragging)
+      if (!draggingTaskId && isSettled(simulationRef.current)) {
+        setPhysicsSettled(true);
+      }
+    } catch (e) {
+      console.error('[MicroView] Physics tick error:', e);
     }
   }, !physicsSettled || draggingTaskId); // Run when not settled OR when dragging
 
