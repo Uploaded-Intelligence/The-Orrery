@@ -81,7 +81,31 @@ excluded_tools: []
 
 # initial prompt for the project. It will always be given to the LLM upon activating the project
 # (contrary to the memories, which are loaded on demand).
-initial_prompt: ""
+initial_prompt: |
+  # === CROSS-LLM-SYNC-PROTOCOL ===
+  # Multiple LLMs (Claude, Gemini) work on this project. They don't share memory.
+
+  ## BEFORE ANY WORK
+  ```bash
+  git fetch --all && git branch -a
+  gh pr list --state open
+  cat SESSION-STATE.md
+  ```
+
+  ## DECISION GATES
+  - PRs >5 days old? → Review first, don't add more
+  - Another LLM has open PR in same area? → Read it first
+  - SESSION-STATE.md >48h stale? → Update before proceeding
+
+  ## BEFORE SESSION END
+  1. Commit and push all work
+  2. Update SESSION-STATE.md (your "Last Session" + "Context for Next LLM")
+  3. Commit and push SESSION-STATE.md
+
+  ## RED FLAGS (STOP & INVESTIGATE)
+  - "I should fix X" → Check if another LLM already did
+  - "This branch is stale" → Don't duplicate, update session-state
+  # === END-CROSS-LLM-SYNC ===
 
 project_name: "The-Orrery"
 included_optional_tools: []
