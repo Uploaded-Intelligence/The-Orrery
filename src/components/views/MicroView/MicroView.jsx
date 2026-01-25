@@ -147,6 +147,25 @@ export function MicroView() {
     [visibleTasks, visibleEdges]
   );
 
+  // Deterministic hash function - same ID always produces same value
+  // This ensures "Reset" produces the same layout every time
+  const hashString = useCallback((str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash;
+  }, []);
+
+  // Convert hash to 0-1 range (deterministic pseudo-random)
+  const hashToUnit = useCallback((str, seed = 0) => {
+    const hash = hashString(str + seed);
+    // Use golden ratio to spread values evenly
+    return ((hash * 2654435769) >>> 0) / 4294967296;
+  }, [hashString]);
+
   // Initialize d3-force simulation when tasks change OR positions are reset
   useEffect(() => {
     // Stop any existing simulation
@@ -161,7 +180,8 @@ export function MicroView() {
       return;
     }
 
-    // Convert tasks to d3 nodes with layer-aware initial positioning
+    // Convert tasks to d3 nodes with DETERMINISTIC initial positioning
+    // Same task IDs → same initial positions → same final layout
     const nodes = visibleTasks.map(task => {
       const hasManualPos = task.position && (task.position.x !== 0 || task.position.y !== 0);
       const layer = dagLayers.get(task.id) || 0;
@@ -175,12 +195,13 @@ export function MicroView() {
           pinned: true,
         };
       } else {
-        // Seed nodes near their target radius for faster convergence
+        // DETERMINISTIC positioning based on task ID
+        // Same ID always gets same angle/jitter → same layout after physics
         const baseRadius = 100;
         const layerSpacing = 150;
         const targetRadius = baseRadius + layer * layerSpacing;
-        const angle = Math.random() * Math.PI * 2;
-        const jitter = (Math.random() - 0.5) * 80;
+        const angle = hashToUnit(task.id, 1) * Math.PI * 2;
+        const jitter = (hashToUnit(task.id, 2) - 0.5) * 80;
 
         return {
           id: task.id,
