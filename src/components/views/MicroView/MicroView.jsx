@@ -542,6 +542,16 @@ export function MicroView() {
         if (simulationRef.current) {
           endDrag(simulationRef.current, draggingTaskId, true);
         }
+
+        // CRITICAL: Extract physics positions SYNCHRONOUSLY before clearing draggedPositions
+        // This prevents the snap-back race condition where draggedPositions clears
+        // before physicsPositions updates via animation frame
+        if (simulationRef.current) {
+          const updatedPositions = getPositions(simulationRef.current);
+          if (updatedPositions && updatedPositions.size > 0) {
+            setPhysicsPositions(updatedPositions);
+          }
+        }
       } else {
         // Didn't move significantly - release to physics
         if (simulationRef.current) {
@@ -724,6 +734,16 @@ export function MicroView() {
         // Keep pinned in d3 simulation since user placed it manually
         if (simulationRef.current) {
           endDrag(simulationRef.current, draggingTaskId, true);
+        }
+
+        // CRITICAL: Extract physics positions SYNCHRONOUSLY before clearing draggedPositions
+        // This prevents the snap-back race condition where draggedPositions clears
+        // before physicsPositions updates via animation frame
+        if (simulationRef.current) {
+          const updatedPositions = getPositions(simulationRef.current);
+          if (updatedPositions && updatedPositions.size > 0) {
+            setPhysicsPositions(updatedPositions);
+          }
         }
       } else {
         // Didn't move significantly - release to physics
