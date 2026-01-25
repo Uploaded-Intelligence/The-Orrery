@@ -28,15 +28,15 @@ export function PhysicsDebugPanel({ config, onChange }) {
 
   const panelStyle = {
     position: 'absolute',
-    bottom: '60px',
-    right: '12px',
-    background: COLORS.cardBackground + 'F0',
-    border: `1px solid ${COLORS.textMuted}40`,
+    bottom: '100px',   // Above the TimeSpaceGPS panel
+    right: '80px',     // Left of the QuickOracle button
+    background: COLORS.bgPanel,
+    border: `1px solid ${COLORS.accentPrimary}60`,
     borderRadius: '8px',
-    padding: '8px',
-    zIndex: 100,
+    padding: '10px',
+    zIndex: 999,       // High z-index to ensure visibility
     minWidth: expanded ? '280px' : 'auto',
-    backdropFilter: 'blur(8px)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
   };
 
   const headerStyle = {
@@ -71,7 +71,7 @@ export function PhysicsDebugPanel({ config, onChange }) {
   };
 
   const valueStyle = {
-    color: COLORS.accentExperiment,
+    color: COLORS.accentSecondary,
     fontSize: '11px',
     fontFamily: 'monospace',
     width: '55px',
