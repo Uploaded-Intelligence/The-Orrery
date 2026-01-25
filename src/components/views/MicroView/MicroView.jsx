@@ -11,8 +11,9 @@ import { getLayoutPositions, getCanvasBounds, getComputedTaskStatus, LAYOUT } fr
 import { computeLayers } from '@/utils/forceLayout';
 import {
   createSimulation,
-  applyDrag,
-  releaseDrag,
+  startDrag,
+  updateDrag,
+  endDrag,
   isSettled,
   getPositions,
 } from '@/utils/d3PhysicsEngine';
@@ -369,9 +370,9 @@ export function MicroView() {
     });
     dragMovedRef.current = false; // Reset movement tracking
 
-    // Pin node in d3 simulation and wake up physics
+    // Pin node in d3 simulation and warm up physics (once at drag start)
     if (simulationRef.current) {
-      applyDrag(simulationRef.current, taskId, currentPos.x, currentPos.y);
+      startDrag(simulationRef.current, taskId);
     }
     setPhysicsSettled(false);
 
@@ -509,7 +510,7 @@ export function MicroView() {
 
       // Update d3 simulation - other nodes react in real-time
       if (simulationRef.current) {
-        applyDrag(simulationRef.current, draggingTaskId, newPos.x, newPos.y);
+        updateDrag(simulationRef.current, draggingTaskId, newPos.x, newPos.y);
       }
 
       setDraggedPositions(prev => {
@@ -539,12 +540,12 @@ export function MicroView() {
 
         // Keep pinned in d3 simulation since user placed it manually
         if (simulationRef.current) {
-          releaseDrag(simulationRef.current, draggingTaskId, true);
+          endDrag(simulationRef.current, draggingTaskId, true);
         }
       } else {
         // Didn't move significantly - release to physics
         if (simulationRef.current) {
-          releaseDrag(simulationRef.current, draggingTaskId, false);
+          endDrag(simulationRef.current, draggingTaskId, false);
         }
       }
       setDraggingTaskId(null);
@@ -658,7 +659,7 @@ export function MicroView() {
 
       // Update d3 simulation - other nodes react in real-time
       if (simulationRef.current) {
-        applyDrag(simulationRef.current, draggingTaskId, newPos.x, newPos.y);
+        updateDrag(simulationRef.current, draggingTaskId, newPos.x, newPos.y);
       }
 
       setDraggedPositions(prev => {
@@ -722,12 +723,12 @@ export function MicroView() {
 
         // Keep pinned in d3 simulation since user placed it manually
         if (simulationRef.current) {
-          releaseDrag(simulationRef.current, draggingTaskId, true);
+          endDrag(simulationRef.current, draggingTaskId, true);
         }
       } else {
         // Didn't move significantly - release to physics
         if (simulationRef.current) {
-          releaseDrag(simulationRef.current, draggingTaskId, false);
+          endDrag(simulationRef.current, draggingTaskId, false);
         }
       }
       setDraggingTaskId(null);
@@ -762,9 +763,9 @@ export function MicroView() {
     });
     dragMovedRef.current = false; // Reset movement tracking
 
-    // Pin node in d3 simulation and wake up physics
+    // Pin node in d3 simulation and warm up physics (once at drag start)
     if (simulationRef.current) {
-      applyDrag(simulationRef.current, taskId, currentPos.x, currentPos.y);
+      startDrag(simulationRef.current, taskId);
     }
     setPhysicsSettled(false);
 

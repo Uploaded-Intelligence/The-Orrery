@@ -103,43 +103,62 @@ export function createSimulation(nodes, links, config = {}) {
 }
 
 /**
- * Pin a node during drag
- * Gently wakes physics so other nodes flow organically
+ * Start dragging a node - warms up simulation ONCE
+ * Call this at drag START, not every move
+ *
+ * @param {Object} simulation - d3 simulation instance
+ * @param {string} nodeId - ID of node being dragged
+ */
+export function startDrag(simulation, nodeId) {
+  const node = simulation.nodes().find(n => n.id === nodeId);
+  if (node) {
+    node.fx = node.x;
+    node.fy = node.y;
+  }
+  // alphaTarget keeps simulation warm WHILE dragging (not alpha!)
+  // This is the key to smooth movement
+  simulation.alphaTarget(0.3).restart();
+}
+
+/**
+ * Update dragged node position
+ * Call this on every mouse move - NO restart, just update position
  *
  * @param {Object} simulation - d3 simulation instance
  * @param {string} nodeId - ID of node being dragged
  * @param {number} x - New x position
  * @param {number} y - New y position
  */
-export function applyDrag(simulation, nodeId, x, y) {
+export function updateDrag(simulation, nodeId, x, y) {
   const node = simulation.nodes().find(n => n.id === nodeId);
   if (node) {
     node.fx = x;
     node.fy = y;
   }
-  // Gentle wake - low alpha = smooth movement, not snappy
-  // Only restart if not already running to avoid energy spikes
-  if (simulation.alpha() < 0.1) {
-    simulation.alpha(0.1).restart();
-  }
+  // NO restart here! Simulation is already warm from startDrag
+  // This is what makes it smooth
 }
 
 /**
- * Release a node after drag (unpin unless manually positioned)
+ * End drag - let simulation cool down
  *
  * @param {Object} simulation - d3 simulation instance
  * @param {string} nodeId - ID of node to release
  * @param {boolean} keepPinned - If true, keep fx/fy set (user placed it manually)
  */
-export function releaseDrag(simulation, nodeId, keepPinned = false) {
+export function endDrag(simulation, nodeId, keepPinned = false) {
   const node = simulation.nodes().find(n => n.id === nodeId);
   if (node && !keepPinned) {
     node.fx = null;
     node.fy = null;
   }
-  // Give a small alpha boost for settling
-  simulation.alpha(0.1).restart();
+  // Let simulation cool down naturally
+  simulation.alphaTarget(0);
 }
+
+// Legacy aliases for compatibility
+export const applyDrag = updateDrag;
+export const releaseDrag = endDrag;
 
 /**
  * Check if simulation has settled (low energy)
