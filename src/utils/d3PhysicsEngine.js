@@ -27,15 +27,15 @@ import {
  */
 export function createSimulation(nodes, links, config = {}) {
   const {
-    repulsionStrength = -2000,
-    linkDistance = 200,
-    linkStrength = 0.5,
-    collisionRadius = 80,
-    collisionIterations = 3,
-    radialStrength = 0.05,  // WEAK - just a hint, not a constraint
+    repulsionStrength = -1800,   // Strong repulsion for emergent structure
+    linkDistance = 160,          // Connected nodes cluster close
+    linkStrength = 0.6,          // Strong links - connectivity drives layout
+    collisionRadius = 85,        // Node half-width + small padding
+    collisionIterations = 4,     // Fully resolve overlaps
+    radialStrength = 0.02,       // Weak DAG hint - don't force geometry
     layerSpacing = 150,
     baseRadius = 100,
-    centerStrength = 0.03,
+    centerStrength = 0.02,       // Gentle centering
   } = config;
 
   // Count nodes per layer for adaptive radius
@@ -85,11 +85,11 @@ export function createSimulation(nodes, links, config = {}) {
     .force('radial', forceRadial(getTargetRadius, 0, 0)
       .strength(radialStrength)
     )
-    // Physics parameters tuned for GENTLE, ORGANIC movement
+    // Physics parameters tuned for EMERGENT STRUCTURE
     .alpha(1)           // Start with high energy for initial layout
-    .alphaDecay(0.02)   // Slow decay = smooth settling
-    .alphaMin(0.001)    // Lower minimum = finer settling
-    .velocityDecay(0.4); // Higher friction = smoother, less snappy
+    .alphaDecay(0.015)  // Slower decay = more time to find structure
+    .alphaMin(0.001)    // Low minimum = fine settling
+    .velocityDecay(0.35); // Medium friction = responsive but not bouncy
 
   // Apply pinning for nodes with manual positions (fx/fy locks position)
   nodes.forEach(node => {

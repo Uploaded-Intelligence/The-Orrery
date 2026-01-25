@@ -23,6 +23,7 @@ import { DependencyEdge, EdgePreview, EdgeDefs } from '@/components/edges';
 import { PartyChatPanel } from '@/components/party';
 import { ExpandedTaskEditor } from '@/components/panels';
 import { ResetLayoutButton } from '@/components/ui/ResetLayoutButton';
+import { PhysicsDebugPanel } from '@/components/ui/PhysicsDebugPanel';
 
 /**
  * MicroView - Task DAG visualization
@@ -134,6 +135,25 @@ export function MicroView() {
   // Physics positions extracted from simulation for rendering
   const [physicsPositions, setPhysicsPositions] = useState(new Map());
   const [physicsSettled, setPhysicsSettled] = useState(false);
+
+  // Physics configuration - can be tuned via debug panel
+  const DEFAULT_PHYSICS_CONFIG = useMemo(() => ({
+    repulsionStrength: -1800,   // Strong repulsion for emergent structure
+    linkDistance: 160,          // Connected nodes cluster close
+    linkStrength: 0.6,          // Strong links - connectivity drives layout
+    collisionRadius: 85,        // Node half-width + small padding
+    collisionIterations: 4,     // Fully resolve overlaps
+    radialStrength: 0.02,       // Weak DAG hint - don't force geometry
+    layerSpacing: 150,
+    baseRadius: 100,
+    centerStrength: 0.02,       // Gentle centering
+    alphaDecay: 0.015,          // Slower decay for structure emergence
+    velocityDecay: 0.35,        // Medium friction
+  }), []);
+
+  const [physicsConfig, setPhysicsConfig] = useState(null);
+  // Use config from state, or defaults if null
+  const activePhysicsConfig = physicsConfig || DEFAULT_PHYSICS_CONFIG;
 
   // Count tasks with manual positions (changes when Reset clears positions)
   const pinnedTaskCount = useMemo(() =>
@@ -250,18 +270,8 @@ export function MicroView() {
       target: edge.target,
     }));
 
-    // Create d3-force simulation - tuned for GENTLE, ORGANIC interaction
-    simulationRef.current = createSimulation(nodes, links, {
-      repulsionStrength: -800,    // Gentler push-apart (was -2500)
-      linkDistance: 180,          // Slightly closer connected nodes
-      linkStrength: 0.2,          // Softer springs (was 0.4) - less snappy
-      collisionRadius: 85,        // Node width/2 + padding
-      collisionIterations: 2,     // Fewer iterations = softer collision
-      radialStrength: 0.03,       // Very gentle DAG layer hint
-      layerSpacing: 150,          // Radial spacing between layers
-      baseRadius: 100,            // Minimum radius for roots
-      centerStrength: 0.01,       // Very gentle centering
-    });
+    // Create d3-force simulation with current physics config
+    simulationRef.current = createSimulation(nodes, links, activePhysicsConfig);
 
     // If we preserved positions from old simulation, start nearly settled
     // This prevents jarring movement when re-init is triggered by drag release
@@ -280,7 +290,31 @@ export function MicroView() {
         simulationRef.current.stop();
       }
     };
-  }, [visibleTasks.length, visibleEdges.length, pinnedTaskCount, dagLayers]); // Re-init when count, positions, OR layers change
+  }, [visibleTasks.length, visibleEdges.length, pinnedTaskCount, dagLayers, activePhysicsConfig]); // Re-init when count, positions, layers, OR physics config change
+
+  // Update simulation physics when config changes (live tuning)
+  // This allows real-time parameter adjustment without recreating the simulation
+  useEffect(() => {
+    if (!simulationRef.current) return;
+
+    const sim = simulationRef.current;
+
+    // Update forces with new config
+    sim.force('charge').strength(activePhysicsConfig.repulsionStrength);
+    sim.force('link')
+      .distance(activePhysicsConfig.linkDistance)
+      .strength(activePhysicsConfig.linkStrength);
+    sim.force('collide')
+      .radius(activePhysicsConfig.collisionRadius)
+      .iterations(activePhysicsConfig.collisionIterations);
+    sim.force('centerX').strength(activePhysicsConfig.centerStrength);
+    sim.force('centerY').strength(activePhysicsConfig.centerStrength);
+    sim.force('radial').strength(activePhysicsConfig.radialStrength);
+
+    // Reheat to apply changes
+    sim.alpha(0.5).restart();
+    setPhysicsSettled(false);
+  }, [activePhysicsConfig]);
 
   // Run d3-force simulation tick
   // d3-force handles all physics internally - we just tick and extract positions
@@ -1268,6 +1302,18 @@ export function MicroView() {
           />
         );
       })()}
+
+      {/* Physics Debug Panel - live parameter tuning */}
+      <PhysicsDebugPanel
+        config={activePhysicsConfig}
+        onChange={(newConfig) => {
+          if (newConfig === null) {
+            setPhysicsConfig(null); // Reset to defaults
+          } else {
+            setPhysicsConfig(newConfig);
+          }
+        }}
+      />
     </div>
   );
 }
