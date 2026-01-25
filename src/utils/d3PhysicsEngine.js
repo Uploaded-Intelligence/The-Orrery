@@ -132,8 +132,14 @@ export function startDrag(simulation, nodeId) {
 export function updateDrag(simulation, nodeId, x, y) {
   const node = simulation.nodes().find(n => n.id === nodeId);
   if (node) {
+    // Set both fixed position (fx/fy) AND actual position (x/y)
+    // fx/fy tells d3-force "hold this node here"
+    // x/y is what getPositions() reads for rendering
+    // Without setting x/y, the node snaps back to its pre-drag position on release
     node.fx = x;
     node.fy = y;
+    node.x = x;
+    node.y = y;
   }
   // NO restart here! Simulation is already warm from startDrag
   // This is what makes it smooth
