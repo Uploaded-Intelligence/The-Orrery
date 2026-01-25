@@ -127,3 +127,4 @@ export function PhysicsDebugPanel({ config, onChange }) {
     document.body
   );
 }
+// Force rebuild
