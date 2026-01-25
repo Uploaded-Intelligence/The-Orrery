@@ -85,10 +85,11 @@ export function createSimulation(nodes, links, config = {}) {
     .force('radial', forceRadial(getTargetRadius, 0, 0)
       .strength(radialStrength)
     )
-    // Physics parameters for smooth settling
-    .alpha(1)           // Start with high energy
-    .alphaDecay(0.02)   // Decay rate (lower = runs longer)
-    .velocityDecay(0.3); // Friction (lower = more bouncy)
+    // Physics parameters tuned for GENTLE, ORGANIC movement
+    .alpha(1)           // Start with high energy for initial layout
+    .alphaDecay(0.02)   // Slow decay = smooth settling
+    .alphaMin(0.001)    // Lower minimum = finer settling
+    .velocityDecay(0.4); // Higher friction = smoother, less snappy
 
   // Apply pinning for nodes with manual positions (fx/fy locks position)
   nodes.forEach(node => {
@@ -103,7 +104,7 @@ export function createSimulation(nodes, links, config = {}) {
 
 /**
  * Pin a node during drag
- * Wakes up physics so other nodes react in real-time
+ * Gently wakes physics so other nodes flow organically
  *
  * @param {Object} simulation - d3 simulation instance
  * @param {string} nodeId - ID of node being dragged
@@ -116,8 +117,11 @@ export function applyDrag(simulation, nodeId, x, y) {
     node.fx = x;
     node.fy = y;
   }
-  // Wake up physics so other nodes react to the drag
-  simulation.alpha(0.3).restart();
+  // Gentle wake - low alpha = smooth movement, not snappy
+  // Only restart if not already running to avoid energy spikes
+  if (simulation.alpha() < 0.1) {
+    simulation.alpha(0.1).restart();
+  }
 }
 
 /**

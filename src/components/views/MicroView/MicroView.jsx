@@ -219,17 +219,17 @@ export function MicroView() {
       target: edge.target,
     }));
 
-    // Create d3-force simulation
+    // Create d3-force simulation - tuned for GENTLE, ORGANIC interaction
     simulationRef.current = createSimulation(nodes, links, {
-      repulsionStrength: -2500,   // Strong push-apart
-      linkDistance: 200,          // Ideal connected node distance
-      linkStrength: 0.4,          // Spring strength
-      collisionRadius: 85,        // Node width/2 + padding (~200/2 + 15)
-      collisionIterations: 3,     // Multiple passes for solid collision
-      radialStrength: 0.04,       // WEAK - just a DAG layer hint
+      repulsionStrength: -800,    // Gentler push-apart (was -2500)
+      linkDistance: 180,          // Slightly closer connected nodes
+      linkStrength: 0.2,          // Softer springs (was 0.4) - less snappy
+      collisionRadius: 85,        // Node width/2 + padding
+      collisionIterations: 2,     // Fewer iterations = softer collision
+      radialStrength: 0.03,       // Very gentle DAG layer hint
       layerSpacing: 150,          // Radial spacing between layers
       baseRadius: 100,            // Minimum radius for roots
-      centerStrength: 0.02,       // Gentle pull toward center
+      centerStrength: 0.01,       // Very gentle centering
     });
 
     setPhysicsSettled(false);
