@@ -247,7 +247,16 @@ export function MicroView() {
       centerStrength: 0.01,       // Very gentle centering
     });
 
-    setPhysicsSettled(false);
+    // If we preserved positions from old simulation, start nearly settled
+    // This prevents jarring movement when re-init is triggered by drag release
+    const preservedCount = currentPositions.size;
+    if (preservedCount > 0) {
+      simulationRef.current.alpha(0.1); // Nearly settled - just minor adjustments
+      setPhysicsSettled(false);
+    } else {
+      // Fresh layout - let physics settle from scratch
+      setPhysicsSettled(false);
+    }
 
     // Cleanup on unmount or re-init
     return () => {
