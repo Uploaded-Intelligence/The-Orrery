@@ -152,6 +152,13 @@ export function MicroView() {
     // Stop any existing simulation
     if (simulationRef.current) {
       simulationRef.current.stop();
+      simulationRef.current = null;
+    }
+
+    // Don't create simulation if no tasks
+    if (visibleTasks.length === 0) {
+      setPhysicsSettled(true);
+      return;
     }
 
     // Convert tasks to d3 nodes with layer-aware initial positioning
