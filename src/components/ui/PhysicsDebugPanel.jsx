@@ -1,5 +1,6 @@
 // src/components/ui/PhysicsDebugPanel.jsx
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Settings2, ChevronDown, ChevronRight } from 'lucide-react';
 import { COLORS } from '@/constants';
 
@@ -79,7 +80,7 @@ export function PhysicsDebugPanel({ config, onChange }) {
     flexShrink: 0,
   };
 
-  return (
+  return createPortal(
     <div style={panelStyle}>
       <div style={headerStyle} onClick={() => setExpanded(!expanded)}>
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -122,6 +123,7 @@ export function PhysicsDebugPanel({ config, onChange }) {
           </button>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
