@@ -169,8 +169,13 @@ export function MicroView() {
 
   // Initialize d3-force simulation when tasks change OR positions are reset
   useEffect(() => {
-    // Stop any existing simulation
+    // CRITICAL: Capture positions BEFORE destroying simulation
+    // This preserves physics positions when re-init triggers (e.g., after drag)
+    const currentPositions = new Map();
     if (simulationRef.current) {
+      simulationRef.current.nodes().forEach(node => {
+        currentPositions.set(node.id, { x: node.x, y: node.y });
+      });
       simulationRef.current.stop();
       simulationRef.current = null;
     }
@@ -181,11 +186,12 @@ export function MicroView() {
       return;
     }
 
-    // Convert tasks to d3 nodes with DETERMINISTIC initial positioning
-    // Same task IDs → same initial positions → same final layout
+    // Convert tasks to d3 nodes
+    // Priority: 1) Manual position 2) Current physics position 3) Deterministic seed
     const nodes = visibleTasks.map(task => {
       const hasManualPos = task.position && (task.position.x !== 0 || task.position.y !== 0);
       const layer = dagLayers.get(task.id) || 0;
+      const existingPos = currentPositions.get(task.id);
 
       if (hasManualPos) {
         return {
@@ -195,9 +201,17 @@ export function MicroView() {
           layer,
           pinned: true,
         };
+      } else if (existingPos) {
+        // Preserve current physics position - prevents snapping on re-init
+        return {
+          id: task.id,
+          x: existingPos.x,
+          y: existingPos.y,
+          layer,
+          pinned: false,
+        };
       } else {
-        // DETERMINISTIC positioning based on task ID
-        // Same ID always gets same angle/jitter → same layout after physics
+        // NEW node - deterministic positioning based on task ID
         const baseRadius = 100;
         const layerSpacing = 150;
         const targetRadius = baseRadius + layer * layerSpacing;
