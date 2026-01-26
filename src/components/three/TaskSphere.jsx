@@ -11,6 +11,7 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Sphere, Html, Ring } from '@react-three/drei';
+import { Interactive, useXR } from '@react-three/xr';
 import * as THREE from 'three';
 import { COLORS, QUEST_COLORS } from '@/constants';
 
@@ -74,11 +75,67 @@ export function TaskSphere({
   quests = [],
 }) {
   const meshRef = useRef();
+  const groupRef = useRef();
   const [hovered, setHovered] = useState(false);
 
   // ─── Cascade Unlock Animation State ─────────────────────────
   const [isUnlocking, setIsUnlocking] = useState(false);
   const unlockStartTimeRef = useRef(null);
+
+  // ─── VR Controller Interaction ──────────────────────────────
+  const { isPresenting, player } = useXR();
+  const lastSelectTimeRef = useRef(0);
+
+  /**
+   * Trigger haptic feedback on VR controllers
+   * @param {number} intensity - 0-1 strength
+   * @param {number} duration - milliseconds
+   */
+  const triggerHaptic = (intensity = 0.5, duration = 50) => {
+    if (!isPresenting) return;
+    try {
+      // Try to get controller input sources from player
+      const session = player?.children?.[0]?.xr?.getSession?.();
+      if (session?.inputSources) {
+        for (const source of session.inputSources) {
+          if (source.gamepad?.hapticActuators?.[0]) {
+            source.gamepad.hapticActuators[0].pulse(intensity, duration);
+          }
+        }
+      }
+    } catch (e) {
+      // Haptics not available, fail silently
+    }
+  };
+
+  // Handle VR select (triggered via Interactive wrapper)
+  const handleVRSelect = () => {
+    const now = Date.now();
+    const timeSinceLastSelect = now - lastSelectTimeRef.current;
+
+    // Haptic feedback
+    triggerHaptic(0.5, 50);
+
+    if (timeSinceLastSelect < 500) {
+      // Double-select (like double-click)
+      onDoubleClick?.(task);
+      triggerHaptic(0.8, 100);
+    } else {
+      // Single select
+      onSelect?.(task.id);
+    }
+
+    lastSelectTimeRef.current = now;
+  };
+
+  const handleVRHover = () => {
+    setHovered(true);
+    triggerHaptic(0.2, 20);
+  };
+
+  const handleVRBlur = () => {
+    setHovered(false);
+  };
 
   // Watch for unlock animation trigger from task state
   useEffect(() => {
@@ -176,29 +233,35 @@ export function TaskSphere({
   const pos = [position.x, position.y, position.z || 0];
 
   return (
-    <group position={pos}>
-      {/* Main organic orb */}
-      <Sphere
-        ref={meshRef}
-        args={[SPHERE_RADIUS, 32, 32]} // Enough segments for smooth appearance
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect?.(task.id);
-        }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          onDoubleClick?.(task);
-        }}
-        onPointerOver={(e) => {
-          e.stopPropagation();
-          setHovered(true);
-          document.body.style.cursor = 'pointer';
-        }}
-        onPointerOut={() => {
-          setHovered(false);
-          document.body.style.cursor = 'auto';
-        }}
+    <group ref={groupRef} position={pos}>
+      {/* Interactive wrapper for VR controller interaction */}
+      <Interactive
+        onSelect={handleVRSelect}
+        onHover={handleVRHover}
+        onBlur={handleVRBlur}
       >
+        {/* Main organic orb */}
+        <Sphere
+          ref={meshRef}
+          args={[SPHERE_RADIUS, 32, 32]} // Enough segments for smooth appearance
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect?.(task.id);
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            onDoubleClick?.(task);
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            setHovered(true);
+            document.body.style.cursor = 'pointer';
+          }}
+          onPointerOut={() => {
+            setHovered(false);
+            document.body.style.cursor = 'auto';
+          }}
+        >
         <meshStandardMaterial
           color={baseColor}
           emissive={glowColor}
@@ -218,51 +281,52 @@ export function TaskSphere({
               : distanceOpacity
           }
         />
-      </Sphere>
+        </Sphere>
 
-      {/* Selection ring */}
-      {isSelected && (
+        {/* Selection ring */}
+        {isSelected && (
+          <Ring
+            args={[SPHERE_RADIUS * 1.2, SPHERE_RADIUS * 1.35, 64]}
+            rotation={[Math.PI / 2, 0, 0]}
+          >
+            <meshBasicMaterial
+              color={COLORS.accentSecondary}
+              transparent
+              opacity={0.8}
+            />
+          </Ring>
+        )}
+
+        {/* Cognitive load glow ring */}
         <Ring
-          args={[SPHERE_RADIUS * 1.2, SPHERE_RADIUS * 1.35, 64]}
+          args={[
+            SPHERE_RADIUS * 1.05,
+            SPHERE_RADIUS * 1.1 + cognitiveLoad * 0.02,
+            64
+          ]}
           rotation={[Math.PI / 2, 0, 0]}
         >
           <meshBasicMaterial
-            color={COLORS.accentSecondary}
+            color={glowColor}
             transparent
-            opacity={0.8}
+            opacity={(0.3 + cognitiveLoad * 0.1) * distanceOpacity}
           />
         </Ring>
-      )}
 
-      {/* Cognitive load glow ring */}
-      <Ring
-        args={[
-          SPHERE_RADIUS * 1.05,
-          SPHERE_RADIUS * 1.1 + cognitiveLoad * 0.02,
-          64
-        ]}
-        rotation={[Math.PI / 2, 0, 0]}
-      >
-        <meshBasicMaterial
-          color={glowColor}
-          transparent
-          opacity={(0.3 + cognitiveLoad * 0.1) * distanceOpacity}
-        />
-      </Ring>
-
-      {/* Quest badge (small sphere at bottom) */}
-      {primaryQuestId && (
-        <Sphere
-          args={[0.15, 16, 16]}
-          position={[0, -SPHERE_RADIUS * 0.8, SPHERE_RADIUS * 0.3]}
-        >
-          <meshStandardMaterial
-            color={questColor}
-            emissive={questColor}
-            emissiveIntensity={0.3}
-          />
-        </Sphere>
-      )}
+        {/* Quest badge (small sphere at bottom) */}
+        {primaryQuestId && (
+          <Sphere
+            args={[0.15, 16, 16]}
+            position={[0, -SPHERE_RADIUS * 0.8, SPHERE_RADIUS * 0.3]}
+          >
+            <meshStandardMaterial
+              color={questColor}
+              emissive={questColor}
+              emissiveIntensity={0.3}
+            />
+          </Sphere>
+        )}
+      </Interactive>
 
       {/* Status icon - HTML overlay (only on hover/select) */}
       {(hovered || isSelected) && (
