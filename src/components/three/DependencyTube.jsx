@@ -15,6 +15,12 @@ import { COLORS } from '@/constants';
 const SPHERE_RADIUS = 1; // Must match TaskSphere
 const PARTICLE_COUNT = 5; // Flowing particles per edge
 
+// ─── Unlock Animation Parameters ────────────────────────────
+const NORMAL_PARTICLE_SPEED = 0.3;
+const UNLOCK_PARTICLE_SPEED = 0.8;  // 2.5x faster during unlock
+const UNLOCK_PARTICLE_SIZE = 0.12;  // 1.5x larger during unlock
+const NORMAL_PARTICLE_SIZE = 0.08;
+
 /**
  * DependencyTube - 3D edge between task spheres
  *
@@ -60,9 +66,12 @@ export function DependencyTube({
     return { start, end, mid, curve };
   }, [sourcePos, targetPos]);
 
-  // ─── Animate flowing particles ─────────────────────────────
+  // ─── Animate flowing particles + unlock energy ──────────────
   useFrame((state) => {
     const time = state.clock.elapsedTime;
+
+    // Particle speed based on unlock state
+    const speed = isUnlocking ? UNLOCK_PARTICLE_SPEED : NORMAL_PARTICLE_SPEED;
 
     // Animate each particle along the curve
     particlesRef.current.forEach((particle, i) => {
@@ -70,22 +79,25 @@ export function DependencyTube({
 
       // Stagger particles along the path
       const offset = i / PARTICLE_COUNT;
-      const speed = isUnlocking ? 0.5 : 0.3; // Faster when unlocking
       const t = ((time * speed) + offset) % 1; // 0->1 position along curve
 
       // Get position on bezier curve
       const pos = curve.getPoint(t);
       particle.position.copy(pos);
 
-      // Particles glow brighter when unlocking
+      // Particles glow brighter and larger when unlocking
       if (particle.material) {
-        particle.material.opacity = isUnlocking ? 0.9 : 0.5;
+        particle.material.opacity = isUnlocking ? 0.95 : 0.5;
       }
+
+      // Scale particles during unlock
+      const particleScale = isUnlocking ? UNLOCK_PARTICLE_SIZE / NORMAL_PARTICLE_SIZE : 1;
+      particle.scale.setScalar(particleScale);
     });
 
-    // Animate line dash offset when unlocking
+    // Animate line dash offset when unlocking (energy flow direction)
     if (isUnlocking && lineRef.current?.material) {
-      lineRef.current.material.dashOffset -= 0.05;
+      lineRef.current.material.dashOffset -= 0.08; // Faster dash flow
     }
   });
 
@@ -125,7 +137,7 @@ export function DependencyTube({
         <Sphere
           key={i}
           ref={(el) => (particlesRef.current[i] = el)}
-          args={[0.08, 8, 8]} // Small particle spheres
+          args={[NORMAL_PARTICLE_SIZE, 8, 8]}
         >
           <meshBasicMaterial
             color={particleColor}
