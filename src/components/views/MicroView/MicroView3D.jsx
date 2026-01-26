@@ -372,6 +372,33 @@ export function MicroView3D() {
         {/* VR Entry Button - must be outside Canvas */}
         <VRButton />
 
+        {/* VR Status Indicator (desktop debugging) */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            padding: '8px 12px',
+            background: 'rgba(26, 28, 40, 0.9)',
+            borderRadius: '6px',
+            fontSize: '12px',
+            color: '#a0aec0',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <span style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#22d3ee',
+            animation: 'pulse 2s infinite',
+          }} />
+          VR Ready
+        </div>
+
         <OrreryCanvas>
           {/* Camera controller for focus-on-node */}
           <CameraController focusTarget={focusTarget} />
