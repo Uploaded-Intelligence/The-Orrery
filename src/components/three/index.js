@@ -10,3 +10,4 @@ export { CosmicParticles } from './CosmicParticles';
 export { CameraController, useCameraDistance } from './CameraController';
 export { ReadinessMaterial } from './ReadinessMaterial';
 export { VRButton } from './VRButton';
+export { VRInteractionManager, useVRState } from './VRInteractionManager';
