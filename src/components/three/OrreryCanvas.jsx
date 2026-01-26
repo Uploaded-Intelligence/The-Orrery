@@ -9,16 +9,19 @@
 import { Canvas } from '@react-three/fiber';
 import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { XR, Controllers, Hands } from '@react-three/xr';
 import { COLORS } from '@/constants';
 
 /**
  * Main 3D canvas wrapper for The Orrery
  * Provides perspective camera, lighting, and post-processing
+ * Phase 4: Wraps content in XR context for VR support
  *
  * @param {Object} props
  * @param {React.ReactNode} props.children - 3D scene content
+ * @param {boolean} props.vrEnabled - Whether to include XR wrapper (default: true)
  */
-export function OrreryCanvas({ children }) {
+export function OrreryCanvas({ children, vrEnabled = true }) {
   return (
     <Canvas
       gl={{
@@ -73,14 +76,25 @@ export function OrreryCanvas({ children }) {
         color={COLORS.accentPrimary}
       />
 
-      {children}
+      {/* Phase 4: XR wrapper for VR support
+          When VR session is active, camera control transfers to headset
+          Controllers and Hands render tracked input devices */}
+      {vrEnabled ? (
+        <XR>
+          <Controllers />
+          <Hands />
+          {children}
+        </XR>
+      ) : (
+        children
+      )}
 
       {/* Post-processing for bioluminescent glow effect */}
       <EffectComposer>
         <Bloom
           luminanceThreshold={0.2}
           luminanceSmoothing={0.9}
-          intensity={0.8}
+          intensity={0.6}  // Reduced from 0.8 for VR comfort
           mipmapBlur
         />
       </EffectComposer>
