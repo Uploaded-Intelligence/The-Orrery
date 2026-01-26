@@ -7,10 +7,15 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { QuadraticBezierLine, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 import { COLORS } from '@/constants';
+
+// ─── Distance-based depth perception constants ──────────────
+const FOCUS_DISTANCE = 30;
+const FADE_DISTANCE = 80;
+const MIN_OPACITY = 0.2;  // Edges can fade more than spheres
 
 const SPHERE_RADIUS = 1; // Must match TaskSphere
 const PARTICLE_COUNT = 5; // Flowing particles per edge
@@ -65,6 +70,35 @@ export function DependencyTube({
 
     return { start, end, mid, curve };
   }, [sourcePos, targetPos]);
+
+  // ─── Calculate distance-based opacity ─────────────────────────
+  const { camera } = useThree();
+
+  // Calculate average distance of edge from camera (use midpoint)
+  const edgeMidpoint = useMemo(() => {
+    const srcZ = sourcePos.z || 0;
+    const tgtZ = targetPos.z || 0;
+    return new THREE.Vector3(
+      (sourcePos.x + targetPos.x) / 2,
+      (sourcePos.y + targetPos.y) / 2,
+      (srcZ + tgtZ) / 2
+    );
+  }, [sourcePos, targetPos]);
+
+  // Use ref to track distance opacity (updated in useFrame)
+  const distanceOpacityRef = useRef(1);
+  useFrame(() => {
+    const edgeDistance = camera.position.distanceTo(edgeMidpoint);
+    if (edgeDistance <= FOCUS_DISTANCE) {
+      distanceOpacityRef.current = 1;
+    } else if (edgeDistance >= FADE_DISTANCE) {
+      distanceOpacityRef.current = MIN_OPACITY;
+    } else {
+      const t = (edgeDistance - FOCUS_DISTANCE) / (FADE_DISTANCE - FOCUS_DISTANCE);
+      distanceOpacityRef.current = 1 - t * (1 - MIN_OPACITY);
+    }
+  });
+  const distanceOpacity = distanceOpacityRef.current;
 
   // ─── Animate flowing particles + unlock energy ──────────────
   useFrame((state) => {
@@ -125,7 +159,7 @@ export function DependencyTube({
         color={lineColor}
         lineWidth={lineWidth}
         transparent
-        opacity={0.6}
+        opacity={0.6 * distanceOpacity}
         dashed={isUnlocking}
         dashScale={5}
         dashSize={0.5}
@@ -142,7 +176,7 @@ export function DependencyTube({
           <meshBasicMaterial
             color={particleColor}
             transparent
-            opacity={0.5}
+            opacity={0.5 * distanceOpacity}
           />
         </Sphere>
       ))}
