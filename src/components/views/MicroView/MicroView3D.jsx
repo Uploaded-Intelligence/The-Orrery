@@ -11,7 +11,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useOrrery } from '@/store';
 import { getComputedTaskStatus, getLayoutPositions } from '@/utils';
-import { OrreryCanvas, TaskSphere, DependencyTube, CosmicParticles, CameraController, VRButton } from '@/components/three';
+import { OrreryCanvas, TaskSphere, DependencyTube, CosmicParticles, CameraController, VRButton, VRTaskDetail } from '@/components/three';
 import { QUEST_COLORS, COLORS } from '@/constants';
 import { Plus } from 'lucide-react';
 
@@ -427,6 +427,23 @@ export function MicroView3D() {
               />
             );
           })}
+
+          {/* VR Task Detail Panel - shows for selected task in VR */}
+          {selectedTaskId && (() => {
+            const selectedTask = visibleTasks.find(t => t.id === selectedTaskId);
+            if (!selectedTask) return null;
+            const taskPos = getPosition(selectedTask);
+            return (
+              <VRTaskDetail
+                task={{
+                  ...selectedTask,
+                  status: getComputedTaskStatus(selectedTask, state),
+                }}
+                taskPosition={taskPos}
+                quests={questsWithColors}
+              />
+            );
+          })()}
         </OrreryCanvas>
 
         {/* Empty state */}
