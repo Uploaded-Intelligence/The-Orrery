@@ -12,3 +12,4 @@ export { ReadinessMaterial } from './ReadinessMaterial';
 export { VRButton } from './VRButton';
 export { VRInteractionManager, useVRState } from './VRInteractionManager';
 export { VRPanel } from './VRPanel';
+export { VRTaskDetail } from './VRTaskDetail';
