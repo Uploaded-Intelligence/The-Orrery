@@ -10,61 +10,69 @@
     "phase-1-foundation": {
       "name": "Phase 1: 3D Foundation",
       "description": "Replace SVG with Three.js, perspective camera, organic orbs, hybrid edges",
-      "status": "pending",
+      "status": "planned",
       "wave": 1,
       "dependencies": [],
       "blocks": ["phase-2-camera", "phase-3-organism"],
-      "planPath": null,
-      "plannedAt": null,
+      "planPath": "features/phase-1-foundation.md",
+      "plannedAt": "2026-01-26T12:00:00Z",
       "completedAt": null,
       "gateResult": null,
-      "estimatedDays": "4-5"
+      "estimatedDays": "4-5",
+      "taskCount": 10,
+      "phases": ["1A: Dependencies & Canvas", "1B: TaskSphere", "1C: DependencyTube", "1D: CosmicParticles", "1E: MicroView3D", "1F: CSS & Feature Flag", "1G: Browser Verification"]
     },
     "phase-2-camera": {
       "name": "Phase 2: Depth & Camera",
       "description": "Orbit controls, perspective navigation, Z-depth distribution by DAG layer",
-      "status": "pending",
+      "status": "planned",
       "wave": 2,
       "dependencies": ["phase-1-foundation"],
       "blocks": ["phase-4-vr"],
-      "planPath": null,
-      "plannedAt": null,
+      "planPath": "features/phase-2-camera.md",
+      "plannedAt": "2026-01-26T19:30:00Z",
       "completedAt": null,
       "gateResult": null,
-      "estimatedDays": "3-4"
+      "estimatedDays": "3-4",
+      "taskCount": 8,
+      "phases": ["2A: OrbitControls Integration", "2B: Z-Depth Distribution", "2C: Distance-Based Depth Perception", "2D: Integration and Browser Verification"]
     },
     "phase-3-organism": {
       "name": "Phase 3: Organism Behavior",
       "description": "3D cascade animations, CosmicParticles system, readiness glow",
-      "status": "pending",
+      "status": "planned",
       "wave": 2,
       "dependencies": ["phase-1-foundation"],
       "blocks": ["phase-4-vr"],
-      "planPath": null,
-      "plannedAt": null,
+      "planPath": "features/phase-3-organism.md",
+      "plannedAt": "2026-01-26T20:15:00Z",
       "completedAt": null,
       "gateResult": null,
-      "estimatedDays": "3-4"
+      "estimatedDays": "3-4",
+      "taskCount": 10,
+      "phases": ["3A: TaskSphere Cascade Unlock", "3B: DependencyTube Energy Flow", "3C: CosmicParticles Focus + Session", "3D: ReadinessMaterial Shader", "3E: MicroView3D Integration", "3F: Browser Verification"]
     },
     "phase-4-vr": {
       "name": "Phase 4: VR Integration",
       "description": "WebXR support, controller/hand tracking, VR UI panels for Pico 4 Ultra",
-      "status": "pending",
+      "status": "planned",
       "wave": 3,
       "dependencies": ["phase-2-camera", "phase-3-organism"],
       "blocks": [],
-      "planPath": null,
-      "plannedAt": null,
+      "planPath": "features/phase-4-vr.md",
+      "plannedAt": "2026-01-26T21:00:00Z",
       "completedAt": null,
       "gateResult": null,
-      "estimatedDays": "4-5"
+      "estimatedDays": "4-5",
+      "taskCount": 16,
+      "phases": ["4A: WebXR Foundation", "4B: VR Controller Interaction", "4C: VR UI Panels", "4D: VR Performance Optimization", "4E: Integration and VR Verification"]
     }
   },
   "gates": {
     "planning": {
-      "passed": null,
-      "at": null,
-      "notes": null
+      "passed": true,
+      "at": "2026-01-26T21:00:00Z",
+      "notes": "All 4 features planned - Wave 1, 2, 3 ready for execution"
     },
     "completion": {
       "passed": null,
