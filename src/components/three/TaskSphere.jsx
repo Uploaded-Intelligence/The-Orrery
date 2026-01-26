@@ -8,9 +8,10 @@
 // Layer 3 (Visceral): Pulse speed + amplitude - nervous system
 // ═══════════════════════════════════════════════════════════════
 
-import { useRef, useState, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useRef, useState, useEffect, useMemo } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Sphere, Html, Ring } from '@react-three/drei';
+import * as THREE from 'three';
 import { COLORS, QUEST_COLORS } from '@/constants';
 
 const SPHERE_RADIUS = 1; // World units
@@ -108,6 +109,35 @@ export function TaskSphere({
   const glowIntensity = COGNITIVE_INTENSITY[loadIndex];    // Layer 2
   const { speed: pulseSpeed, amplitude: pulseAmplitude } = COGNITIVE_PULSE[loadIndex]; // Layer 3
 
+  // ─── Distance-based depth perception ──────────────────────────
+  const { camera } = useThree();
+  const spherePosition = useMemo(
+    () => new THREE.Vector3(position.x, position.y, position.z || 0),
+    [position.x, position.y, position.z]
+  );
+
+  // Calculate opacity based on distance from camera
+  // Close nodes: fully opaque, Far nodes: semi-transparent
+  const FOCUS_DISTANCE = 30;     // Full opacity within this distance
+  const FADE_DISTANCE = 80;      // Minimum opacity beyond this distance
+  const MIN_OPACITY = 0.35;      // Don't go fully transparent
+
+  // Use ref to avoid recalculating every frame (camera position updates)
+  const distanceOpacityRef = useRef(1);
+  useFrame(() => {
+    const distance = camera.position.distanceTo(spherePosition);
+    if (distance <= FOCUS_DISTANCE) {
+      distanceOpacityRef.current = 1;
+    } else if (distance >= FADE_DISTANCE) {
+      distanceOpacityRef.current = MIN_OPACITY;
+    } else {
+      // Linear interpolation between focus and fade distances
+      const t = (distance - FOCUS_DISTANCE) / (FADE_DISTANCE - FOCUS_DISTANCE);
+      distanceOpacityRef.current = 1 - t * (1 - MIN_OPACITY);
+    }
+  });
+  const distanceOpacity = distanceOpacityRef.current;
+
   // ─── Animation: Breathing + Organic Wobble + Unlock ─────────
   useFrame((state) => {
     if (!meshRef.current) return;
@@ -177,12 +207,16 @@ export function TaskSphere({
               ? glowIntensity + 0.4  // Strong boost during unlock
               : hovered || isSelected
                 ? glowIntensity + 0.2  // Boost on interaction
-                : glowIntensity
+                : glowIntensity * distanceOpacity  // Dim glow with distance
           }
           roughness={0.7}  // Slightly matte for organic feel
           metalness={0.1}  // Low metalness = biological
           transparent
-          opacity={status === 'locked' ? 0.5 : 1}
+          opacity={
+            status === 'locked'
+              ? 0.5 * distanceOpacity
+              : distanceOpacity
+          }
         />
       </Sphere>
 
@@ -212,7 +246,7 @@ export function TaskSphere({
         <meshBasicMaterial
           color={glowColor}
           transparent
-          opacity={0.3 + cognitiveLoad * 0.1}
+          opacity={(0.3 + cognitiveLoad * 0.1) * distanceOpacity}
         />
       </Ring>
 
