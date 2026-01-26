@@ -1,0 +1,99 @@
+{
+  "epic": "3d-visual-evolution",
+  "created": "2026-01-26",
+  "status": "planning",
+  "complexity": "complex",
+  "thinkingLevel": "ULTRATHINK",
+  "currentWave": 0,
+  "sourcePlan": "../plans/2026-01-26-3d-visual-evolution.md",
+  "features": {
+    "phase-1-foundation": {
+      "name": "Phase 1: 3D Foundation",
+      "description": "Replace SVG with Three.js, perspective camera, organic orbs, hybrid edges",
+      "status": "pending",
+      "wave": 1,
+      "dependencies": [],
+      "blocks": ["phase-2-camera", "phase-3-organism"],
+      "planPath": null,
+      "plannedAt": null,
+      "completedAt": null,
+      "gateResult": null,
+      "estimatedDays": "4-5"
+    },
+    "phase-2-camera": {
+      "name": "Phase 2: Depth & Camera",
+      "description": "Orbit controls, perspective navigation, Z-depth distribution by DAG layer",
+      "status": "pending",
+      "wave": 2,
+      "dependencies": ["phase-1-foundation"],
+      "blocks": ["phase-4-vr"],
+      "planPath": null,
+      "plannedAt": null,
+      "completedAt": null,
+      "gateResult": null,
+      "estimatedDays": "3-4"
+    },
+    "phase-3-organism": {
+      "name": "Phase 3: Organism Behavior",
+      "description": "3D cascade animations, CosmicParticles system, readiness glow",
+      "status": "pending",
+      "wave": 2,
+      "dependencies": ["phase-1-foundation"],
+      "blocks": ["phase-4-vr"],
+      "planPath": null,
+      "plannedAt": null,
+      "completedAt": null,
+      "gateResult": null,
+      "estimatedDays": "3-4"
+    },
+    "phase-4-vr": {
+      "name": "Phase 4: VR Integration",
+      "description": "WebXR support, controller/hand tracking, VR UI panels for Pico 4 Ultra",
+      "status": "pending",
+      "wave": 3,
+      "dependencies": ["phase-2-camera", "phase-3-organism"],
+      "blocks": [],
+      "planPath": null,
+      "plannedAt": null,
+      "completedAt": null,
+      "gateResult": null,
+      "estimatedDays": "4-5"
+    }
+  },
+  "gates": {
+    "planning": {
+      "passed": null,
+      "at": null,
+      "notes": null
+    },
+    "completion": {
+      "passed": null,
+      "at": null,
+      "notes": null
+    }
+  },
+  "waves": {
+    "1": {
+      "features": ["phase-1-foundation"],
+      "status": "pending",
+      "startedAt": null,
+      "completedAt": null,
+      "integrationVerified": null
+    },
+    "2": {
+      "features": ["phase-2-camera", "phase-3-organism"],
+      "status": "pending",
+      "startedAt": null,
+      "completedAt": null,
+      "integrationVerified": null,
+      "note": "These features can execute in parallel"
+    },
+    "3": {
+      "features": ["phase-4-vr"],
+      "status": "pending",
+      "startedAt": null,
+      "completedAt": null,
+      "integrationVerified": null
+    }
+  }
+}
