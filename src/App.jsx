@@ -3,8 +3,8 @@
 // Macro View: Quest Constellation | Micro View: Task DAG
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useReducer } from 'react';
-import { Eye, EyeOff, Orbit, LayoutGrid, Network } from 'lucide-react';
+import { useState, useReducer, useCallback } from 'react';
+import { Eye, EyeOff, Orbit, LayoutGrid, Network, Box } from 'lucide-react';
 
 // ─── Imports from modules ─────────────────────────────────────────────────────
 import { COLORS, INITIAL_STATE } from '@/constants';
@@ -12,7 +12,7 @@ import { orreryReducer, OrreryContext } from '@/store';
 import { usePersistence, useLifeRPG } from '@/hooks';
 
 // ─── View Components ──────────────────────────────────────────────────────────
-import { MicroView } from '@/components/views/MicroView';
+import { MicroView, MicroView3D } from '@/components/views/MicroView';
 import { MacroView, ImportExportControls } from '@/components/macro';
 import { TimeSpaceGPS } from '@/components/gps';
 
@@ -28,6 +28,21 @@ export default function Orrery() {
   const [state, dispatch] = useReducer(orreryReducer, INITIAL_STATE);
   const [loadError, setLoadError] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
+
+  // 3D view feature flag - can be toggled via UI or localStorage
+  const [use3DView, setUse3DView] = useState(() => {
+    const stored = localStorage.getItem('orrery-use-3d-view');
+    return stored === 'true';
+  });
+
+  // Persist preference
+  const toggle3DView = useCallback(() => {
+    setUse3DView(prev => {
+      const next = !prev;
+      localStorage.setItem('orrery-use-3d-view', String(next));
+      return next;
+    });
+  }, []);
 
   // Persistence (local storage backup)
   usePersistence(state, dispatch, setLoadError, setSaveStatus);
@@ -218,6 +233,35 @@ export default function Orrery() {
               </button>
             </div>
 
+            {/* 3D View Toggle (only when in Micro view) */}
+            {isMicro && (
+              <button
+                onClick={toggle3DView}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.375rem 0.625rem',
+                  borderRadius: '0.5rem',
+                  border: use3DView
+                    ? `2px solid ${COLORS.accentSecondary}`
+                    : `1px solid ${COLORS.textMuted}30`,
+                  background: use3DView
+                    ? COLORS.accentSecondary + '15'
+                    : 'transparent',
+                  color: use3DView
+                    ? COLORS.accentSecondary
+                    : COLORS.textMuted,
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                }}
+                title={use3DView ? 'Switch to 2D view' : 'Switch to 3D view'}
+              >
+                <Box size={14} />
+                {use3DView ? '3D' : '2D'}
+              </button>
+            )}
+
             {/* Oracle Consultation Button */}
             <OracleButton />
 
@@ -250,7 +294,9 @@ export default function Orrery() {
             </div>
           )}
 
-          {isMicro ? <MicroView /> : <MacroView />}
+          {isMicro ? (
+            use3DView ? <MicroView3D /> : <MicroView />
+          ) : <MacroView />}
         </main>
       </div>
 
