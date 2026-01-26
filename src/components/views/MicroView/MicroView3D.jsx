@@ -11,7 +11,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useOrrery } from '@/store';
 import { getComputedTaskStatus, getLayoutPositions } from '@/utils';
-import { OrreryCanvas, TaskSphere, DependencyTube, CosmicParticles, CameraController } from '@/components/three';
+import { OrreryCanvas, TaskSphere, DependencyTube, CosmicParticles, CameraController, VRButton } from '@/components/three';
 import { QUEST_COLORS, COLORS } from '@/constants';
 import { Plus } from 'lucide-react';
 
@@ -369,6 +369,9 @@ export function MicroView3D() {
 
       {/* 3D Canvas */}
       <div style={{ flex: 1, position: 'relative' }}>
+        {/* VR Entry Button - must be outside Canvas */}
+        <VRButton />
+
         <OrreryCanvas>
           {/* Camera controller for focus-on-node */}
           <CameraController focusTarget={focusTarget} />
