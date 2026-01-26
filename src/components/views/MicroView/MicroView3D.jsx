@@ -164,6 +164,54 @@ export function MicroView3D() {
     };
   }, [basePositions, dagLayers]);
 
+  // ─── Calculate focus position for particles ─────────────────
+  const focusPosition = useMemo(() => {
+    if (!selectedTaskId) return null;
+    const task = visibleTasks.find(t => t.id === selectedTaskId);
+    if (!task) return null;
+    return getPosition(task);
+  }, [selectedTaskId, visibleTasks, getPosition]);
+
+  // ─── Trigger cascade unlock animation ─────────────────────────
+  const triggerCascadeUnlock = useCallback((completedTaskId) => {
+    // Find tasks that depend on the completed task
+    const dependentEdges = state.edges.filter(e => e.source === completedTaskId);
+
+    if (dependentEdges.length === 0) return;
+
+    const newAnimations = new Map(unlockAnimations);
+    const baseDelay = 100; // ms between cascade steps
+
+    dependentEdges.forEach((edge, index) => {
+      const targetTaskId = edge.target;
+      const targetTask = state.tasks.find(t => t.id === targetTaskId);
+
+      if (targetTask) {
+        // Check if this task becomes available (all other deps complete)
+        const otherDeps = state.edges.filter(
+          e => e.target === targetTaskId && e.source !== completedTaskId
+        );
+        const allOtherDepsComplete = otherDeps.every(e => {
+          const sourceTask = state.tasks.find(t => t.id === e.source);
+          return sourceTask && getComputedTaskStatus(sourceTask, state) === 'completed';
+        });
+
+        if (allOtherDepsComplete) {
+          // Schedule unlock animation with cascade delay
+          const unlockTime = Date.now() + (index * baseDelay);
+          newAnimations.set(targetTaskId, unlockTime);
+        }
+      }
+    });
+
+    setUnlockAnimations(newAnimations);
+
+    // Clear animations after they complete
+    setTimeout(() => {
+      setUnlockAnimations(new Map());
+    }, 1000);
+  }, [state.edges, state.tasks, unlockAnimations]);
+
   // ─── Handlers ──────────────────────────────────────────────
   const handleSelect = useCallback((taskId) => {
     setSelectedTaskId(taskId === selectedTaskId ? null : taskId);
@@ -177,9 +225,14 @@ export function MicroView3D() {
         payload: { taskId: task.id, plannedMinutes: task.estimatedMinutes || 25 }
       });
     } else if (status === 'in_progress' && api) {
-      api.completeTask(task.id).catch(e => console.error('Complete failed:', e));
+      api.completeTask(task.id)
+        .then(() => {
+          // Trigger cascade unlock animation
+          triggerCascadeUnlock(task.id);
+        })
+        .catch(e => console.error('Complete failed:', e));
     }
-  }, [dispatch, state, api]);
+  }, [dispatch, state, api, triggerCascadeUnlock]);
 
   // Add new task
   const addTask = useCallback(async () => {
@@ -320,8 +373,12 @@ export function MicroView3D() {
           {/* Camera controller for focus-on-node */}
           <CameraController focusTarget={focusTarget} />
 
-          {/* Background particles */}
-          <CosmicParticles count={100} />
+          {/* Background particles with focus and session response */}
+          <CosmicParticles
+            count={100}
+            focusPosition={focusPosition}
+            sessionState={sessionState}
+          />
 
           {/* Render edges first (behind nodes in 3D via render order) */}
           {visibleEdges.map(edge => {
@@ -329,21 +386,26 @@ export function MicroView3D() {
             const targetPos = positionsMap.get(edge.target);
             if (!sourcePos || !targetPos) return null;
 
+            // Edge is unlocking if target task has unlock animation
+            const isUnlocking = unlockAnimations.has(edge.target);
+
             return (
               <DependencyTube
                 key={edge.id}
                 sourcePos={sourcePos}
                 targetPos={targetPos}
                 isSelected={false}
-                isUnlocking={false}
+                isUnlocking={isUnlocking}
               />
             );
           })}
 
-          {/* Render task nodes */}
+          {/* Render task nodes with readiness and unlock animation */}
           {visibleTasks.map(task => {
             const position = getPosition(task);
             const computedStatus = getComputedTaskStatus(task, state);
+            const readiness = calculateReadiness(task.id, state.edges, state.tasks, state);
+            const unlockAnimationStart = unlockAnimations.get(task.id) || null;
 
             return (
               <TaskSphere
@@ -351,6 +413,8 @@ export function MicroView3D() {
                 task={{
                   ...task,
                   status: computedStatus,
+                  readiness: readiness,
+                  _unlockAnimationStart: unlockAnimationStart,
                 }}
                 position={position}
                 isSelected={selectedTaskId === task.id}
