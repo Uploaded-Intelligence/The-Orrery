@@ -8,7 +8,7 @@
 // Layer 3 (Visceral): Pulse speed + amplitude - nervous system
 // ═══════════════════════════════════════════════════════════════
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Sphere, Html, Ring } from '@react-three/drei';
 import { COLORS, QUEST_COLORS } from '@/constants';
@@ -75,6 +75,28 @@ export function TaskSphere({
   const meshRef = useRef();
   const [hovered, setHovered] = useState(false);
 
+  // ─── Cascade Unlock Animation State ─────────────────────────
+  const [isUnlocking, setIsUnlocking] = useState(false);
+  const unlockStartTimeRef = useRef(null);
+
+  // Watch for unlock animation trigger from task state
+  useEffect(() => {
+    if (task._unlockAnimationStart) {
+      // Calculate delay based on cascade timing
+      const delay = Math.max(0, task._unlockAnimationStart - Date.now());
+      const timer = setTimeout(() => {
+        setIsUnlocking(true);
+        unlockStartTimeRef.current = Date.now();
+        // Reset after animation duration (600ms)
+        setTimeout(() => {
+          setIsUnlocking(false);
+          unlockStartTimeRef.current = null;
+        }, 600);
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+  }, [task._unlockAnimationStart]);
+
   // ─── Compute visual properties from task state ─────────────
   const status = task.status || 'available';
   const cognitiveLoad = Math.min(5, Math.max(1, task.cognitiveLoad || 3));
@@ -86,15 +108,29 @@ export function TaskSphere({
   const glowIntensity = COGNITIVE_INTENSITY[loadIndex];    // Layer 2
   const { speed: pulseSpeed, amplitude: pulseAmplitude } = COGNITIVE_PULSE[loadIndex]; // Layer 3
 
-  // ─── Animation: Breathing + Organic Wobble ─────────────────
+  // ─── Animation: Breathing + Organic Wobble + Unlock ─────────
   useFrame((state) => {
     if (!meshRef.current) return;
     const time = state.clock.elapsedTime;
 
-    // Layer 3: Pulsation based on cognitive load
-    // Higher load = faster, more urgent pulse (nervous system engagement)
-    const breathe = 1 + Math.sin(time * pulseSpeed) * pulseAmplitude;
-    meshRef.current.scale.setScalar(breathe);
+    // BASE SCALE: Layer 3 pulsation based on cognitive load
+    let scale = 1 + Math.sin(time * pulseSpeed) * pulseAmplitude;
+
+    // UNLOCK ANIMATION: Override with scale pulse when unlocking
+    if (isUnlocking && unlockStartTimeRef.current) {
+      const elapsed = Date.now() - unlockStartTimeRef.current;
+      const t = Math.min(elapsed / 600, 1); // 0 -> 1 over 600ms
+
+      // Ease-out elastic: grow then settle
+      // Peak at t=0.3, settle by t=1.0
+      const unlockScale = t < 0.3
+        ? 1 + 0.2 * (t / 0.3)                    // 0->0.3: grow to 1.2
+        : 1 + 0.2 * Math.cos((t - 0.3) * Math.PI / 0.7) * 0.5 + 0.1; // 0.3->1: settle with bounce
+
+      scale = unlockScale;
+    }
+
+    meshRef.current.scale.setScalar(scale);
 
     // Organic wobble (subtle surface variation feel)
     meshRef.current.rotation.x = Math.sin(time * 0.5) * 0.02;
@@ -137,9 +173,11 @@ export function TaskSphere({
           color={baseColor}
           emissive={glowColor}
           emissiveIntensity={
-            hovered || isSelected
-              ? glowIntensity + 0.2  // Boost on interaction
-              : glowIntensity
+            isUnlocking
+              ? glowIntensity + 0.4  // Strong boost during unlock
+              : hovered || isSelected
+                ? glowIntensity + 0.2  // Boost on interaction
+                : glowIntensity
           }
           roughness={0.7}  // Slightly matte for organic feel
           metalness={0.1}  // Low metalness = biological
