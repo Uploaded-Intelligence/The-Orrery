@@ -8,3 +8,4 @@ export { TaskSphere } from './TaskSphere';
 export { DependencyTube } from './DependencyTube';
 export { CosmicParticles } from './CosmicParticles';
 export { CameraController, useCameraDistance } from './CameraController';
+export { ReadinessMaterial } from './ReadinessMaterial';
