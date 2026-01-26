@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { Canvas } from '@react-three/fiber';
-import { PerspectiveCamera } from '@react-three/drei';
+import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { COLORS } from '@/constants';
 
@@ -29,15 +29,31 @@ export function OrreryCanvas({ children }) {
       dpr={[1, 2]} // Retina support, capped at 2x for performance
       style={{ background: COLORS.bgVoid }}
     >
-      {/* Phase 1: Perspective camera at LOCKED angle
-          Position creates slight downward angle for depth perception
-          No orbit controls yet - camera is fixed but shows dimensionality */}
+      {/* Perspective camera for 3D depth perception
+          Phase 2: Now with OrbitControls for navigation */}
       <PerspectiveCamera
         makeDefault
         position={[0, -15, 40]}  // Slight downward angle
         fov={50}
         near={0.1}
         far={1000}
+      />
+
+      {/* Phase 2: OrbitControls for navigation
+          Limits prevent disorientation while allowing exploration */}
+      <OrbitControls
+        enablePan={true}
+        enableZoom={true}
+        enableRotate={true}
+        minDistance={15}        // Don't zoom too close
+        maxDistance={150}       // Don't zoom too far
+        minPolarAngle={Math.PI / 6}   // Limit downward angle (30 degrees from top)
+        maxPolarAngle={Math.PI / 2.2} // Limit upward angle (can't go below horizon)
+        enableDamping={true}    // Smooth camera movement
+        dampingFactor={0.05}    // Gentle damping
+        rotateSpeed={0.5}       // Slower rotation for precision
+        panSpeed={0.5}          // Slower pan for precision
+        zoomSpeed={0.8}         // Responsive zoom
       />
 
       {/* Ambient light for base visibility */}
