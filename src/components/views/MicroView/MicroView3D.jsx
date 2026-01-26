@@ -62,6 +62,35 @@ export function MicroView3D() {
     [visibleTasks, visibleEdges]
   );
 
+  // ─── Calculate DAG layer depths for Z-distribution ─────────
+  // Layer 0 = root tasks (no dependencies), Layer N = N hops from root
+  const dagLayers = useMemo(() => {
+    const layers = new Map();
+    const getDepth = (taskId, visited = new Set()) => {
+      if (visited.has(taskId)) return 0; // Cycle protection
+      if (layers.has(taskId)) return layers.get(taskId);
+
+      visited.add(taskId);
+      const incoming = visibleEdges.filter(e => e.target === taskId);
+      if (incoming.length === 0) {
+        layers.set(taskId, 0);
+        return 0;
+      }
+
+      const depth = 1 + Math.max(...incoming.map(e =>
+        getDepth(e.source, new Set(visited))
+      ));
+      layers.set(taskId, depth);
+      return depth;
+    };
+
+    visibleTasks.forEach(t => getDepth(t.id));
+    return layers;
+  }, [visibleTasks, visibleEdges]);
+
+  // Z-depth configuration
+  const Z_LAYER_SPACING = 5; // World units per DAG layer
+
   // ─── Prepare quests with colors ────────────────────────────
   const questsWithColors = useMemo(() =>
     state.quests.map((q, i) => ({
@@ -79,12 +108,16 @@ export function MicroView3D() {
       ? task.position
       : basePositions.get(task.id) || { x: 0, y: 0 };
 
+    // Phase 2: Z-depth distribution by DAG layer
+    // Layer 0 (roots) at Z=0, deeper layers recede into background
+    const layer = dagLayers.get(task.id) || 0;
+
     return {
       x: taskPos.x * SCALE,
       y: -taskPos.y * SCALE, // Flip Y for 3D coordinate system (Y-up)
-      z: 0, // Phase 2 will add Z-depth distribution by DAG layer
+      z: -layer * Z_LAYER_SPACING, // Negative Z = further from camera
     };
-  }, [basePositions]);
+  }, [basePositions, dagLayers]);
 
   // ─── Handlers ──────────────────────────────────────────────
   const handleSelect = useCallback((taskId) => {
