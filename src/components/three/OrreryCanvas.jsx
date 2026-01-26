@@ -11,6 +11,7 @@ import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { XR, Controllers, Hands } from '@react-three/xr';
 import { VRInteractionManager } from './VRInteractionManager';
+import { VRPerformanceManager } from './VRPerformanceManager';
 import { COLORS } from '@/constants';
 
 /**
@@ -82,11 +83,13 @@ export function OrreryCanvas({ children, vrEnabled = true }) {
           Controllers and Hands render tracked input devices */}
       {vrEnabled ? (
         <XR>
-          <VRInteractionManager>
-            <Controllers />
-            <Hands />
-            {children}
-          </VRInteractionManager>
+          <VRPerformanceManager>
+            <VRInteractionManager>
+              <Controllers />
+              <Hands />
+              {children}
+            </VRInteractionManager>
+          </VRPerformanceManager>
         </XR>
       ) : (
         children
