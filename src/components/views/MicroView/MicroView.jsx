@@ -137,17 +137,18 @@ export function MicroView() {
   const [physicsSettled, setPhysicsSettled] = useState(false);
 
   // Physics configuration - can be tuned via debug panel
+  // User-tuned optimal settings for good emergent structure
   const DEFAULT_PHYSICS_CONFIG = useMemo(() => ({
-    repulsionStrength: -1800,   // Strong repulsion for emergent structure
+    repulsionStrength: -2700,   // User-tuned: stronger separation
     linkDistance: 160,          // Connected nodes cluster close
-    linkStrength: 0.6,          // Strong links - connectivity drives layout
-    collisionRadius: 85,        // Node half-width + small padding
+    linkStrength: 0.60,         // Strong links - connectivity drives layout
+    collisionRadius: 130,       // User-tuned: larger to prevent overlap
     collisionIterations: 4,     // Fully resolve overlaps
-    radialStrength: 0.02,       // Weak DAG hint - don't force geometry
+    radialStrength: 0.03,       // User-tuned: slightly stronger DAG hint
     layerSpacing: 150,
     baseRadius: 100,
-    centerStrength: 0.02,       // Gentle centering
-    alphaDecay: 0.015,          // Slower decay for structure emergence
+    centerStrength: 0.04,       // User-tuned: slightly stronger centering
+    alphaDecay: 0.01,           // User-tuned: slower for better equilibrium
     velocityDecay: 0.35,        // Medium friction
   }), []);
 
@@ -400,6 +401,10 @@ export function MicroView() {
           type: 'ADD_EDGE',
           payload: { source: edgeSourceId, target: taskId }
         });
+        // Persist to server (if connected)
+        if (api.isConnected) {
+          api.createEdge(edgeSourceId, taskId).catch(console.error);
+        }
       }
       setEdgeSourceId(null);
     } else {
@@ -407,7 +412,7 @@ export function MicroView() {
       setSelectedTaskId(taskId);
       setSelectedEdgeId(null);
     }
-  }, [edgeSourceId, dispatch]);
+  }, [edgeSourceId, dispatch, api]);
 
   // Handle task double-click (start session or complete)
   const handleTaskDoubleClick = useCallback((task) => {
@@ -787,6 +792,10 @@ export function MicroView() {
           type: 'ADD_EDGE',
           payload: { source: edgeSourceId, target: targetTask.id }
         });
+        // Persist to server (if connected)
+        if (api.isConnected) {
+          api.createEdge(edgeSourceId, targetTask.id).catch(console.error);
+        }
       }
 
       setEdgeSourceId(null);
@@ -833,7 +842,7 @@ export function MicroView() {
       setIsPanning(false);
       dispatch({ type: 'SET_MICRO_POSITION', payload: pan });
     }
-  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, finalPositions]);
+  }, [isPanning, pan, dispatch, draggingTaskId, draggedPositions, edgeSourceId, mousePos, visibleTasks, finalPositions, api]);
 
   // Node touch drag start (called from TaskNode)
   const handleNodeTouchStart = useCallback((taskId, e) => {

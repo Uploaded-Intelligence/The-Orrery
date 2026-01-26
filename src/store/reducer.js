@@ -76,12 +76,35 @@ export function orreryReducer(state, action) {
         };
       });
 
+      // Merge edges - preserve locally-created ones that aren't on server yet
+      // Strategy: keep local-only edges, replace with API version if exists on both
+      const apiEdgeKeys = new Set(
+        (action.payload.edges || []).map(e => `${e.source}|${e.target}`)
+      );
+      const mergedEdges = [
+        // Keep local edges that don't exist on API (local-only)
+        ...state.edges.filter(e => !apiEdgeKeys.has(`${e.source}|${e.target}`)),
+        // Add all API edges (authoritative for known edges)
+        ...(action.payload.edges || []),
+      ];
+
+      // Same merge logic for questVines
+      const apiVineKeys = new Set(
+        (action.payload.questVines || []).map(v => `${v.sourceQuestId}|${v.targetQuestId}`)
+      );
+      const mergedVines = [
+        ...(state.questVines || []).filter(v =>
+          !apiVineKeys.has(`${v.sourceQuestId}|${v.targetQuestId}`)
+        ),
+        ...(action.payload.questVines || []),
+      ];
+
       return {
         ...state,
         tasks: apiTasks,
         quests: apiQuests,
-        edges: action.payload.edges,
-        questVines: action.payload.questVines || [],
+        edges: mergedEdges,
+        questVines: mergedVines,
         lastSyncedAt: now,
         _syncSource: 'liferpg-api',
       };

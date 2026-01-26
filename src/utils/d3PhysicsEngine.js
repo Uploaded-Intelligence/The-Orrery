@@ -26,16 +26,17 @@ import {
  * @returns {Object} d3 simulation instance
  */
 export function createSimulation(nodes, links, config = {}) {
+  // User-tuned optimal defaults for good emergent structure
   const {
-    repulsionStrength = -1800,   // Strong repulsion for emergent structure
+    repulsionStrength = -2700,   // User-tuned: stronger separation
     linkDistance = 160,          // Connected nodes cluster close
-    linkStrength = 0.6,          // Strong links - connectivity drives layout
-    collisionRadius = 85,        // Node half-width + small padding
+    linkStrength = 0.60,         // Strong links - connectivity drives layout
+    collisionRadius = 130,       // User-tuned: larger to prevent overlap
     collisionIterations = 4,     // Fully resolve overlaps
-    radialStrength = 0.02,       // Weak DAG hint - don't force geometry
+    radialStrength = 0.03,       // User-tuned: slightly stronger DAG hint
     layerSpacing = 150,
     baseRadius = 100,
-    centerStrength = 0.02,       // Gentle centering
+    centerStrength = 0.04,       // User-tuned: slightly stronger centering
   } = config;
 
   // Count nodes per layer for adaptive radius
