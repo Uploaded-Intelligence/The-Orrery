@@ -4,3 +4,4 @@
 // ═══════════════════════════════════════════════════════════════
 
 export { MicroView } from './MicroView.jsx';
+export { MicroView3D } from './MicroView3D.jsx';
