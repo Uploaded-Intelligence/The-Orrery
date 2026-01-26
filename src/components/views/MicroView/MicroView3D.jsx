@@ -8,10 +8,10 @@
 // - Same interaction patterns (click, double-click)
 // ═══════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useOrrery } from '@/store';
 import { getComputedTaskStatus, getLayoutPositions } from '@/utils';
-import { OrreryCanvas, TaskSphere, DependencyTube, CosmicParticles } from '@/components/three';
+import { OrreryCanvas, TaskSphere, DependencyTube, CosmicParticles, CameraController } from '@/components/three';
 import { QUEST_COLORS, COLORS } from '@/constants';
 import { Plus } from 'lucide-react';
 
@@ -20,12 +20,46 @@ import { Plus } from 'lucide-react';
 const SCALE = 0.05;
 
 /**
+ * Calculate task readiness based on upstream dependency completion
+ * @param {string} taskId - Task to calculate readiness for
+ * @param {Array} edges - All edges in the graph
+ * @param {Array} tasks - All tasks
+ * @param {Object} state - Orrery state for status calculation
+ * @returns {number} Readiness from 0 to 1
+ */
+function calculateReadiness(taskId, edges, tasks, state) {
+  // Find all upstream dependencies (edges where this task is target)
+  const upstreamEdges = edges.filter(e => e.target === taskId);
+
+  if (upstreamEdges.length === 0) {
+    // No dependencies = fully ready
+    return 1;
+  }
+
+  // Count completed upstream tasks
+  let completedCount = 0;
+  upstreamEdges.forEach(edge => {
+    const sourceTask = tasks.find(t => t.id === edge.source);
+    if (sourceTask) {
+      const status = getComputedTaskStatus(sourceTask, state);
+      if (status === 'completed') {
+        completedCount++;
+      }
+    }
+  });
+
+  return completedCount / upstreamEdges.length;
+}
+
+/**
  * MicroView3D - 3D visualization of task DAG
  * Connects Three.js rendering with Orrery state
  */
 export function MicroView3D() {
   const { state, dispatch, api } = useOrrery();
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [unlockAnimations, setUnlockAnimations] = useState(new Map());
+  const [focusTarget, setFocusTarget] = useState(null);
 
   // ─── Filter tasks for current quest focus ──────────────────
   const visibleTasks = useMemo(() => {
@@ -101,6 +135,17 @@ export function MicroView3D() {
     [state.quests]
   );
 
+  // ─── Calculate session state for particles ──────────────────
+  const sessionState = useMemo(() => {
+    if (state.activeSession?.completingAt) {
+      return 'completing';
+    }
+    if (state.activeSession) {
+      return 'active';
+    }
+    return 'idle';
+  }, [state.activeSession]);
+
   // ─── Convert d3 positions to 3D coordinates ────────────────
   const getPosition = useCallback((task) => {
     // Use task's stored position, layout position, or default to origin
@@ -165,6 +210,20 @@ export function MicroView3D() {
     });
     return map;
   }, [visibleTasks, getPosition]);
+
+  // ─── Focus camera on selected node ────────────────────────
+  useEffect(() => {
+    if (selectedTaskId) {
+      const position = positionsMap.get(selectedTaskId);
+      if (position) {
+        setFocusTarget({
+          x: position.x,
+          y: position.y,
+          z: position.z || 0,
+        });
+      }
+    }
+  }, [selectedTaskId, positionsMap]);
 
   // Get quest name for header
   const focusedQuest = state.quests.find(q => q.id === state.preferences.focusQuestId);
@@ -258,6 +317,9 @@ export function MicroView3D() {
       {/* 3D Canvas */}
       <div style={{ flex: 1, position: 'relative' }}>
         <OrreryCanvas>
+          {/* Camera controller for focus-on-node */}
+          <CameraController focusTarget={focusTarget} />
+
           {/* Background particles */}
           <CosmicParticles count={100} />
 
