@@ -13,6 +13,59 @@ import {
 } from 'd3-force';
 
 /**
+ * Custom Z-axis force for 3D depth distribution
+ * d3-force doesn't have native Z support, so we implement it
+ *
+ * Pulls nodes toward a target Z position based on their DAG layer
+ *
+ * @returns {Object} d3-force compatible force function
+ */
+function forceZ() {
+  let nodes;
+  let strength = 0.1;
+  let targetZ = (node) => 0;
+
+  function force(alpha) {
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const target = typeof targetZ === 'function' ? targetZ(node) : targetZ;
+      // Initialize Z properties if missing
+      if (node.z === undefined) node.z = 0;
+      if (node.vz === undefined) node.vz = 0;
+      // Apply force toward target Z
+      node.vz += (target - node.z) * strength * alpha;
+    }
+  }
+
+  force.initialize = (_nodes) => {
+    nodes = _nodes;
+    // Initialize Z properties on all nodes
+    nodes.forEach(node => {
+      if (node.z === undefined) node.z = 0;
+      if (node.vz === undefined) node.vz = 0;
+    });
+  };
+
+  force.strength = (s) => {
+    if (arguments.length) {
+      strength = s;
+      return force;
+    }
+    return strength;
+  };
+
+  force.z = (z) => {
+    if (arguments.length) {
+      targetZ = z;
+      return force;
+    }
+    return targetZ;
+  };
+
+  return force;
+}
+
+/**
  * Create a d3-force simulation configured for The Orrery
  *
  * Key architectural decisions:
@@ -37,6 +90,10 @@ export function createSimulation(nodes, links, config = {}) {
     layerSpacing = 150,
     baseRadius = 100,
     centerStrength = 0.04,       // User-tuned: slightly stronger centering
+    // Phase 2: 3D Z-depth distribution
+    zDepthEnabled = false,       // Enable 3D Z-distribution
+    zLayerSpacing = 5,           // World units per DAG layer in Z
+    zStrength = 0.1,             // Strength of Z force
   } = config;
 
   // Count nodes per layer for adaptive radius
@@ -85,7 +142,34 @@ export function createSimulation(nodes, links, config = {}) {
     // Collision ALWAYS wins - nodes prefer their layer's radius but spread as needed
     .force('radial', forceRadial(getTargetRadius, 0, 0)
       .strength(radialStrength)
-    )
+    );
+
+  // Z-DEPTH DISTRIBUTION (Phase 2: 3D mode only)
+  // Distributes nodes along Z-axis based on DAG layer
+  // Layer 0 = Z:0, Layer 1 = Z:zLayerSpacing, Layer 2 = Z:2*zLayerSpacing, etc.
+  if (zDepthEnabled) {
+    simulation.force('zDepth', forceZ()
+      .strength(zStrength)
+      .z(node => (node.layer || 0) * zLayerSpacing)
+    );
+
+    // Apply Z velocity decay (d3-force doesn't handle Z natively)
+    const originalTick = simulation.tick.bind(simulation);
+    simulation.tick = function() {
+      originalTick();
+      // Apply Z velocity with same decay as X/Y
+      const velocityDecay = 0.35;
+      nodes.forEach(node => {
+        if (node.vz !== undefined) {
+          node.z += node.vz;
+          node.vz *= (1 - velocityDecay);
+        }
+      });
+      return simulation;
+    };
+  }
+
+  simulation
     // Physics parameters tuned for EMERGENT STRUCTURE
     .alpha(1)           // Start with high energy for initial layout
     .alphaDecay(0.015)  // Slower decay = more time to find structure
@@ -181,12 +265,16 @@ export function isSettled(simulation) {
  * Extract positions from simulation nodes
  *
  * @param {Object} simulation - d3 simulation instance
- * @returns {Map<string, {x: number, y: number}>} Node ID → position
+ * @returns {Map<string, {x: number, y: number, z: number}>} Node ID → position
  */
 export function getPositions(simulation) {
   const positions = new Map();
   simulation.nodes().forEach(node => {
-    positions.set(node.id, { x: node.x, y: node.y });
+    positions.set(node.id, {
+      x: node.x,
+      y: node.y,
+      z: node.z || 0,  // Include Z coordinate for 3D mode
+    });
   });
   return positions;
 }
@@ -209,22 +297,29 @@ export function updateSimulation(simulation, newNodes, newLinks, dagLayers, conf
     radialStrength = 0.05,
   } = config;
 
-  // Preserve positions from old nodes
+  // Preserve positions from old nodes (including Z)
   const oldNodes = new Map();
   simulation.nodes().forEach(n => {
-    oldNodes.set(n.id, { x: n.x, y: n.y, vx: n.vx, vy: n.vy, fx: n.fx, fy: n.fy });
+    oldNodes.set(n.id, {
+      x: n.x, y: n.y, z: n.z || 0,
+      vx: n.vx, vy: n.vy, vz: n.vz || 0,
+      fx: n.fx, fy: n.fy, fz: n.fz
+    });
   });
 
-  // Merge old positions into new nodes
+  // Merge old positions into new nodes (including Z)
   newNodes.forEach(node => {
     const old = oldNodes.get(node.id);
     if (old) {
       node.x = old.x;
       node.y = old.y;
+      node.z = old.z;
       node.vx = old.vx || 0;
       node.vy = old.vy || 0;
+      node.vz = old.vz || 0;
       if (old.fx !== null) node.fx = old.fx;
       if (old.fy !== null) node.fy = old.fy;
+      if (old.fz !== null) node.fz = old.fz;
     }
   });
 
