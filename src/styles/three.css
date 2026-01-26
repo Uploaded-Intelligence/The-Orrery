@@ -1,0 +1,51 @@
+/* ═══════════════════════════════════════════════════════════════
+   styles/three.css
+   CSS for Three.js HTML overlays (via drei Html component)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Task sphere status icon */
+.task-sphere-label {
+  font-size: 20px;
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
+  user-select: none;
+}
+
+/* Task sphere title tooltip */
+.task-sphere-title {
+  background: rgba(26, 28, 40, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #f0f4f8;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Glass effect helper */
+.task-sphere-title.glass {
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Canvas container */
+.micro-view-3d {
+  position: relative;
+  overflow: hidden;
+}
+
+.micro-view-3d canvas {
+  touch-action: none; /* Enable touch gestures */
+  outline: none;
+}
+
+/* Prevent text selection during 3D interaction */
+.micro-view-3d * {
+  user-select: none;
+}
