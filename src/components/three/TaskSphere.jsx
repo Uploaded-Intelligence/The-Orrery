@@ -14,6 +14,7 @@ import { Sphere, Html, Ring } from '@react-three/drei';
 import { Interactive, useXR } from '@react-three/xr';
 import * as THREE from 'three';
 import { COLORS, QUEST_COLORS } from '@/constants';
+import { useVRPerformance } from './VRPerformanceManager';
 
 const SPHERE_RADIUS = 1; // World units
 
@@ -85,6 +86,9 @@ export function TaskSphere({
   // ─── VR Controller Interaction ──────────────────────────────
   const { isPresenting, player } = useXR();
   const lastSelectTimeRef = useRef(0);
+
+  // ─── VR Performance Settings ────────────────────────────────
+  const { sphereDetail, isVR } = useVRPerformance();
 
   /**
    * Trigger haptic feedback on VR controllers
@@ -243,7 +247,7 @@ export function TaskSphere({
         {/* Main organic orb */}
         <Sphere
           ref={meshRef}
-          args={[SPHERE_RADIUS, 32, 32]} // Enough segments for smooth appearance
+          args={[SPHERE_RADIUS, sphereDetail, sphereDetail]} // VR-optimized segments
           onClick={(e) => {
             e.stopPropagation();
             onSelect?.(task.id);
@@ -316,7 +320,7 @@ export function TaskSphere({
         {/* Quest badge (small sphere at bottom) */}
         {primaryQuestId && (
           <Sphere
-            args={[0.15, 16, 16]}
+            args={[0.15, isVR ? 8 : 16, isVR ? 8 : 16]}
             position={[0, -SPHERE_RADIUS * 0.8, SPHERE_RADIUS * 0.3]}
           >
             <meshStandardMaterial
