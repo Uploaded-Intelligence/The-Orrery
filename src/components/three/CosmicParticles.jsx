@@ -10,6 +10,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Points, PointMaterial } from '@react-three/drei';
+import { useVRPerformance } from './VRPerformanceManager';
 
 // ─── Focus Attraction Parameters ────────────────────────────
 const FOCUS_ATTRACTION_STRENGTH = 0.0003;  // Very subtle drift
@@ -38,11 +39,15 @@ const SESSION_STATE_INTENSITY = {
  * @param {'idle'|'active'|'completing'} props.sessionState - Current session state
  */
 export function CosmicParticles({
-  count = 100,
+  count: propCount,
   focusPosition = null,
   sessionState = 'idle',
 }) {
   const pointsRef = useRef();
+  const { particleCount: vrParticleCount, isVR } = useVRPerformance();
+
+  // Use VR-optimized count when in VR, otherwise prop or default
+  const count = isVR ? vrParticleCount : (propCount || 100);
 
   // ─── Generate random particle positions ────────────────────
   const particles = useMemo(() => {
