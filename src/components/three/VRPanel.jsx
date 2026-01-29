@@ -66,6 +66,7 @@ export function VRPanel({
         anchorX="center"
         anchorY="middle"
         maxWidth={width - 0.2}
+        font="/fonts/inter-medium.woff"
       >
         {title}
       </Text>
@@ -85,6 +86,7 @@ export function VRPanel({
         anchorY="top"
         maxWidth={width - 0.3}
         lineHeight={1.4}
+        font="/fonts/inter-regular.woff"
       >
         {content}
       </Text>
