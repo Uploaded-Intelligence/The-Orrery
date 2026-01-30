@@ -75,6 +75,13 @@ export function TaskSphere({
   onDoubleClick,
   quests = [],
 }) {
+  // ─── Early return for invalid task ────────────────────────────
+  // Prevents crash when task is undefined or missing required data
+  if (!task || !position) {
+    console.warn('TaskSphere: Invalid task or position prop', { task, position });
+    return null;
+  }
+
   const meshRef = useRef();
   const groupRef = useRef();
   const [hovered, setHovered] = useState(false);
@@ -161,14 +168,17 @@ export function TaskSphere({
 
   // ─── Compute visual properties from task state ─────────────
   const status = task.status || 'available';
-  const cognitiveLoad = Math.min(5, Math.max(1, task.cognitiveLoad || 3));
-  const loadIndex = cognitiveLoad - 1;
+  // Ensure cognitiveLoad is a valid number 1-5 (defensive against NaN/invalid data)
+  const rawLoad = Number(task.cognitiveLoad);
+  const cognitiveLoad = Number.isNaN(rawLoad) ? 3 : Math.min(5, Math.max(1, rawLoad));
+  const loadIndex = Math.floor(cognitiveLoad) - 1; // Ensure integer index 0-4
 
-  // Three-layer cognitive load visualization
-  const baseColor = STATUS_COLORS[status];
-  const glowColor = COGNITIVE_COLORS[loadIndex];           // Layer 1
-  const glowIntensity = COGNITIVE_INTENSITY[loadIndex];    // Layer 2
-  const { speed: pulseSpeed, amplitude: pulseAmplitude } = COGNITIVE_PULSE[loadIndex]; // Layer 3
+  // Three-layer cognitive load visualization with fallback
+  const baseColor = STATUS_COLORS[status] || STATUS_COLORS.available;
+  const glowColor = COGNITIVE_COLORS[loadIndex] || COGNITIVE_COLORS[2];           // Layer 1
+  const glowIntensity = COGNITIVE_INTENSITY[loadIndex] ?? 0.5;                     // Layer 2
+  const pulse = COGNITIVE_PULSE[loadIndex] || COGNITIVE_PULSE[2];                  // Layer 3
+  const { speed: pulseSpeed, amplitude: pulseAmplitude } = pulse;
 
   // ─── Distance-based depth perception ──────────────────────────
   const { camera } = useThree();
