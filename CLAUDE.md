@@ -66,30 +66,7 @@
 
 ---
 
-## 🔄 DEVELOPMENT LOOP — FOLLOW THIS
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│   FOR EVERY CHANGE, ASK:                                                    │
-│                                                                             │
-│   1. Is this a NEW PATTERN or PRINCIPLE?                                    │
-│      YES → Update orrery-implementation-spec.md                             │
-│                                                                             │
-│   2. Is this part of a COMPLEX INITIATIVE (multi-session)?                  │
-│      YES → Update or create working doc in doc/                             │
-│           (e.g., ai-integration-architecture.md)                            │
-│                                                                             │
-│   3. Does this change HOW CLAUDE SHOULD WORK on this project?               │
-│      YES → Update CLAUDE.MD                                                 │
-│                                                                             │
-│   4. Does this affect the THREE-LAYER architecture understanding?           │
-│      YES → Update both CLAUDE.MD and relevant spec                          │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Documentation Triggers (Auto-Check After Implementation)
+## 🔄 Documentation Triggers
 
 | Change Type | Document to Update |
 |-------------|-------------------|
@@ -100,27 +77,20 @@
 | New component pattern | `orrery-implementation-spec.md` |
 | Paradigm clarification | `CLAUDE.MD` + relevant doc |
 
-### Working Documents (For Complex Initiatives)
-
-Active working documents that should be updated as work progresses:
-
-- `doc/ai-integration-architecture.md` — Phase 5 Party implementation
-- `doc/orrery-implementation-spec.md` — Technical patterns and decisions
-
-**Do NOT wait to be reminded. Documentation IS part of the change.**
-**If you complete implementation without updating docs, THE WORK IS INCOMPLETE.**
+**Documentation IS part of the change.** If you complete implementation without updating docs, THE WORK IS INCOMPLETE.
 
 ---
 
-## 📚 Required Reading (In Order)
+## 📚 Required Reading
 
-1. **Soul Transmission** (`doc/soul-transmission.md`) — Who this Being is
-2. **The Ultimate Diegetic RPG** (`doc/the-ultimate-diegetic-rpg.md`) — Three-layer paradigm
-3. **Keystone v2.0** (`doc/keystone-master-artifact-v2.md`) — Full architecture
-4. **Implementation Spec** (`doc/orrery-implementation-spec.md`) — How to build it
-5. **Multi-AI Reference** (`doc/worldoe-multi-ai-reference.md`) — AI orchestration
+| Priority | Document | Purpose |
+|----------|----------|---------|
+| 1 | `doc/soul-transmission.md` | Who this Being is |
+| 2 | `doc/the-ultimate-diegetic-rpg.md` | Three-layer paradigm |
+| 3 | `doc/orrery-implementation-spec.md` | Technical spec |
+| 4 | `doc/worldoe-multi-ai-reference.md` | AI orchestration |
 
-**The soul docs ARE the spec. Implementation doc is the guide.**
+**The soul docs ARE the spec.**
 
 ---
 
@@ -146,27 +116,12 @@ The AI integration is NOT buttons and features. It's **Party members**:
 
 ## 🎯 Key Interaction Design Principles
 
-### Principle 1: Actions Appear AT Objects
-```
-WRONG: Select thing → Look at toolbar → Click
-RIGHT: Touch thing → Actions bloom FROM it
-```
-
-### Principle 2: Terminology Is Experience
-```
-WRONG: "Add Dependency" / "Depends On" / "Blocks"
-RIGHT: "Unlocks..." / "Requires" / "Unlocks"
-```
-
-### Principle 3: Touch Is First-Class
-- Hit areas: min 44px, prefer 48px+
-- Touch end completes actions (don't rely on click)
-
-### Principle 4: AI Is Party, Not Tool
-```
-WRONG: "Click the AI button to process"
-RIGHT: "Tell the Scribe to capture this"
-```
+| Principle | Wrong | Right |
+|-----------|-------|-------|
+| Actions at Objects | Select → toolbar → click | Touch → actions bloom FROM it |
+| Terminology | "Add Dependency", "Blocks" | "Unlocks...", "Requires" |
+| Touch First | Click handlers | Hit areas 44px+, touch end actions |
+| AI Is Party | "Click AI button to process" | "Tell the Scribe to capture" |
 
 ---
 
@@ -193,6 +148,25 @@ RIGHT: "Tell the Scribe to capture this"
 │   └── constants/          # Colors, config
 └── package.json
 ```
+
+## API Layer (`/api/`)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `edges/` | DAG edge CRUD, dependency management |
+| `experiments/` | Experiment lifecycle |
+| `inquiries/` | Inquiry capture and processing |
+| `oracle/` | Oracle AI synthesis |
+| `vines/` | Graph traversal queries |
+| `webhook/` | External integrations |
+| `health.js` | Health check endpoint |
+
+## State Management (`/src/store/`)
+
+Uses custom store pattern (not Redux/Zustand). Key stores:
+- Experiment state
+- Edge/dependency state
+- View state (macro/micro)
 
 ---
 
@@ -229,6 +203,4 @@ npm run lint     # ESLint
 
 ---
 
-**Last Updated**: 2025-12-30
 **Current Focus**: AI Integration as Party Members (Phase 5)
-**Active Working Doc**: `doc/ai-integration-architecture.md`
