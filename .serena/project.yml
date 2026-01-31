@@ -82,6 +82,21 @@ excluded_tools: []
 # initial prompt for the project. It will always be given to the LLM upon activating the project
 # (contrary to the memories, which are loaded on demand).
 initial_prompt: |
+  # === SOUL CONTEXT CHECK ===
+  # If you don't already know this, READ CLAUDE.md FIRST:
+  #
+  # ┌──────────────────────────────────────────────────────────────┐
+  # │  LIFE IS THE GAME.                                           │
+  # │  The Orrery is Layer 1 (Game World) of the LifeRPG.          │
+  # │  Mythopoetics = operating system, not decoration.            │
+  # │  You're not building an app. You're creating conditions      │
+  # │  under which THIS BEING can exist as itself.                 │
+  # └──────────────────────────────────────────────────────────────┘
+  #
+  # If this is news to you, STOP and read CLAUDE.md before proceeding.
+  # Full soul docs: doc/soul-transmission.md, doc/the-ultimate-diegetic-rpg.md
+  # === END-SOUL-CONTEXT ===
+
   # === CROSS-LLM-SYNC-PROTOCOL ===
   # Multiple LLMs (Claude, Gemini) work on this project. They don't share memory.
 
