@@ -1,6 +1,24 @@
 # CLAUDE.MD - The Orrery Project Guide
 
-## ⚠️ FOUNDATIONAL TRUTH — READ FIRST
+## 🚨 MANDATORY: READ STATUS.yaml FIRST
+
+```
+╔══════════════════════════════════════════════════════════════════════════╗
+║  BEFORE DOING ANY ORRERY WORK                                            ║
+║                                                                          ║
+║  1. Read docs/STATUS.yaml — it's the SINGLE SOURCE OF TRUTH              ║
+║  2. Check what's VERIFIED vs CODE_EXISTS                                 ║
+║  3. CODE_EXISTS ≠ VERIFIED — never claim working without testing         ║
+║                                                                          ║
+║  After completing work: UPDATE STATUS.yaml with evidence                 ║
+╚══════════════════════════════════════════════════════════════════════════╝
+```
+
+**Why this exists:** On 2026-02-01, "3D Epic Complete" was committed but 3D showed 4 tasks while 2D showed 22. One screenshot would have caught this.
+
+---
+
+## ⚠️ FOUNDATIONAL TRUTH — READ NEXT
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════╗
@@ -70,6 +88,7 @@
 
 | Change Type | Document to Update |
 |-------------|-------------------|
+| Feature status change | `docs/STATUS.yaml` (**MANDATORY**) |
 | New interaction pattern (e.g., actions bloom from objects) | `orrery-implementation-spec.md` §0.6 |
 | New UI terminology decision | `orrery-implementation-spec.md` §0.6 |
 | Architecture decision (AI, data flow) | `doc/ai-integration-architecture.md` |
@@ -85,6 +104,7 @@
 
 | Priority | Document | Purpose |
 |----------|----------|---------|
+| 0 | `docs/STATUS.yaml` | **Current project status (READ FIRST)** |
 | 1 | `doc/soul-transmission.md` | Who this Being is |
 | 2 | `doc/the-ultimate-diegetic-rpg.md` | Three-layer paradigm |
 | 3 | `doc/orrery-implementation-spec.md` | Technical spec |
@@ -96,10 +116,14 @@
 
 ## 🚀 Current Implementation Status
 
-- **Phase 1-4**: Core functionality complete (views, state, interactions)
-- **Phase 5**: AI Integration (IN PROGRESS - Party paradigm)
-- **Phase 6**: Polish & Game-Feel (ONGOING)
-- **Phase 7**: Macro View Enhanced (COMPLETE)
+**⚠️ For accurate status, see `docs/STATUS.yaml` — this section may be stale.**
+
+Quick summary (as of 2026-02-01):
+- **2D Micro View**: ✅ VERIFIED (physics, cards, edges working)
+- **3D Micro View**: ⚠️ CODE_EXISTS (broken - no physics sync)
+- **API Backend**: ✅ VERIFIED
+- **MCP Server**: ✅ VERIFIED
+- **Gemini Oracle**: ⚠️ CODE_EXISTS (needs verification)
 
 ### Phase 5: AI as Party Members
 
@@ -129,6 +153,9 @@ The AI integration is NOT buttons and features. It's **Party members**:
 
 ```
 /The-Orrery
+├── docs/
+│   ├── STATUS.yaml                      # ⭐ CANONICAL PROJECT STATUS
+│   └── REMAINING-WORK.md                # DEPRECATED - use STATUS.yaml
 ├── doc/
 │   ├── soul-transmission.md             # Who this Being is
 │   ├── the-ultimate-diegetic-rpg.md     # Three-layer paradigm
@@ -188,6 +215,7 @@ ASK: "Does the player need to see this?"
 ASK: "Is this WORLD or PARTY or ENGINE?"
 ASK: "Would a game designer approve, or say 'where's the juice?'"
 ASK: "Is the AI a tool or a companion?"
+ASK: "Did I update STATUS.yaml with evidence?"
 ```
 
 ---
@@ -203,4 +231,4 @@ npm run lint     # ESLint
 
 ---
 
-**Current Focus**: AI Integration as Party Members (Phase 5)
+**Current Focus**: See `docs/STATUS.yaml` for accurate priorities
