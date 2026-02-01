@@ -1,0 +1,313 @@
+# ═══════════════════════════════════════════════════════════════
+# THE ORRERY — CANONICAL PROJECT STATUS
+# ═══════════════════════════════════════════════════════════════
+#
+# This is the SINGLE SOURCE OF TRUTH for project status.
+# Read this BEFORE starting any Orrery work.
+#
+# Status levels:
+#   NOT_STARTED → IN_PROGRESS → CODE_EXISTS → VERIFIED → DEPRECATED
+#
+# CODE_EXISTS ≠ VERIFIED. Never claim a feature works until tested.
+# ═══════════════════════════════════════════════════════════════
+
+version: 1
+last_updated: "2026-02-01T12:00:00Z"
+updated_by: "Claude Opus 4.5 - deep diagnosis session"
+
+# ═══════════════════════════════════════════════════════════════
+# QUICK STATUS SUMMARY
+# ═══════════════════════════════════════════════════════════════
+
+summary:
+  playable: "2D Micro View only"
+  broken: "3D View (layout architecture missing)"
+  untested: "Gemini Oracle, Celestial Vines, PWA"
+
+  critical_gap: |
+    3D uses getLayoutPositions() (one-shot).
+    2D uses d3PhysicsEngine (continuous simulation).
+    NO SYNC between them. 3D tasks cluster at origin.
+
+# ═══════════════════════════════════════════════════════════════
+# CORE SYSTEMS
+# ═══════════════════════════════════════════════════════════════
+
+core:
+  api_backend:
+    status: VERIFIED
+    description: "Vercel serverless API with Upstash Redis"
+    evidence: "Production URL returns data: https://the-orrery.vercel.app/api/experiments"
+    last_verified: "2026-01-22"
+    endpoints:
+      - "/api/experiments (CRUD)"
+      - "/api/inquiries (CRUD)"
+      - "/api/edges"
+      - "/api/vines"
+      - "/api/oracle/quick"
+
+  mcp_server:
+    status: VERIFIED
+    description: "Claude Code integration via local MCP server"
+    location: "~/.claude/plugins/local/orrery-mcp/"
+    evidence: "All tools functional in Claude Code sessions"
+    last_verified: "2026-01-24"
+    tools:
+      - list_experiments
+      - get_experiment
+      - create_experiment
+      - update_experiment
+      - log_finding
+      - bulk_create_from_analysis
+      - get_oracle_context
+      - get_dependency_graph
+      - get_critical_paths
+      - what_blocks
+      - impact_analysis
+      - get_ecosystem_structure
+      - find_semantic_neighbors
+      - get_affinity_map
+      - get_experiment_context
+
+  redis_state:
+    status: VERIFIED
+    description: "Upstash Redis for server-authoritative state"
+    evidence: "Data persists across sessions, API returns stored experiments"
+    last_verified: "2026-01-22"
+
+# ═══════════════════════════════════════════════════════════════
+# VIEW MODES
+# ═══════════════════════════════════════════════════════════════
+
+views:
+  2d_micro:
+    status: VERIFIED
+    description: "Primary task view with physics-based organic layout"
+    evidence: "Screenshot 2026-02-01 shows 22 tasks with proper layout"
+    code_file: "src/components/views/MicroView/MicroView.jsx (47KB)"
+    last_verified: "2026-02-01"
+    features:
+      physics_simulation:
+        status: VERIFIED
+        engine: "src/utils/d3PhysicsEngine.js (11KB)"
+      task_cards:
+        status: VERIFIED
+        description: "Rich cards with title, time, quest colors"
+      edge_rendering:
+        status: VERIFIED
+        description: "Celestial vines between connected tasks"
+      drag_positioning:
+        status: VERIFIED
+        description: "Users can drag tasks, positions persist"
+      timer_focus:
+        status: VERIFIED
+        description: "Bottom HUD shows active task timer"
+      filtering:
+        status: VERIFIED
+        description: "Quest focus, Actual mode work"
+      physics_panel:
+        status: VERIFIED
+        description: "Expandable panel for layout controls"
+
+  3d_micro:
+    status: CODE_EXISTS  # ⚠️ NOT VERIFIED — BROKEN
+    description: "Three.js/R3F 3D view with VR components"
+    code_file: "src/components/views/MicroView/MicroView3D.jsx (17KB)"
+    evidence: "Screenshot 2026-02-01 shows only 4-5 spheres clustered"
+    last_verified: null
+
+    blockers:
+      - id: "no_physics"
+        severity: CRITICAL
+        description: |
+          Uses getLayoutPositions() which computes ONE-SHOT positions.
+          No continuous physics simulation like 2D.
+          Tasks without edges get {0,0,0} → cluster at origin.
+
+      - id: "no_position_sync"
+        severity: CRITICAL
+        description: |
+          2D positions stored in task.position via API.
+          3D ignores stored positions when physics doesn't compute them.
+          Result: 2D shows 22 tasks spread out, 3D shows 4-5 clustered.
+
+      - id: "no_labels"
+        severity: HIGH
+        description: "3D spheres have no visible task titles"
+
+    features:
+      vr_components:
+        status: CODE_EXISTS
+        files:
+          - "VRButton.jsx"
+          - "VRPanel.jsx"
+          - "VRTaskDetail.jsx"
+          - "VRInteractionManager.jsx"
+          - "VRPerformanceManager.jsx"
+
+      task_spheres:
+        status: CODE_EXISTS
+        file: "TaskSphere.jsx (13KB)"
+        note: "Renders but positions are wrong"
+
+      dependency_tubes:
+        status: CODE_EXISTS
+        file: "DependencyTube.jsx (7KB)"
+        note: "Only renders for visible positioned tasks"
+
+      camera_controller:
+        status: CODE_EXISTS
+        file: "CameraController.jsx"
+
+      cosmic_particles:
+        status: CODE_EXISTS
+        file: "CosmicParticles.jsx"
+
+      physics_simulation:
+        status: NOT_STARTED  # ← THE GAP
+        description: "3D needs either shared physics with 2D or its own engine"
+
+      position_sync:
+        status: NOT_STARTED  # ← THE GAP
+        description: "3D should read task.position from API like 2D does"
+
+  macro_view:
+    status: CODE_EXISTS
+    description: "Quest constellation view"
+    evidence: null
+    last_verified: null
+    features:
+      quest_constellation: CODE_EXISTS
+      celestial_vines: CODE_EXISTS
+
+# ═══════════════════════════════════════════════════════════════
+# PARTY MEMBERS (AI Integrations)
+# ═══════════════════════════════════════════════════════════════
+
+party:
+  gemini_quick_oracle:
+    status: CODE_EXISTS
+    description: "Gemini 2.0 Flash for quick task suggestions"
+    code_file: "api/oracle/quick.js"
+    ui_file: "src/components/oracle/QuickOracle.jsx"
+    evidence: null
+    last_verified: null
+    blockers:
+      - "Needs GOOGLE_AI_API_KEY verification on Vercel"
+    test_command: |
+      curl -X POST https://the-orrery.vercel.app/api/oracle/quick \
+        -H "Content-Type: application/json" \
+        -d '{"query":"test","context":{"availableTasks":[]}}'
+
+  claude_deep_oracle:
+    status: VERIFIED
+    description: "Claude Code via MCP server for deep analysis"
+    evidence: "MCP tools work in Claude Code sessions"
+    last_verified: "2026-01-24"
+
+# ═══════════════════════════════════════════════════════════════
+# INFRASTRUCTURE
+# ═══════════════════════════════════════════════════════════════
+
+infrastructure:
+  pwa:
+    status: CODE_EXISTS
+    description: "Progressive Web App for mobile install"
+    evidence: null
+    last_verified: null
+    test_command: "npx lighthouse https://the-orrery.vercel.app --only-categories=pwa"
+
+  git_webhook:
+    status: CODE_EXISTS
+    description: "Webhook endpoint for vault sync"
+    code_file: "api/webhook/github.js"
+    evidence: null
+    last_verified: null
+
+# ═══════════════════════════════════════════════════════════════
+# KNOWN BUGS
+# ═══════════════════════════════════════════════════════════════
+
+bugs:
+  experiment_inquiry_linking:
+    severity: P2
+    status: OPEN
+    description: "addExperiment doesn't update experiment.inquiryId"
+    file: "api/inquiries/[id].js:46-49"
+    impact: "Experiments added via PATCH won't show when filtering on inquiryId"
+    found_by: "GPT Codex PR #15"
+    found_date: "2026-01-22"
+
+# ═══════════════════════════════════════════════════════════════
+# STALE OPEN PRs (need cleanup)
+# ═══════════════════════════════════════════════════════════════
+
+stale_prs:
+  - number: 16
+    title: "docs: DAG vs Physics architecture"
+    status: "Ready to review/merge (docs only)"
+
+  - number: 13
+    title: "Fix TaskNotes sync and physics layout"
+    status: "STALE - predates LifeRPG architecture (PR #14)"
+    action: "Close - superseded"
+
+  - number: 12
+    title: "Test: Trigger GPT Codex review"
+    status: "Test PR"
+    action: "Close"
+
+  - number: 10
+    title: "Preview infra + AI workflow"
+    status: "STALE"
+    action: "Review for merge or close"
+
+  - number: 9
+    title: "Skills library"
+    status: "STALE"
+    action: "Review for merge or close"
+
+# ═══════════════════════════════════════════════════════════════
+# NEXT ACTIONS (prioritized)
+# ═══════════════════════════════════════════════════════════════
+
+next_actions:
+  - priority: P0
+    action: "Fix 3D position sync"
+    description: |
+      Option A: 3D reads task.position from API (like 2D does post-physics)
+      Option B: 3D runs same d3PhysicsEngine as 2D
+      Option C: 3D has its own 3D-native physics
+    effort: "Medium"
+
+  - priority: P1
+    action: "Verify Gemini Quick Oracle"
+    description: "Test API endpoint, verify GOOGLE_AI_API_KEY on Vercel"
+    effort: "Low"
+
+  - priority: P1
+    action: "Clean up stale PRs"
+    description: "Close #13, #12; review #10, #9"
+    effort: "Low"
+
+  - priority: P2
+    action: "Fix experiment-inquiry linking bug"
+    description: "API update to set experiment.inquiryId on addExperiment"
+    effort: "Low"
+
+# ═══════════════════════════════════════════════════════════════
+# LESSONS LEARNED
+# ═══════════════════════════════════════════════════════════════
+
+lessons:
+  - date: "2026-02-01"
+    lesson: "CODE_EXISTS ≠ VERIFIED"
+    context: "3D Visual Epic marked complete based on commits, not testing"
+
+  - date: "2026-02-01"
+    lesson: "Architecture docs must specify WHAT SYNCS WITH WHAT"
+    context: "3D/2D diverged because sync architecture was never specified"
+
+  - date: "2026-02-01"
+    lesson: "Screenshot verification is non-negotiable for visual features"
+    context: "One screenshot would have caught the 3D bug immediately"
