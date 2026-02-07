@@ -1,7 +1,7 @@
 // api/experiments/index.js
 // List and create experiments
-import { redis } from '../lib/redis.js';
-import { KEYS, createExperiment } from '../lib/schema.js';
+import { redis } from '../_lib/redis.js';
+import { KEYS, createExperiment } from '../_lib/schema.js';
 
 export default async function handler(req, res) {
   // GET - List all experiments

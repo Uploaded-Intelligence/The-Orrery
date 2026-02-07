@@ -1,8 +1,8 @@
 // api/edges/index.js
 // Condition edges between experiments
 // "This experiment's findings enable that experiment's conditions"
-import { redis } from '../lib/redis.js';
-import { KEYS, createConditionEdge } from '../lib/schema.js';
+import { redis } from '../_lib/redis.js';
+import { KEYS, createConditionEdge } from '../_lib/schema.js';
 
 export default async function handler(req, res) {
   // GET - List all edges

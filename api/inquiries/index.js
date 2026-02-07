@@ -1,8 +1,8 @@
 // api/inquiries/index.js
 // List and create inquiries (research programs)
 // Inquiries are ongoing questions you're exploring - never "completed", only resting or integrated
-import { redis } from '../lib/redis.js';
-import { KEYS, createInquiry } from '../lib/schema.js';
+import { redis } from '../_lib/redis.js';
+import { KEYS, createInquiry } from '../_lib/schema.js';
 
 export default async function handler(req, res) {
   // GET - List all inquiries

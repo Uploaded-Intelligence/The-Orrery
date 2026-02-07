@@ -1,7 +1,7 @@
 // api/experiments/[id].js
 // Get, update, delete single experiment
-import { redis } from '../lib/redis.js';
-import { KEYS } from '../lib/schema.js';
+import { redis } from '../_lib/redis.js';
+import { KEYS } from '../_lib/schema.js';
 
 export default async function handler(req, res) {
   const { id } = req.query;

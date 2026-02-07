@@ -1,6 +1,6 @@
 // api/health.js
 // Validate Upstash Redis connectivity
-import { redis } from './lib/redis.js';
+import { redis } from './_lib/redis.js';
 
 export default async function handler(req, res) {
   try {
